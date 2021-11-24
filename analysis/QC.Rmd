@@ -1,0 +1,170 @@
+---
+title: "QC"
+author: "Karissa Barthelson"
+date: "2021-11-20"
+output: workflowr::wflow_html
+editor_options:
+  chunk_output_type: console
+---
+
+## Introduction
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(
+  autodep = TRUE,
+  echo = TRUE,
+  warning = FALSE,
+  message = FALSE,
+  fig.align = "center"
+)
+```
+
+```{r loadLibs}
+library(tidyverse)
+library(magrittr)
+library(ngsReports)
+
+library(pander)
+
+library(ggpubr)
+```
+
+Here, I will assess the quality of the RNA-seq data for the *psen1* Q96_K97del/+ vs *naglu* A603fs/A603fs experiment on zebrafish larvae at 7 days post fertilisation (dpf). 
+
+Total RNA was purified from the head end of the individual larvae, while the tail end was used for gDNA extraction and PCR genotyping. The total RNA was DNase treated (to remove any genomic DNA which was carried over from the RNA extraction), then delivered to SAGC for polyA+ library preparation and sequencing using the MGI DNBSEQ technology. 
+
+The sequencing was performed over four lanes which were subsequently merged. This was done using the `merge.sh` script 
+```{r meregFilesBashScript}
+## Insert the merge files script here
+
+```
+
+
+## fastqc raw
+
+Here, I will use the `ngsReports` package to combine and visualise the fastqc results. 
+```{r fastqcRawObejct}
+fastqc_raw <- list.files(
+  path = "data/fastqc_raw",
+  pattern = "zip", 
+  recursive = TRUE,
+  full.names = TRUE) %>% 
+  FastqcDataList()
+```
+
+```{r}
+readTotals(fastqc_raw) %>% 
+  mutate(Read = case_when(
+    grepl(Filename, pattern = "_R1") ~ "R1", 
+    grepl(Filename, pattern = "_R2") ~ "R2"
+  )) %>% 
+  ggplot(aes(x = Filename, y = Total_Sequences, fill = Read)) + 
+           geom_col()
+
+```
+
+
+
+
+### GC Content
+
+All samples have similar GC content. No issues are present. 
+
+```{r}
+plotGcContent(
+  x = fastqc_raw, 
+  plotType = "line",
+  gcType = "Transcriptome", 
+  species = "Drerio"
+) +
+  theme(legend.position = "none")
+```
+
+
+
+## trimmed data fastQC
+
+```{r}
+fastqc_trim <- list.files(
+  path = "data/fastqc_trim",
+  pattern = "zip", 
+  recursive = TRUE,
+  full.names = TRUE) %>% 
+  FastqcDataList()
+```
+
+```{r}
+trimStats <- readTotals(fastqc_raw) %>%
+  dplyr::rename(Raw = Total_Sequences) %>%
+  left_join(readTotals(fastqc_trim), by = "Filename") %>%
+  dplyr::rename(Trimmed = Total_Sequences) %>%
+  mutate(
+    Discarded = 1 - Trimmed / Raw,
+    Retained = Trimmed / Raw
+  )
+```
+
+```{r}
+ggarrange(
+  plotGcContent(
+    x = fastqc_raw, 
+    plotType = "line",
+    gcType = "Transcriptome", 
+    species = "Drerio"
+  ) +
+    theme(legend.position = "none") +
+    ggtitle("Before trimming/filtering"), 
+  plotGcContent(
+  x = fastqc_trim, 
+  plotType = "line",
+  gcType = "Transcriptome", 
+  species = "Drerio"
+) +
+  theme(legend.position = "none")+
+  ggtitle("After trimming/filtering")
+) 
+
+```
+
+## Aligned QC
+```{r}
+fastqc_align <- list.files(
+  path = "data/fastqc_align",
+  pattern = "zip", 
+  recursive = TRUE,
+  full.names = TRUE) %>% 
+  FastqcDataList()
+```
+
+```{r}
+list.files("data/starAlignLog", full.names = TRUE) %>% 
+  .[grepl(x = ., pattern = "Log.final.out")] %>% 
+  ngsReports::plotAlignmentSummary(type = "star") +
+  scale_fill_viridis_d(end = 0.8) +
+  theme(legend.position = "bottom") +
+  ggtitle("Summary of alignment (STAR)", 
+          subtitle = "In all samples, the majority of reads mapped uniquely to the zebrafish genome.")
+```
+
+```{r}
+plotGcContent(
+    x = fastqc_align, 
+    plotType = "line",
+    gcType = "Transcriptome", 
+    species = "Drerio"
+  ) +
+  theme(legend.position = "none") 
+```
+
+## Dedup align QC
+
+This dataset was processed with UMIs, which allow PCR duplicates to be removed. I did this using `umi-tools`. After de-duplciation ** reads were retained. 
+
+
+
+
+
+
+
+
+
+
