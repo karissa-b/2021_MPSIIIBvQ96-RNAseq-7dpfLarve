@@ -14,32 +14,100 @@ knitr::opts_chunk$set(
   echo = TRUE,
   warning = FALSE,
   message = FALSE,
-  fig.align = "center"
+  fig.align = "center", 
+  out.width ="75%", 
+  out.height = "75%"
 )
 ```
 
 ```{r loadLibs}
 library(tidyverse)
 library(magrittr)
+library(readxl)
 library(ngsReports)
-
+library(AnnotationHub)
 library(pander)
-
+library(scales)
+library(pheatmap)
 library(ggpubr)
+
+theme_set(theme_bw())
 ```
+
+```{r anno}
+ah <- AnnotationHub() %>%
+	subset(species == "Danio rerio") %>%
+	subset(rdataclass == "EnsDb")
+
+ensDb <- ah[["AH83189"]] # for release 101, latest version and the alignment
+grTrans <- transcripts(ensDb)
+trLengths <- exonsBy(ensDb, "tx") %>%
+	width() %>%
+	vapply(sum, integer(1))
+mcols(grTrans)$length <- trLengths[names(grTrans)]
+gcGene <- grTrans %>%
+  mcols() %>%
+  as.data.frame() %>%
+  dplyr::select(gene_id, tx_id, gc_content, length) %>%
+  as_tibble() %>%
+  group_by(gene_id) %>%
+  summarise(
+    gc_content = sum(gc_content*length) / sum(length),
+    length = ceiling(median(length))
+  )
+grGenes <- genes(ensDb)
+mcols(grGenes) %<>%
+  as.data.frame() %>%
+  left_join(gcGene) %>%
+  as.data.frame() %>%
+  DataFrame()
+```
+
+```{r meta}
+meta <- read_excel("data/meta/naglu_v_Q96_larvae_metadata.xlsx", sheet = 3) %>% 
+  na.omit() %>% 
+  left_join(read_excel("data/meta/naglu_v_Q96_larvae_metadata.xlsx", sheet = 5) %>% 
+              mutate(temp1 = str_split(temp, pattern = " ")) %>% 
+              mutate(ULN = lapply(temp1, function(x){
+                x %>% 
+                  .[1]
+              }), 
+              sample_name =  lapply(temp1, function(x){
+                x %>% 
+                  .[2]
+              }), 
+              RIN = lapply(temp1, function(x){
+                x %>% 
+                  .[4]
+              })
+              ) %>% 
+              unnest() %>% 
+              dplyr::select(ULN, sample_name, RIN) %>% 
+              na.omit() %>% 
+              unique
+  ) %>% 
+  mutate(Genotype = case_when(
+    `naglu genotype` == "wt" & `psen1 genotype` == "wt" ~ "wt",
+    `naglu genotype` == "A603fs/A603fs" & `psen1 genotype` == "wt" ~ "MPS-IIIB",
+    `naglu genotype` == "wt" & `psen1 genotype` == "Q96_K97del/+" ~ "EOfAD-like",
+  ) %>% 
+    factor(levels = c("wt", "MPS-IIIB", "EOfAD-like")))
+```
+
 
 Here, I will assess the quality of the RNA-seq data for the *psen1* Q96_K97del/+ vs *naglu* A603fs/A603fs experiment on zebrafish larvae at 7 days post fertilisation (dpf). 
 
 Total RNA was purified from the head end of the individual larvae, while the tail end was used for gDNA extraction and PCR genotyping. The total RNA was DNase treated (to remove any genomic DNA which was carried over from the RNA extraction), then delivered to SAGC for polyA+ library preparation and sequencing using the MGI DNBSEQ technology. 
 
-The sequencing was performed over four lanes which were subsequently merged. This was done using the `merge.sh` script 
+The sequencing was performed over four lanes which were subsequently merged. This was done using the `merge.sh` script shown below. 
+
 ```{r meregFilesBashScript}
 ## Insert the merge files script here
-
+readLines("code/mergeFiles.sh") %>% 
+  cat(sep = "\n")
 ```
 
-
-## fastqc raw
+## fastqc: raw data
 
 Here, I will use the `ngsReports` package to combine and visualise the fastqc results. 
 ```{r fastqcRawObejct}
@@ -51,19 +119,33 @@ fastqc_raw <- list.files(
   FastqcDataList()
 ```
 
+The total number of reads ranged between `r range(readTotals(fastqc_raw)$Total_Sequences) %>% comma %>% pander` reads. Note that the number of reads in the `R1` file indeed equals to the number of reads in the `R2` file. 
+
 ```{r}
 readTotals(fastqc_raw) %>% 
   mutate(Read = case_when(
     grepl(Filename, pattern = "_R1") ~ "R1", 
     grepl(Filename, pattern = "_R2") ~ "R2"
-  )) %>% 
-  ggplot(aes(x = Filename, y = Total_Sequences, fill = Read)) + 
-           geom_col()
-
+  ), 
+  ULN = str_remove(Filename, "_S1_merged.+")
+  ) %>% 
+  left_join(meta) %>% 
+  ggplot(aes(x = ULN, y = Total_Sequences, fill = Read)) + 
+           geom_col(position = "dodge") +
+  coord_flip() +
+  scale_fill_viridis_d(end = 0.8) +
+  facet_wrap(~Genotype, scales = "free_y", ncol = 1, strip.position = "right")
 ```
 
+The base quality of all the reads also looked good. However, something a bit strange is going on in the sample `21-015556` file R2 file. Inspecting the boxplot for this file and it looks OK to me.
 
+```{r}
+plotBaseQuals(fastqc_raw)
 
+plotBaseQuals(fastqc_raw[44])
+
+plotBaseQuals(fastqc_raw[44], plotType = "boxplot")
+```
 
 ### GC Content
 
@@ -74,18 +156,27 @@ plotGcContent(
   x = fastqc_raw, 
   plotType = "line",
   gcType = "Transcriptome", 
-  species = "Drerio"
+  species = "Drerio", 
+  usePlotly = TRUE
 ) +
   theme(legend.position = "none")
 ```
 
+### Over-repreented seq
+
+No over-represented sequences are present in this dataset. 
+
+```{r}
+getModule(fastqc_raw, "Overrep") 
+```
 
 
 ## trimmed data fastQC
 
+The raw fastq. files were then processed with `fastp`. In this step, the adaptor sequeces were trimmed from the reads. Then all length and quality filters were left as default values. Less than 1% of the reads was discarded, and no observed changes are apparent in the %GC in the reads. 
+
 ```{r}
-fastqc_trim <- list.files(
-  path = "data/fastqc_trim",
+fastqc_trim <- list.files(path = "data/fastqc_trim",
   pattern = "zip", 
   recursive = TRUE,
   full.names = TRUE) %>% 
@@ -101,6 +192,16 @@ trimStats <- readTotals(fastqc_raw) %>%
     Discarded = 1 - Trimmed / Raw,
     Retained = Trimmed / Raw
   )
+
+trimStats %>% 
+  mutate(ULN = str_remove(Filename, "_S1_merged.+")
+  ) %>% 
+  left_join(meta) %>% 
+  unique() %>% 
+  ggplot(aes(y = ULN)) +
+  geom_col(aes(x = Discarded*100)) +
+  facet_wrap(~Genotype, scales = "free_y", ncol = 1, strip.position = "right") +
+  labs(x = "Percentage reads discarded by fastp")
 ```
 
 ```{r}
@@ -112,7 +213,7 @@ ggarrange(
     species = "Drerio"
   ) +
     theme(legend.position = "none") +
-    ggtitle("Before trimming/filtering"), 
+    ggtitle("Before fastp"), 
   plotGcContent(
   x = fastqc_trim, 
   plotType = "line",
@@ -120,12 +221,13 @@ ggarrange(
   species = "Drerio"
 ) +
   theme(legend.position = "none")+
-  ggtitle("After trimming/filtering")
+  ggtitle("After fastp")
 ) 
 
 ```
 
 ## Aligned QC
+The reads were aligned to the GRCz11 genome. The majority of reads were aligned uniquely. S
 ```{r}
 fastqc_align <- list.files(
   path = "data/fastqc_align",
@@ -140,14 +242,13 @@ list.files("data/starAlignLog", full.names = TRUE) %>%
   .[grepl(x = ., pattern = "Log.final.out")] %>% 
   ngsReports::plotAlignmentSummary(type = "star") +
   scale_fill_viridis_d(end = 0.8) +
-  theme(legend.position = "bottom") +
+  theme(legend.position = "right") +
   ggtitle("Summary of alignment (STAR)", 
           subtitle = "In all samples, the majority of reads mapped uniquely to the zebrafish genome.")
 ```
 
 ```{r}
-plotGcContent(
-    x = fastqc_align, 
+plotGcContent(x = fastqc_align, 
     plotType = "line",
     gcType = "Transcriptome", 
     species = "Drerio"
@@ -158,6 +259,54 @@ plotGcContent(
 ## Dedup align QC
 
 This dataset was processed with UMIs, which allow PCR duplicates to be removed. I did this using `umi-tools`. After de-duplciation ** reads were retained. 
+
+```{r}
+fastqc_align_dedup <- list.files(
+  path = "data/fastqc_align_dedup",
+  pattern = "zip", 
+  recursive = TRUE,
+  full.names = TRUE) %>% 
+  FastqcDataList()
+```
+
+```{r}
+readTotals(fastqc_align) %>% 
+  mutate(align = "raw") %>% 
+  bind_rows(readTotals(fastqc_align_dedup) %>% 
+              mutate(align = "dedup")) %>% 
+  mutate(ULN = str_remove(Filename, "_S1_merged.+")) %>% 
+  left_join(meta) %>% 
+  ggplot(aes(x = ULN, y = Total_Sequences, fill = align)) + 
+           geom_col(position = "dodge") +
+  coord_flip() +
+  scale_fill_viridis_d(end = 0.8) +
+  scale_y_continuous(labels = comma) +
+  facet_wrap(~Genotype, scales = "free_y", ncol = 1, strip.position = "right")
+```
+
+## FeatureCounts summary
+
+```{r}
+FC_summary <- read.delim("data/featureCounts/counts.out.summary")
+  
+colnames(FC_summary) %<>% 
+  str_remove(pattern = "_S1_merged.Aligned.sortedByCoord.dedup.out.bam") %>% 
+  str_remove(pattern = "X04_dedup.bam.") %>% 
+  str_replace(pattern = "\\.", replacement = "\\-")
+
+FC_summary %>% 
+ gather(key = "ULN", value = "NumReads", starts_with("21")) %>% 
+  left_join(meta) %>% 
+  as_tibble() %>% 
+  dplyr::filter(NumReads > 0) %>%   
+  ggplot(aes(y = ULN, x = NumReads, fill = Status)) +
+  geom_col() +
+  scale_fill_viridis_d(end = 0.8) +
+  scale_x_continuous(labels = comma) +
+  facet_wrap(~Genotype, scales = "free_y", ncol = 1, strip.position = "right")
+```
+
+
 
 
 

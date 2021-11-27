@@ -397,7 +397,7 @@ gunzip -c      "02_trimdata/fastq/21-01551_S1_merged_R2_001.fastq.gz"
 WARNING: --limitBAMsortRAM=0, will use genome size as RAM limit for BAM sorting
 Finished loading and checking parameters
 Reading genome generation parameters:
-### STAR   --runMode genomeGenerate   --runThreadN 16   --genomeDir starIndex   --genomeFastaFiles refs/Danio_rerio.GRCz11.dna.primary_assembly.fa      --sjdbGTFfile refs/Danio_rerio.GRCz11.104.chr.gtf   --sjdbOverhang 98
+### STAR   --runMode genomeGenerate   --runThreadN 16   --genomeDir starIndex   --genomeFastaFiles refs/Danio_rerio.GRCz11.dna.primary_assembly.fa      --sjdbGTFfile refs/Danio_rerio.GRCz11.101.chr.gtf   --sjdbOverhang 98
 ### GstrandBit=32
 versionGenome                 2.7.0d     ~RE-DEFINED
 genomeFastaFiles              refs/Danio_rerio.GRCz11.dna.primary_assembly.fa        ~RE-DEFINED
@@ -406,7 +406,7 @@ genomeChrBinNbits             18     ~RE-DEFINED
 genomeSAsparseD               1     ~RE-DEFINED
 sjdbOverhang                  98     ~RE-DEFINED
 sjdbFileChrStartEnd           -        ~RE-DEFINED
-sjdbGTFfile                   refs/Danio_rerio.GRCz11.104.chr.gtf     ~RE-DEFINED
+sjdbGTFfile                   refs/Danio_rerio.GRCz11.101.chr.gtf     ~RE-DEFINED
 sjdbGTFchrPrefix              -     ~RE-DEFINED
 sjdbGTFfeatureExon            exon     ~RE-DEFINED
 sjdbGTFtagExonParentTranscripttranscript_id     ~RE-DEFINED
@@ -1409,7 +1409,7 @@ Number of real (reference) chromosomes= 993
 992	KN150481.1	1008	1602224128
 993	KN150525.1	650	1602486272
 --sjdbOverhang = 98 taken from the generated genome
-Started loading the genome: Tue Nov 23 13:22:52 2021
+Started loading the genome: Fri Nov 26 21:34:55 2021
 
 Genome: size given as a parameter = 1652600842
 SA: size given as a parameter = 11701548279
@@ -1423,7 +1423,7 @@ Loading Genome ... done! state: good=1 eof=0 fail=0 bad=0; loaded 1652600842 byt
 SA file size: 11701548279 bytes; state: good=1 eof=0 fail=0 bad=0
 Loading SA ... done! state: good=1 eof=0 fail=0 bad=0; loaded 11701548279 bytes
 Loading SAindex ... done: 1565873619 bytes
-Finished loading the genome: Tue Nov 23 13:23:15 2021
+Finished loading the genome: Fri Nov 26 21:35:28 2021
 
 Processing splice junctions database sjdbN=253058,   pGe.sjdbOverhang=98 
 alignIntronMax=alignMatesGapMax=0, the max intron size will be approximately determined by (2^winBinNbits)*winAnchorDistNbins=589824
@@ -1445,73 +1445,73 @@ Created thread # 12
 Created thread # 13
 Created thread # 14
 Created thread # 15
-BAM sorting: 207881 mapped reads
+BAM sorting: 208628 mapped reads
 BAM sorting bins genomic start loci:
-1	0	34708206
-2	0	59218709
-3	1	34159761
-4	2	18539292
-5	3	3944471
-6	3	30418504
-7	4	15430737
-8	5	2344751
-9	5	32882436
-10	6	1481566
-11	6	37823473
-12	7	23963278
-13	7	43229138
-14	8	13042655
-15	9	1349163
-16	9	41522176
-17	10	9458773
-18	10	43119824
-19	11	15621490
-20	11	44047560
-21	12	18417796
-22	12	51201447
-23	13	18956588
-24	14	257751
-25	14	22354068
-26	15	17870732
-27	15	44614296
-28	16	39061722
-29	17	28713989
-30	18	19263058
-31	18	33437533
-32	18	61200192
-33	19	28210520
-34	20	3177726
-35	20	32214690
-36	20	32286058
-37	20	32301458
-38	20	34991563
-39	20	67525286
-40	21	26876026
-41	21	54174855
-42	22	26394896
-43	22	51634403
-44	23	11568757
-45	23	42692905
-46	24	22135005
-47	24	42751751
-48	25	8315
-Thread #12 end of input stream, nextChar=-1
-Completed: thread #12
-Completed: thread #8
-Completed: thread #3
-Completed: thread #9
-Completed: thread #5
-Completed: thread #6
-Completed: thread #13
+1	0	34708358
+2	0	59346778
+3	1	36030155
+4	2	22361079
+5	3	4839791
+6	3	31449072
+7	4	17717613
+8	5	6934244
+9	5	33331958
+10	6	5946547
+11	6	43185852
+12	7	25081187
+13	7	49506523
+14	8	20137659
+15	9	3576552
+16	9	44366977
+17	10	9471123
+18	10	43119845
+19	11	14698263
+20	11	44196089
+21	12	16316618
+22	12	48160434
+23	13	13227473
+24	13	45352241
+25	14	17843668
+26	15	10175186
+27	15	35648606
+28	16	31097335
+29	17	18459972
+30	18	16231056
+31	18	32813305
+32	18	57700496
+33	19	20265883
+34	20	975984
+35	20	32211510
+36	20	32284305
+37	20	32301029
+38	20	33286727
+39	20	65020932
+40	21	25943597
+41	21	53306518
+42	22	26103927
+43	22	50389449
+44	23	11096332
+45	23	41264535
+46	24	22117169
+47	24	42741125
+48	25	8322
+Thread #6 end of input stream, nextChar=-1
 Completed: thread #1
-Completed: thread #14
-Completed: thread #15
-Completed: thread #7
+Completed: thread #6
+Completed: thread #5
+Completed: thread #9
 Completed: thread #4
 Completed: thread #10
 Completed: thread #11
+Completed: thread #14
+Completed: thread #13
+Completed: thread #12
 Completed: thread #0
 Joined thread # 1
+Completed: thread #8
+Completed: thread #15
+Completed: thread #7
+Completed: thread #3
 Completed: thread #2
 Joined thread # 2
 Joined thread # 3
@@ -1527,6 +1527,6 @@ Joined thread # 12
 Joined thread # 13
 Joined thread # 14
 Joined thread # 15
-Nov 23 13:44:04 ..... started sorting BAM
-Max memory needed for sorting = 948732919
+Nov 26 21:54:41 ..... started sorting BAM
+Max memory needed for sorting = 945549886
 ALL DONE!

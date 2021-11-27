@@ -397,7 +397,7 @@ gunzip -c      "02_trimdata/fastq/21-01531_S1_merged_R2_001.fastq.gz"
 WARNING: --limitBAMsortRAM=0, will use genome size as RAM limit for BAM sorting
 Finished loading and checking parameters
 Reading genome generation parameters:
-### STAR   --runMode genomeGenerate   --runThreadN 16   --genomeDir starIndex   --genomeFastaFiles refs/Danio_rerio.GRCz11.dna.primary_assembly.fa      --sjdbGTFfile refs/Danio_rerio.GRCz11.104.chr.gtf   --sjdbOverhang 98
+### STAR   --runMode genomeGenerate   --runThreadN 16   --genomeDir starIndex   --genomeFastaFiles refs/Danio_rerio.GRCz11.dna.primary_assembly.fa      --sjdbGTFfile refs/Danio_rerio.GRCz11.101.chr.gtf   --sjdbOverhang 98
 ### GstrandBit=32
 versionGenome                 2.7.0d     ~RE-DEFINED
 genomeFastaFiles              refs/Danio_rerio.GRCz11.dna.primary_assembly.fa        ~RE-DEFINED
@@ -406,7 +406,7 @@ genomeChrBinNbits             18     ~RE-DEFINED
 genomeSAsparseD               1     ~RE-DEFINED
 sjdbOverhang                  98     ~RE-DEFINED
 sjdbFileChrStartEnd           -        ~RE-DEFINED
-sjdbGTFfile                   refs/Danio_rerio.GRCz11.104.chr.gtf     ~RE-DEFINED
+sjdbGTFfile                   refs/Danio_rerio.GRCz11.101.chr.gtf     ~RE-DEFINED
 sjdbGTFchrPrefix              -     ~RE-DEFINED
 sjdbGTFfeatureExon            exon     ~RE-DEFINED
 sjdbGTFtagExonParentTranscripttranscript_id     ~RE-DEFINED
@@ -1409,7 +1409,7 @@ Number of real (reference) chromosomes= 993
 992	KN150481.1	1008	1602224128
 993	KN150525.1	650	1602486272
 --sjdbOverhang = 98 taken from the generated genome
-Started loading the genome: Tue Nov 23 13:22:50 2021
+Started loading the genome: Fri Nov 26 21:33:35 2021
 
 Genome: size given as a parameter = 1652600842
 SA: size given as a parameter = 11701548279
@@ -1423,7 +1423,7 @@ Loading Genome ... done! state: good=1 eof=0 fail=0 bad=0; loaded 1652600842 byt
 SA file size: 11701548279 bytes; state: good=1 eof=0 fail=0 bad=0
 Loading SA ... done! state: good=1 eof=0 fail=0 bad=0; loaded 11701548279 bytes
 Loading SAindex ... done: 1565873619 bytes
-Finished loading the genome: Tue Nov 23 13:23:15 2021
+Finished loading the genome: Fri Nov 26 21:33:57 2021
 
 Processing splice junctions database sjdbN=253058,   pGe.sjdbOverhang=98 
 alignIntronMax=alignMatesGapMax=0, the max intron size will be approximately determined by (2^winBinNbits)*winAnchorDistNbins=589824
@@ -1433,10 +1433,10 @@ Created thread # 3
 Created thread # 4
 Created thread # 5
 Created thread # 6
-Created thread # 7
 Starting to map file # 0
 mate 1:   02_trimdata/fastq/21-01531_S1_merged_R1_001.fastq.gz
 mate 2:   02_trimdata/fastq/21-01531_S1_merged_R2_001.fastq.gz
+Created thread # 7
 Created thread # 8
 Created thread # 9
 Created thread # 10
@@ -1495,38 +1495,38 @@ BAM sorting bins genomic start loci:
 46	24	21824303
 47	24	42129281
 48	25	8311
-Thread #13 end of input stream, nextChar=-1
-Completed: thread #12
-Completed: thread #14
+Thread #11 end of input stream, nextChar=-1
 Completed: thread #13
-Completed: thread #8
+Completed: thread #11
 Completed: thread #0
+Completed: thread #12
+Completed: thread #4
+Completed: thread #3
 Completed: thread #1
 Joined thread # 1
-Completed: thread #4
-Completed: thread #10
-Completed: thread #5
+Completed: thread #8
+Completed: thread #14
 Completed: thread #2
 Joined thread # 2
-Completed: thread #7
-Completed: thread #6
-Completed: thread #9
-Completed: thread #3
 Joined thread # 3
 Joined thread # 4
+Completed: thread #9
+Completed: thread #10
+Completed: thread #15
+Completed: thread #7
+Completed: thread #6
+Completed: thread #5
 Joined thread # 5
 Joined thread # 6
 Joined thread # 7
 Joined thread # 8
 Joined thread # 9
 Joined thread # 10
-Completed: thread #15
-Completed: thread #11
 Joined thread # 11
 Joined thread # 12
 Joined thread # 13
 Joined thread # 14
 Joined thread # 15
-Nov 23 13:43:58 ..... started sorting BAM
+Nov 26 21:55:07 ..... started sorting BAM
 Max memory needed for sorting = 1029265206
 ALL DONE!
