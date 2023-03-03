@@ -1,0 +1,176 @@
+---
+title: "plots4pub"
+author: "Karissa"
+date: "03/03/2023"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# read in data
+```{r}
+x.larvae <-  read_rds("data/R_objects/larvae/dge.rds")
+logCPM.larvae <-  read_rds("data/R_objects/larvae/logcpm.rds")
+toptables_cqn.larvae <-  read_rds("data/R_objects/larvae/toptablescqn.rds")
+hmp.kegg.larvae <-  read_rds("data/R_objects/larvae/hmp_kegg.rds")
+HMP.ire.larvae <-  read_rds <-  ("data/R_objects/larvae/hmp_ire.rds")
+
+
+x.adult <-  read_rds("data/R_objects/adult_brain/dge.rds")
+logCPM.adult <-  read_rds("data/R_objects/adult_brain/logcpm.rds")
+toptables_cqn.adult <-  read_rds("data/R_objects/adult_brain/toptablescqn.rds")
+hmp.fry.adult <-   read_rds("data/R_objects/adult_brain/hmp_kegg.rds") %>% 
+  mutate(coef = case_when(
+    grepl(coef, pattern = "MPS") ~ "MPS-IIIB", 
+    grepl(coef, pattern = "EOf") ~ "EOfAD-like"
+  )) 
+hmp.ire.adult <-  read_rds("data/R_objects/adult_brain/hmp_ire.rds")
+
+
+KEGG <- msigdbr("Danio rerio", category = "C2", subcategory = "CP:KEGG") %>% 
+  distinct(gs_name, ensembl_gene, .keep_all = TRUE) %>% 
+  split(f = .$gs_name) %>%
+  lapply(extract2, "ensembl_gene")
+
+```
+
+# KEGG plot
+```{r}
+kegg.all <- hmp.kegg.larvae %>% 
+  mutate(age = "7dpi") %>% 
+  bind_rows(hmp.fry.adult %>% 
+              mutate(age = "6m adult brain")) %>% 
+  mutate(age = factor(age, levels = c("7dpi", "6m adult brain" )))
+
+sigkeggs <- kegg.all %>% 
+  dplyr::filter(harmonic_p_FDR < 0.05) %>% 
+  .$pathway %>% 
+  unique
+
+kegg.all %>% 
+  dplyr::filter(pathway %in% sigkeggs) %>% 
+  ggplot(aes(x = coef, y = pathway)) +
+  geom_tile(aes(fill = -log10(harmonic_p), 
+                alpha = harmonic_p_FDR < 0.05)) +
+  facet_wrap(~age) +
+  scale_fill_viridis_c()
+
+
+#### pheatmap
+number4pheatmap <- kegg.all %>% 
+  dplyr::filter(pathway %in% sigkeggs) %>% 
+  dplyr::select(pathway, coef, harmonic_p_FDR, age) %>% 
+  mutate(geno_age = paste0(coef, " ", age), 
+         pathway = str_remove(pathway, pattern = "KEGG_"), 
+         harmonic_p_FDR = signif(harmonic_p_FDR, digits = 2)) %>% 
+  dplyr::select(-coef, -age) %>% 
+  spread(key = "geno_age", value = "harmonic_p_FDR") %>% 
+  column_to_rownames("pathway") %>% 
+  dplyr::select(4,2,3,1)
+
+annpocol <- kegg.all %>% 
+  dplyr::select(coef, age) %>% 
+  mutate(coef_age = paste0(coef, " ", age)) %>% 
+  unique %>% 
+  column_to_rownames("coef_age")
+
+png("output/plots4pub/kegghmp.png", width = 50, height = 60, units = "cm", res = 400)
+kegg.all %>% 
+  dplyr::filter(pathway %in% sigkeggs) %>% 
+  dplyr::select(pathway, coef, harmonic_p, age) %>% 
+  mutate(geno_age = paste0(coef, " ", age), 
+         hmp_log10 = -log10(harmonic_p), 
+         pathway = str_remove(pathway, pattern = "KEGG_")) %>% 
+  dplyr::select(-coef, -age, -harmonic_p) %>% 
+  spread(key = "geno_age", value = "hmp_log10") %>% 
+  column_to_rownames("pathway") %>% 
+  dplyr::select(4,2,3,1) %>% 
+  pheatmap(
+    color = viridis_pal(option = "inferno")(256), 
+    clustering_method = "complete",
+    cellwidth = 60,
+    cellheight = 60,
+    angle_col = 315, 
+    cluster_cols = F,
+    annotation_col = annpocol, 
+    display_numbers = number4pheatmap, 
+    number_format = "%.2f", 
+    number_color = "white", 
+    fontsize = 20, 
+    gaps_col = 2
+  )
+dev.off()
+```
+
+
+
+# lysosome
+```{r}
+toptables_cqn.larvae$`MPS-IIIB` %>% 
+  mutate(age = "7") %>% 
+  bind_rows(toptables_cqn.adult$`MPS-III` %>% 
+              mutate(age = "6m")
+  ) %>% 
+  mutate(age = factor(age, levels = c("7", "6m"))) %>% 
+  dplyr::filter(gene_id %in% KEGG$KEGG_LYSOSOME) %>% 
+  ggplot(aes(x = age, y = logFC, group = gene_id)) +
+  geom_point() +
+  geom_line(alpha = 0.8) 
+  scale_color_manual(values = c("grey50", "red"))
+```
+
+
+
+# oxphos
+```{r}
+toptables_cqn.adult %>% 
+  bind_rows() %>% 
+    dplyr::filter(gene_id %in% KEGG$KEGG_OXIDATIVE_PHOSPHORYLATION) %>% 
+  dplyr::select(gene_name, logFC, coef) %>% 
+  dplyr::distinct(gene_name, coef, .keep_all = T) %>% 
+  spread(key = "coef", value = "logFC") %>% 
+  column_to_rownames("gene_name") %>% 
+  t() %>% 
+  pheatmap(color = colorRampPalette(rev(brewer.pal(n = 5,
+                                               name = "RdBu")))(100), 
+           main = "KEGG_OXIDATIVE_PHOSPHORYLATION", 
+           breaks = c(seq(min(.), 0, length.out=ceiling(100/2) + 1), 
+              seq(max(.)/100, max(.), length.out=50)), 
+           # cellheight = 30, 
+           # cellwidth = 3,
+           angle_col = 45,
+           treeheight_row = 0, 
+           treeheight_col = 0, 
+           show_colnames = TRUE
+           )
+```
+
+# Ribo
+```{r}
+toptables_cqn.adult %>% 
+  bind_rows() %>% 
+    dplyr::filter(gene_id %in% KEGG$KEGG_RIBOSOME) %>% 
+  dplyr::select(gene_name, logFC, coef) %>% 
+  dplyr::distinct(gene_name, coef, .keep_all = T) %>% 
+  spread(key = "coef", value = "logFC") %>% 
+  column_to_rownames("gene_name") %>% 
+  t() %>% 
+  pheatmap(color = colorRampPalette(rev(brewer.pal(n = 5,
+                                               name = "RdBu")))(100), 
+           main = "KEGG_RIBOSOME", 
+           breaks = c(seq(min(.), 0, length.out=ceiling(100/2) + 1), 
+              seq(max(.)/100, max(.), length.out=50)), 
+           # cellheight = 30, 
+           # cellwidth = 3,
+           angle_col = 45,
+           treeheight_row = 0, 
+           treeheight_col = 0, 
+           show_colnames = TRUE
+           )
+```
+
+
+
+

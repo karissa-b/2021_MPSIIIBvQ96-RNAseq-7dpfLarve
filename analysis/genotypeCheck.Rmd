@@ -1,0 +1,38 @@
+---
+title: "genotypeCheck"
+author: "Karissa Barthelson"
+date: "2021-11-30"
+output: workflowr::wflow_html
+editor_options:
+  chunk_output_type: console
+---
+
+## Introduction
+
+```{r libs}
+library(tidyverse)
+library(magrittr)
+library(Gviz)
+
+```
+
+Here, I will use `GViz` to view the mutation sites in each sample (i.e. ensure genotypes are correct). Note that phoenix must be mounted for this to work properly. 
+
+```{r}
+# Turn off the default UCSC chromosome names
+options(ucscChromosomeNames=FALSE)
+
+gtrack <- GenomeAxisTrack()
+
+# psen1
+plotTracks(trackList = list(gtrack), 
+           chromosome = 17, 
+           from = 51218304, 
+           to = 51218443
+            )
+```
+
+
+psen1: chr17:51,218,304-51,218,443
+
+naglu: chr24:36,305,350-36,305,405

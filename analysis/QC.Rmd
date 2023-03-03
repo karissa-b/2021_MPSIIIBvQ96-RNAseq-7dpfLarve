@@ -205,6 +205,11 @@ trimStats %>%
 ```
 
 ```{r}
+plotBaseQuals(fastqc_trim)
+```
+
+
+```{r}
 ggarrange(
   plotGcContent(
     x = fastqc_raw, 
@@ -246,6 +251,11 @@ list.files("data/starAlignLog", full.names = TRUE) %>%
   ggtitle("Summary of alignment (STAR)", 
           subtitle = "In all samples, the majority of reads mapped uniquely to the zebrafish genome.")
 ```
+
+```{r}
+plotBaseQuals(fastqc_align)
+```
+
 
 ```{r}
 plotGcContent(x = fastqc_align, 
