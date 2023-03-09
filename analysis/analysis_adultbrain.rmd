@@ -40,7 +40,7 @@ library(goseq)
 library(fgsea)
 library(cqn)
 library(kableExtra)
-
+library(harmonicmeanp
 library(ssizeRNA)
 
 theme_set(theme_bw())
@@ -1293,9 +1293,9 @@ fry %>%
 
 ```{r}
 hmp.fry <- runHMP(gene.set.obj = KEGG, 
-       design = design, 
-       logCPM.df = logCPM, 
-       toptable = toptables_cqn)
+                  design = design, 
+                  logCPM.df = logCPM, 
+                  toptable = toptables_cqn)
 
 sigpaths <- hmp.fry %>% 
   dplyr::filter(sig == TRUE) %>% 
