@@ -40,7 +40,7 @@ library(goseq)
 library(fgsea)
 library(cqn)
 library(kableExtra)
-library(harmonicmeanp
+library(harmonicmeanp)
 library(ssizeRNA)
 
 theme_set(theme_bw())
@@ -1192,7 +1192,7 @@ ggplot(manhat_input, aes(x = midCum, y = -log10(PValue))) +
   ) 
 ```
 
-## Exploration with HMP
+## HMP
 
 Im not really detecting anything using fry in the EOfAD mutants. This is consistent with all my previous analyses. I will use the harmonic mean p val method which combines individual p vals from 3 gene set enrichment analysis methods: fry, camera and gsea. 
 
@@ -1464,6 +1464,7 @@ logCPM %>% saveRDS("data/R_objects/adult_brain/logcpm.rds")
 toptables_cqn %>% saveRDS("data/R_objects/adult_brain/toptablescqn.rds")
 hmp.fry %>% saveRDS("data/R_objects/adult_brain/hmp_kegg.rds")
 hmp.ire %>% saveRDS("data/R_objects/adult_brain/hmp_ire.rds")
+celltype %>% saveRDS("data/R_objects/adult_brain/celltype.rds") 
 ```
 
 
