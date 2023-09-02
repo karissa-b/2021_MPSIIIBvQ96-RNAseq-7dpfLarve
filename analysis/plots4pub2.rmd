@@ -1,0 +1,1432 @@
+---
+title: "plots4pub2"
+author: "Karissa Barthelson"
+date: "2023-08-17"
+output: workflowr::wflow_html
+editor_options:
+  chunk_output_type: console
+---
+
+HAVE OPEN THE ANALYSIS FINAL DOC WITH ALL R OBJECTS ACTIVE.
+
+```{r}
+library(patchwork)
+library(grid)
+library(gridExtra)
+library(cowplot)
+library(ggplotify)
+library(tidygraph)
+library(igraph)
+library(ggraph)
+```
+
+# objects 
+
+```{r}
+genocols = c("#000000", "#DBDB2F", "#377EB8")
+```
+
+# Fig.2 
+## Larvae PCA + DE
+
+```{r}
+a <- logCPMs$larvae %>% 
+    t() %>%
+    prcomp() %>% 
+    autoplot(data = tibble(sample = rownames(.$x)) %>%
+               left_join(x.larvae$samples),
+             colour = "Genotype", 
+             
+             size = 4
+    ) +
+    scale_color_manual(values = genocols) +
+  theme(aspect.ratio = 1)
+
+b <- tibble(Contrast = c("EOfAD-like", "EOfAD-like", "MPS IIIB", "MPS IIIB"), 
+       Direction = c("up", "down", "up", "down"), 
+       `Number of DE genes` = c(0, 0, 38, 20 )) %>% 
+  ggplot(aes(x = `Number of DE genes`, y = Contrast)) +
+  geom_col(aes(fill = Direction), 
+           position = "Dodge") +
+  scale_x_continuous(breaks = seq(from = 0, to = 45, by = 5))
+
+c <- toptables_cqn$larvae %>% 
+  bind_rows() %>% 
+  ggplot(aes(x = logFC, y = -log10(PValue))) + 
+  geom_point(aes(colour = FDR <  0.05), 
+             alpha = 0.5) + 
+  # geom_label_repel(aes(label = gene_name), 
+  #                  size = 1
+  #                  data = . %>% 
+  #                    dplyr::filter(-log10(PValue) > 10)) +
+  facet_wrap(~coef) +
+   scale_color_manual(values = c("grey50", "red")) +
+  coord_cartesian(xlim = c(-2,2)) +
+  theme(legend.position = "right")
+
+d <- 
+  goseq$larvae.MPSIIIB %>% 
+  dplyr::slice(1:10) %>%
+  mutate(propDE = numDEInCat/numInCat, 
+         category = str_replace_all(category, 
+                                    pattern = "_", 
+                                    replacement = " "), 
+         category = str_remove(category, pattern = "GO "), 
+         category = str_wrap(category, width = 20), 
+         coef = "MPS IIIB") %>%
+  ggplot(aes(x = -log10(over_represented_pvalue), 
+             y = reorder(category, -over_represented_pvalue))) +
+  geom_col(aes(fill = propDE, 
+               alpha = FDR < 0.05)) +
+  geom_hline(yintercept = 2.5) +
+  scale_fill_viridis_c() +
+  scale_alpha_manual(values = c(0.4, 1)) +
+  labs(y = "GO Term",
+       fill = "Proportion of \nDE genes in \nGO term") +
+  theme(legend.position = "right") +
+  facet_wrap(~coef)
+```
+
+## GO plot
+```{r GO plot}
+## Get significant GO terms
+sigGo <- goseq$larvae.MPSIIIB %>%
+    dplyr::filter(FDR < 0.05) %>%
+    .$category
+
+DEGs <- toptables_cqn$larvae$`MPS IIIB` %>% 
+  dplyr::filter(FDR < 0.05) %>% 
+  .$gene_id
+
+
+## Convert list of GO terms by gene to list of genes by GO term
+geneByGo <- GO.larvae
+
+## Get DE genes that belong to significant GO terms
+goGenes <- lapply(
+  sigGo, 
+  function(x){
+    geneByGo[[x]][geneByGo[[x]] %in% DEGs]
+  }
+) 
+names(goGenes) <- sigGo
+
+## Make tibble of GO terms
+goTerms <- names(goGenes) %>%
+    tibble::enframe(name = NULL, value = "label")
+## Make tibble of genes
+genes <- unlist(goGenes) %>% 
+    unique() %>%
+    tibble::enframe(name = NULL, value = "label") %>%
+    mutate
+
+## Join to create node list
+nodes <-   rbind(goTerms, genes) %>%
+  rowid_to_column("id") %>% 
+  left_join(toptables_cqn$larvae$`MPS IIIB`  %>% 
+              dplyr::select(label = gene_id, gene_name)) %>% 
+  mutate(name = label, 
+         name = case_when(
+           grepl(name, pattern = "^ENS") ~ gene_name, 
+           TRUE ~ name), 
+         colour = case_when(
+            grepl(name, pattern = "^GO") ~ 2,
+            TRUE ~ 4
+         ), 
+         name.label = str_remove(name, 
+                                 pattern = "GO_"), 
+         name.label = str_replace_all(name.label, 
+                                     pattern = "_", 
+                                     replacement = " "), 
+         name.label = str_wrap(name.label, 
+                               width = 20)
+         
+         
+         )
+
+## Create edge list
+edges <- goGenes %>%
+    stack() %>%
+    as_tibble() %>%
+    dplyr::select(goTerm = ind, geneId = values) %>%
+    dplyr::arrange(goTerm) %>%
+    mutate(goTerm = as.character(goTerm)) %>%
+    left_join(nodes, by = c("goTerm" = "label")) %>%
+    dplyr::rename(from = id) %>%
+    left_join(nodes, by = c("geneId" = "label")) %>%
+    dplyr::rename(to = id) %>%
+    dplyr::select(from, to)
+
+## Setup colours
+colours <- length(sigGo) %>%
+    rainbow()
+
+## Create tidygraph object
+tidy <- tbl_graph(
+    nodes = nodes, 
+    edges = edges, 
+    directed = FALSE
+) %>%
+    activate(nodes) %>%
+    mutate(
+        goTerms = case_when(
+            id <= length(sigGo) ~ label
+        ),
+        term = Term(label),
+        gene_id = case_when(
+            !label %in% sigGo ~ label
+        ),
+        size = ifelse(id <= length(sigGo), 4, 2)
+    ) %>%  
+    activate(edges) %>%
+    mutate(
+        colour = case_when(
+            from <= length(sigGo) ~ colours[from]
+        )
+    )
+
+## Set seed to allow same graph to be produced each time function is executed
+set.seed(4)
+
+## Plot network graph
+e <- ggraph(tidy, layout = "fr") +
+    # scale_fill_manual(
+    #     values = "white", 
+    #     na.value = "black"
+    # ) +
+    scale_edge_color_manual(
+        values = "black", 
+        na.value = "gray80"
+    ) +
+    geom_edge_arc0(
+        aes(color = "black"), 
+        alpha = 0.5, 
+        show.legend = FALSE, 
+        curvature = 0.5
+    ) +
+    geom_node_point(
+        aes(fill = colour,
+            colour = colour
+            #size = size
+            ),
+        shape = 21,
+        stroke = 0.5, 
+        show.legend = FALSE
+    ) +
+    geom_node_label(
+        aes(label = name.label),
+        repel = TRUE,
+        #size = ,
+        alpha = 0.7,
+        label.padding = 0.2
+    ) +
+    theme_graph() +
+    theme(legend.position = "none") 
+e
+```
+
+## final fig.
+```{r}
+p1 <- ggarrange(
+  # first row
+  ggarrange(
+    a, ggplot() + theme_void(),  b, 
+    labels = c("A", "", "B"), 
+    widths = c(1, 0.1, 1), 
+    nrow = 1),
+  
+  # blank spacer
+  ggplot() + theme_void(),
+  
+  # second row
+  ggarrange(
+    c, ggplot() + theme_void(), d, 
+    labels = c("C", "", "D"), 
+    widths = c(1, 0.05, 1), 
+    nrow = 1), 
+  nrow = 3, 
+  heights = c(1, 0.1, 2), 
+  align = "hv"
+) 
+
+ggarrange(p1,  e,   
+          labels = c("", "E"),
+          widths = c(1, 0.5),
+          heights = c(3, 2),
+          ncol = 1) +
+  ggsave("output/plots4pub/Figure2.png", 
+         width = 20, height = 24, 
+         scale = 1.1,
+         units = "cm", dpi = 400, 
+         bg = "white")
+          
+```
+
+
+
+# Fig. 3
+## Larvae kegg
+
+```{r}
+sigpaths <- HMP.KEGG.larvae %>% 
+  dplyr::filter(harmonic_p_FDR < 0.05) %>% 
+  .$pathway
+
+a3 <- 
+  HMP.KEGG.larvae %>% 
+  dplyr::filter(pathway %in% sigpaths) %>% 
+  mutate(pathway = str_replace_all(pathway, 
+                                    pattern = "_", 
+                                    replacement = " "), 
+         pathway = str_remove(pathway, pattern = "KEGG "), 
+         pathway = str_wrap(pathway, width = 25)) %>% 
+         
+  ggplot(aes(x = coef, y = reorder(pathway, -harmonic_p_FDR))) + 
+  geom_tile(aes(fill = -log10(harmonic_p), 
+                alpha = sig)) +
+  geom_label(aes(label = signif(harmonic_p_FDR, digits = 2)), 
+             fill = NA) +
+  scale_fill_viridis_c() +
+  labs(y = "KEGG gene set", 
+       x = "", 
+       alpha = "FDR p < 0.05") +
+  theme_classic()
+  
+
+b3 <- toptables_cqn$larvae %>% 
+  bind_rows() %>% 
+  dplyr::filter(gene_id %in% KEGG.larvae$KEGG_ECM_RECEPTOR_INTERACTION) %>% 
+  dplyr::select(gene_name, logFC, coef) %>% 
+  dplyr::distinct(gene_name, coef, .keep_all = T) %>% 
+  spread(key = "coef", value = "logFC") %>% 
+  set_colnames(c("gene_name", "temp", "MPS IIIB")) %>% # some reason it wasnt liking EOfAD-like as the col title
+  ggscatter(x = "temp", 
+            y = "MPS IIIB",
+   color = "black", shape = 21, size = 3, # Points color, shape and size
+   add = "reg.line",  # Add regressin line
+   add.params = list(color = "blue", fill = "lightgray"), # Customize reg. line
+   conf.int = TRUE, # Add confidence interval
+   cor.coef = TRUE # Add correlation coefficient. see ?stat_cor
+   #cor.coeff.args = list(method = "pearson", label.x = 3, label.sep = "\n")
+   ) +
+  labs(x = "logFC in EOfAD-like", 
+       y = "logFC in MPS IIIB" , 
+       title = "ECM RECEPTOR INTERACTION") +
+  theme(aspect.ratio = 1)
+
+```
+```{r}
+
+ pvInput <- toptables_cqn$larvae %>% 
+  bind_rows() %>% 
+  dplyr::select(gene_id, coef, logFC) %>% 
+  spread(key = "coef", value = "logFC") %>% 
+  column_to_rownames("gene_id")
+  
+c3 <- pathview(gene.data = pvInput, 
+         species = "dre", 
+         pathway.id = "04512", 
+         gene.idtype = "ENSEMBL", 
+          
+         low = list(gene = "blue"))
+
+
+ggarrange(a3, b3, 
+          widths =  c(1, 0.75)
+          ) + 
+  ggsave("output/plots4pub/Fig3ab.png", 
+         width = 18, height = 10, units = "cm", 
+         bg = "white",
+         scale = 1.5, dpi = 400)
+
+```
+```{r}
+toptables_cqn$larvae %>% 
+  bind_rows() %>% 
+  dplyr::filter(gene_id %in% KEGG.larvae$KEGG_ECM_RECEPTOR_INTERACTION) %>% 
+  dplyr::filter(grepl(description, pattern = "collagen")) %>% 
+   dplyr::select(gene_name, logFC, coef) %>% 
+  dplyr::distinct(gene_name, coef, .keep_all = T) %>% 
+  spread(key = "coef", value = "logFC") %>% 
+  set_colnames(c("gene_name", "temp", "MPS IIIB")) %>% # some reason it wasnt liking EOfAD-like as the col title
+  ggscatter(x = "temp", 
+            y = "MPS IIIB",
+   color = "black", shape = 21, size = 3, # Points color, shape and size
+   add = "reg.line",  # Add regressin line
+   add.params = list(color = "blue", fill = "lightgray"), # Customize reg. line
+   conf.int = TRUE, # Add confidence interval
+   cor.coef = TRUE # Add correlation coefficient. see ?stat_cor
+   #cor.coeff.args = list(method = "pearson", label.x = 3, label.sep = "\n")
+   )
+  labs(x = "logFC in EOfAD-like", 
+       y = "logFC in MPS IIIB" , 
+       title = "ECM RECEPTOR INTERACTION") +
+  theme(aspect.ratio = 1)
+```
+
+
+# Fig. 4
+## PCA, DEG 
+```{r}
+a4 <- 
+  logCPMs$adult %>% 
+    t() %>% 
+    prcomp() %>%
+    autoplot(data = tibble(sample = rownames(.$x)) %>%
+               left_join(x.adult$samples),
+             colour = "Genotype", 
+             shape = "sex",
+             size = 4
+    ) +
+  scale_color_manual(values = genocols) +
+  coord_fixed()
+  # theme(aspect.ratio = 1)
+
+b4 <- 
+  toptables_cqn$adult %>% 
+    bind_rows() %>% 
+    ggplot(aes(x = logFC, y = -log10(PValue))) + 
+    geom_point(aes(colour = FDR <  0.05), 
+               alpha = 0.5) + 
+    facet_wrap(~coef) +
+    scale_color_manual(values = c("grey50", "red")) +
+    coord_cartesian(xlim = c(-3,3), 
+                    ylim = c(0, 20)) +
+    theme(legend.position = "top")
+
+
+c4 <- goseq$adult.EOfADlike %>% 
+  dplyr::slice(1:10) %>% 
+  mutate(coef = "EOfAD-like") %>% 
+  bind_rows(goseq$adult.MPSIIIB %>% 
+              dplyr::slice(1:10) %>% 
+              mutate(coef = "MPS IIIB")
+            ) %>% 
+   mutate(propDE = numDEInCat/numInCat, 
+         category = str_replace_all(category, pattern = "_", replacement = " "), 
+         category = str_remove(category, pattern = "GO"),
+         category = str_wrap(category, width = 20)) %>% 
+  ggplot(aes(x = -log10(over_represented_pvalue), 
+             y = reorder(category, -over_represented_pvalue))) +
+  geom_col(aes(fill = propDE, 
+               alpha = FDR < 0.05)) +
+  scale_fill_viridis_c() +
+  scale_alpha_manual(values = c(0.4, 1)) +
+  facet_wrap(~coef, scales = "free_y") +
+  labs(y = "GO Term", 
+       fill = "Proportion of DE genes in GO term") +
+  theme(
+    #text = element_text(size = 18), 
+        legend.position = "top")
+
+
+layout <- "AAAABBBB
+CCCCCCCC
+"
+
+wrap_elements(full = a4) + wrap_elements(full = b4) + c4 + 
+    plot_layout(design = layout) +
+   plot_annotation(tag_levels = 'A') & 
+  theme(plot.tag = element_text(face = "bold")) +
+  ggsave("output/plots4pub/Figure4.png", 
+         width = 20, height = 21, 
+         scale = 1.1,
+         units = "cm", dpi = 400, 
+         bg = "white")
+
+```
+
+
+```{r}
+sigpaths2 <- HMP.KEGG.adult %>% 
+  dplyr::filter(harmonic_p_FDR < 0.05) %>% 
+  .$pathway
+
+HMP.KEGG.adult %>% 
+  dplyr::filter(pathway %in% sigpaths2) %>% 
+  arrange(harmonic_p_FDR) %>% 
+  mutate(order = case_when(
+    pathway %in% c("KEGG_OXIDATIVE_PHOSPHORYLATION", "KEGG_RIBOSOME") ~ 2,
+    pathway == "KEGG_LYSOSOME" ~ 1,
+    pathway == "KEGG_OTHER_GLYCAN_DEGRADATION" ~ 3,
+    
+    pathway == "KEGG_PARKINSONS_DISEASE" ~ 4,
+    pathway == "KEGG_HUNTINGTONS_DISEASE" ~ 5,
+    pathway == "KEGG_ALZHEIMERS_DISEASE" ~ 6,
+    pathway == "KEGG_CALCIUM_SIGNALING_PATHWAY" ~ 7,
+    pathway == "KEGG_AMINOACYL_TRNA_BIOSYNTHESIS" ~ 7,
+    pathway == "KEGG_MAPK_SIGNALING_PATHWAY" ~ 8,
+    
+    
+    TRUE ~9
+           ), 
+    pathway.label = str_remove(pathway, pattern = "KEGG_"), 
+    pathway.label = str_replace_all(pathway.label, pattern = "_", replacement = " "), 
+    pathway.label = str_wrap(pathway.label, width = 25)
+    ) %>% 
+  ggplot(aes(x = coef, y = reorder(pathway.label, -order))) + 
+  geom_tile(aes(fill = -log10(harmonic_p), 
+                alpha = sig)) +
+  geom_label(aes(label = signif(harmonic_p_FDR, digits = 2)), 
+             fill = NA) +
+  scale_fill_viridis_c() +
+  labs(y = "KEGG gene set", 
+       x = "", 
+       alpha = "FDR p < 0.05") +
+  theme_classic()
+```
+
+# ~~ Fig5
+
+### heatmap
+```{r}
+sigpaths2 <- HMP.KEGG.adult %>% 
+  dplyr::filter(harmonic_p_FDR < 0.05) %>% 
+  .$pathway
+
+hm.adult.kegg <- HMP.KEGG.adult %>% 
+  dplyr::filter(pathway %in% sigpaths2) %>% 
+  arrange(harmonic_p_FDR) %>% #.$pathway %>% unique
+  mutate(order = case_when(
+    pathway == "KEGG_LYSOSOME" ~ 1,
+    pathway == "KEGG_OXIDATIVE_PHOSPHORYLATION" ~ 2,
+    pathway == "KEGG_RIBOSOME" ~ 3,
+    pathway == "KEGG_OTHER_GLYCAN_DEGRADATION" ~ 4,
+    
+    pathway == "KEGG_PARKINSONS_DISEASE" ~ 5,
+    pathway == "KEGG_HUNTINGTONS_DISEASE" ~ 6,
+    pathway == "KEGG_ALZHEIMERS_DISEASE" ~ 7,
+    pathway == "KEGG_AMINOACYL_TRNA_BIOSYNTHESIS" ~ 8, 
+    pathway == "KEGG_CALCIUM_SIGNALING_PATHWAY" ~ 9, 
+    pathway == "KEGG_DILATED_CARDIOMYOPATHY" ~ 10, 
+    
+    pathway == "KEGG_AMINO_SUGAR_AND_NUCLEOTIDE_SUGAR_METABOLISM" ~ 11, 
+    pathway == "KEGG_GLYCOSPHINGOLIPID_BIOSYNTHESIS_GANGLIO_SERIES" ~ 12, 
+    pathway == "KEGG_GLYCOSAMINOGLYCAN_DEGRADATION" ~ 13, 
+    pathway == "KEGG_SNARE_INTERACTIONS_IN_VESICULAR_TRANSPORT" ~ 14, 
+    pathway == "KEGG_COMPLEMENT_AND_COAGULATION_CASCADES" ~ 15, 
+    pathway == "KEGG_GLYCOSPHINGOLIPID_BIOSYNTHESIS_GLOBO_SERIES" ~ 16, 
+    TRUE ~ 17
+           ), 
+    pathway.label = str_remove(pathway, pattern = "KEGG_"),
+    pathway.label = str_replace_all(pathway.label, pattern = "_", replacement = " "),
+    pathway.label = str_wrap(pathway.label, width = 30)
+    ) %>% 
+  group_by(coef) %>% 
+  ggplot(aes(x = coef, y = reorder(pathway.label, -order))) + 
+  geom_tile(aes(fill = -log10(harmonic_p), 
+                alpha = sig)) +
+  geom_label(aes(label = signif(harmonic_p_FDR, digits = 2)), 
+             fill = NA, 
+             size = 5) +
+  scale_fill_viridis_c() +
+  labs(y = "KEGG gene set", 
+       x = "", 
+       alpha = "FDR p < 0.05") +
+  theme_classic() +
+  theme(text = element_text(size = 18), )
+```
+
+### correlatins
+```{r}
+c1 <- toptables_cqn$adult %>% 
+  bind_rows() %>% 
+  dplyr::filter(gene_id %in% KEGG.adult$KEGG_OXIDATIVE_PHOSPHORYLATION) %>% 
+  dplyr::select(gene_name, logFC, coef) %>% 
+  dplyr::distinct(gene_name, coef, .keep_all = T) %>% 
+  spread(key = "coef", value = "logFC") %>% 
+  set_colnames(c("gene_name", "temp", "MPS IIIB")) %>% # some reason it wasnt liking EOfAD-like as the col title
+  ggscatter(x = "temp", 
+            y = "MPS IIIB",
+   color = "black", shape = 21, size = 2, # Points color, shape and size
+   add = "reg.line",  # Add regressin line
+   add.params = list(color = "blue", fill = "lightgray"), # Customize reg. line
+   conf.int = TRUE, # Add confidence interval
+   cor.coef = TRUE, # Add correlation coefficient. see ?stat_cor
+   cor.coeff.args = list(method = "pearson", label.y = 0.7), 
+   ggtheme = theme_classic(),
+   repel = TRUE,
+   ) +
+  labs(x = "logFC in EOfAD-like", 
+       y = "logFC in MPS IIIB" , 
+       title = "OXIDATIVE_PHOSPHORYLATION") +
+  theme(aspect.ratio = 1)
+
+
+
+c2 <- toptables_cqn$adult %>% 
+  bind_rows() %>% 
+  dplyr::filter(gene_id %in% KEGG.adult$KEGG_LYSOSOME) %>% 
+  dplyr::select(gene_name, logFC, coef) %>% 
+  dplyr::distinct(gene_name, coef, .keep_all = T) %>% 
+  spread(key = "coef", value = "logFC") %>% 
+  set_colnames(c("gene_name", "temp", "MPS IIIB")) %>% # some reason it wasnt liking EOfAD-like as the col title
+  ggscatter(x = "temp", 
+            y = "MPS IIIB",
+   color = "black", shape = 21, size = 2, # Points color, shape and size
+   add = "reg.line",  # Add regressin line
+   add.params = list(color = "blue", fill = "lightgray"), # Customize reg. line
+   conf.int = TRUE, # Add confidence interval
+   cor.coef = TRUE, # Add correlation coefficient. see ?stat_cor
+   cor.coeff.args = list(method = "pearson", label.y = 1),
+   ggtheme = theme_classic()
+   ) +
+  labs(x = "logFC in EOfAD-like", 
+       y = "logFC in MPS IIIB" , 
+       title = "LYSOSOME") +
+  theme(aspect.ratio = 1) +
+  geom_label_repel(aes(label = gene_name), 
+                   data = . %>% 
+                       dplyr::filter(temp > 0.5))
+
+
+c3 <- toptables_cqn$adult %>% 
+  bind_rows() %>% 
+  dplyr::filter(gene_id %in% KEGG.adult$KEGG_RIBOSOME) %>% 
+  dplyr::select(gene_name, logFC, coef) %>% 
+  dplyr::distinct(gene_name, coef, .keep_all = T) %>% 
+  spread(key = "coef", value = "logFC") %>% 
+  set_colnames(c("gene_name", "temp", "MPS IIIB")) %>% # some reason it wasnt liking EOfAD-like as the col title
+  ggscatter(x = "temp", 
+            y = "MPS IIIB",
+   color = "black", shape = 21, size = 2, # Points color, shape and size
+   add = "reg.line",  # Add regressin line
+   add.params = list(color = "blue", fill = "lightgray"), # Customize reg. line
+   conf.int = TRUE, # Add confidence interval
+   cor.coef = TRUE, # Add correlation coefficient. see ?stat_cor
+   ggtheme = theme_classic(),
+   cor.coeff.args = list(method = "pearson", label.y = 0.35)
+   ) +
+  labs(x = "logFC in EOfAD-like", 
+       y = "logFC in MPS IIIB" , 
+       title = "RIBOSOME") +
+  theme(aspect.ratio = 1)
+
+c4 <- toptables_cqn$adult %>% 
+  bind_rows() %>% 
+  dplyr::filter(gene_id %in% KEGG.adult$KEGG_OTHER_GLYCAN_DEGRADATION) %>% 
+  dplyr::select(gene_name, logFC, coef) %>% 
+  dplyr::distinct(gene_name, coef, .keep_all = T) %>% 
+  spread(key = "coef", value = "logFC") %>% 
+  set_colnames(c("gene_name", "temp", "MPS IIIB")) %>% # some reason it wasnt liking EOfAD-like as the col title
+  ggscatter(x = "temp", 
+            y = "MPS IIIB",
+   color = "black", shape = 21, size = 2, # Points color, shape and size
+   add = "reg.line",  # Add regressin line
+   add.params = list(color = "blue", fill = "lightgray"), # Customize reg. line
+   conf.int = TRUE, # Add confidence interval
+   cor.coef = TRUE, # Add correlation coefficient. see ?stat_cor
+   cor.coeff.args = list(method = "pearson", label.y = 1),
+   ggtheme = theme_classic()
+   ) +
+  labs(x = "logFC in EOfAD-like", 
+       y = "logFC in MPS IIIB" , 
+       title = "OTHER_GLYCAN_DEGRADATION") +
+  theme(aspect.ratio = 1) +
+  geom_label_repel(aes(label = gene_name), 
+                   data = . %>% 
+                     dplyr::filter(gene_name == "hexa"))
+
+
+```
+
+### final plot
+```{r}
+plotLayout = "#AAAA##
+BBBBBBB"
+
+hm.adult.kegg + ggarrange(c1, c2, c3, c4,
+                          nrow = 1,
+                          labels = c("B", "C", "D", "E")) +
+  plot_layout(ncol = 1, design = plotLayout,
+              heights = c(2,1)) +
+  plot_annotation(title = "A",
+                  theme = theme(plot.title = element_text(size = 16))) +
+  ggsave("output/plots4pub/fig5.png", width = 18, height = 20, units = "cm", 
+         dpi = 300, 
+         scale = 2
+         )
+```
+
+# ~~ fig 6
+### heatmap
+```{r}
+# Cell type
+celltype_pval_plot <- fry.cell.larvae %>% 
+  bind_rows() %>% 
+  mutate(age = "7 dpf") %>% 
+  bind_rows(fry.cell.adult %>% 
+              bind_rows() %>% 
+              mutate(age = "6m brain")) %>% 
+  mutate(age = factor(age, levels = c("7 dpf", "6m brain")), 
+         pathway = str_wrap(pathway, width = 30), 
+         pathway = str_remove(pathway, pattern = "\\?")) %>% 
+  ggplot(aes(x = coef, y = reorder(pathway, -FDR), fill = -log10(PValue))) +
+  geom_tile(aes(alpha = FDR < 0.05), 
+            colour = "black") +
+  geom_label(aes(label = signif(FDR, digits = 2)), 
+             size = 5, 
+             fill = NA) +
+  facet_wrap(~age, scales = "free_y") +
+  scale_fill_viridis() +
+  theme(text = element_text(size = 20, face = "bold"), 
+        axis.line = element_blank(), 
+        axis.ticks = element_blank(), 
+        legend.position = "top") +
+  labs(x = "", 
+       y = "") 
+```
+
+## heatmaps
+```{r}
+# custom plots for heatmaps
+plot_celltype = function(celltype.object, plotname) {
+  toptables_cqn$adult %>% 
+    bind_rows() %>% 
+    dplyr::filter(gene_id %in% celltype.object) %>% 
+    dplyr::select(gene_name, logFC, coef) %>% 
+    dplyr::distinct(gene_name, coef, .keep_all = T) %>% 
+    spread(key = "coef", value = "logFC") %>% 
+    column_to_rownames("gene_name") %>% 
+    pheatmap(color = colorRampPalette(rev(brewer.pal(n = 5,
+                                                     name = "RdBu")))(256), 
+             main = paste(plotname), 
+             breaks = seq(-1,1, by = 2/256), 
+             height = 3,
+             cellwidth = 30,
+             angle_col = 90,
+             treeheight_row = 0, 
+             treeheight_col = 0, 
+             show_rownames = F, 
+             legend = F, 
+             border_color = NA, 
+             fontsize = 18
+           )
+}
+
+# make objects with heatmaps
+heatmap_list <- list(
+a = as.grob(plot_celltype(celltype.object = cell_type_markers.adultbrain$Oligodendrocyte, 
+              plotname = "C   Oligo1")),
+
+b = as.grob(plot_celltype(celltype.object = cell_type_markers.adultbrain$`Neural stem cell`, 
+              plotname = "D   NSS")), 
+
+c = as.grob(plot_celltype(celltype.object = cell_type_markers.adultbrain$`Oligodendrocyte_sla high`, 
+              plotname = "E   Oligo2")), 
+
+d = as.grob(plot_celltype(celltype.object = cell_type_markers.adultbrain$`Macrophage_grn1 high`, 
+              plotname = "F  Macro2")), 
+
+e = as.grob(plot_celltype(celltype.object = cell_type_markers.adultbrain$Microglia, 
+              plotname = "G  MG")), 
+
+f = as.grob(plot_celltype(celltype.object = cell_type_markers.adultbrain$Neuroblast, 
+              plotname = "H  NB")), 
+
+g = as.grob(plot_celltype(celltype.object = cell_type_markers.adultbrain$`Meningeal mural lymphatic endothelial cell`, 
+              plotname = "I  Menin"))
+)
+
+ggarrange(celltype_pval_plot, 
+          plot_grid(plotlist = heatmap_list, nrow = 1), 
+          ncol = 1, 
+          heights = c(3,1)
+) +
+  ggsave("output/plots4pub/fig5_celltype.png", width = 18, height = 27, units = "cm",
+         bg = "white",
+         dpi = 400, scale = 1.8)  
+```
+
+# ~~ Fig.7 ~~
+
+## PCAs
+```{r}
+a7 <- logCPMs$larvae %>%
+  as.data.frame() %>%
+  rownames_to_column("gene_id") %>%
+  left_join(x.Dong$counts %>% 
+              cpm(log=T) %>% 
+              as.data.frame %>% 
+              rownames_to_column("gene_id")) %>%
+  column_to_rownames("gene_id") %>%
+  dplyr::select(!starts_with("MPS IIIB")) %>%
+  na.omit %>%
+  t %>%
+  prcomp() %>%
+  autoplot(data = tibble(sample = rownames(.$x)) %>%
+             left_join(larvaeGenos),
+           colour = "Genotype",
+           size = 4
+  ) + 
+  geom_mark_ellipse(aes(labels = exp)) +
+  scale_color_manual(values = genocols[-2]) +
+  theme(aspect.ratio = 1) +
+  ggtitle("7 dpf larvae")
+
+b7 <- logCPMs$adult %>%
+  as.data.frame() %>%
+  rownames_to_column("gene_id") %>%
+  left_join(logCPM.nhi %>% 
+              as.data.frame %>% 
+              rownames_to_column("gene_id")) %>%
+  column_to_rownames("gene_id") %>%
+  dplyr::select(!contains("MPS")) %>% 
+  na.omit %>%
+  t %>%
+  prcomp() %>%
+  autoplot(data = tibble(sample = rownames(.$x)) %>% 
+             left_join(adult.genotype.df),
+           colour = "Genotype",
+           shape = "sex",
+           size = 4
+  ) +
+  geom_mark_ellipse(aes(labels = exp)) +
+  scale_color_manual(values = genocols[-2]) +
+  theme(aspect.ratio = 1) +
+  ggtitle("6 month adult brain")
+```
+
+## compare pathway level
+
+```{r}
+larvae.top10.eofad <-  hmp.dong %>%
+  mutate(exp = "pools") %>% 
+  bind_rows(HMP.KEGG.larvae %>% 
+              mutate(exp = "individuals" )) %>% 
+  dplyr::filter(coef == "EOfAD-like") %>% 
+  dplyr::select(-fry_p, -camera_p, -fgsea_p) %>% 
+  arrange(harmonic_p) %>% 
+  dplyr::slice(1:10) %>% .$pathway
+
+c7 <- hmp.dong %>%
+  mutate(exp = "pools") %>% 
+  bind_rows(HMP.KEGG.larvae %>% 
+              mutate(exp = "individuals" )) %>% 
+  dplyr::filter(coef == "EOfAD-like") %>% 
+  dplyr::filter(pathway %in% larvae.top10.eofad) %>% 
+  dplyr::select(-fry_p, -camera_p, -fgsea_p)  %>% 
+  mutate(pathway.label = str_remove(pathway, pattern = "KEGG_"),
+         pathway.label = str_replace_all(pathway.label, pattern = "_", replacement = " "),
+         pathway.label = str_wrap(pathway.label, width = 30)) %>% 
+  ggplot(aes(x = -log10(harmonic_p), y = reorder(pathway.label, -harmonic_p))) + 
+  geom_line(aes(group = pathway.label), 
+            colour = "grey50") +
+  geom_point(aes(colour = exp), 
+             size = 4.1) +
+  geom_point(colour = "grey50", 
+             size = 4,
+             data = . %>% dplyr::filter(sig == F)) +
+  labs(alpha = "FDR < 0.05?", 
+       y = "KEGG pathway") +
+  theme(legend.position = "top")
+
+### adults
+
+adult.eofad.keggpathways <-  
+  hmp.KEGG.nhi %>%
+  mutate(exp = "exp 2", 
+         coef = "EOfAD-like") %>% 
+  bind_rows(HMP.KEGG.adult %>% 
+              mutate(exp = "exp 1" )) %>% 
+  dplyr::filter(coef == "EOfAD-like") %>% 
+  dplyr::select(-fry_p, -camera_p, -fgsea_p) %>% 
+  dplyr::filter(harmonic_p_FDR < 0.05) %>% 
+    unique %>% 
+    .$pathway
+
+d7 <- hmp.KEGG.nhi %>% 
+  mutate(exp = "exp 2", 
+         coef = "EOfAD-like") %>% 
+  bind_rows(HMP.KEGG.adult %>% 
+              mutate(exp = "exp 1")
+            ) %>% 
+  dplyr::filter(coef == "EOfAD-like") %>%
+  dplyr::filter(pathway %in% adult.eofad.keggpathways) %>% 
+  dplyr::select(-fry_p, -camera_p, -fgsea_p)  %>% 
+  mutate(pathway.label = str_remove(pathway, pattern = "KEGG_"),
+         pathway.label = str_replace_all(pathway.label, pattern = "_", replacement = " "),
+         pathway.label = str_wrap(pathway.label, width = 30)) %>% 
+  ggplot(aes(x = -log10(harmonic_p), y = reorder(pathway.label, -harmonic_p))) + 
+  geom_line(aes(group = pathway.label), 
+            colour = "grey50") +
+  geom_point(aes(colour = exp, 
+                 alpha = sig), 
+             size = 4) +
+   geom_point(colour = "grey50", 
+             size = 4,
+             data = . %>% dplyr::filter(sig == F)) +
+  labs(alpha = "FDR < 0.05?", 
+       y = "KEGG pathway")  +
+  theme(legend.position = "top", plot.margin = margin(r = 5)
+        ) 
+```
+
+
+## compare correlations
+```{r}
+
+e7 <- toptable_dongetal %>%
+  dplyr::filter(gene_id %in% KEGG.notfiltered$KEGG_ECM_RECEPTOR_INTERACTION) %>%
+  dplyr::select(gene_name, logFC.pools = logFC) %>%
+  left_join(toptables_cqn$adult$`EOfAD-like` %>% 
+              dplyr::select(gene_name, logFC.individuals = logFC)) %>%
+  dplyr::distinct(gene_name, .keep_all = T) %>%
+  column_to_rownames("gene_name") %>%
+  ggscatter(x = "logFC.individuals", y = "logFC.pools",
+            color = "black", shape = 21, size = 3, # Points color, shape and size
+            add = "reg.line",  # Add regressin line
+            add.params = list(color = "blue", fill = "lightgray"), # Customize reg. line
+            conf.int = TRUE, # Add confidence interval
+            cor.coef = TRUE, # Add correlation coefficient. see ?stat_cor
+            cor.coeff.args = list(method = "pearson", label.y = 0.3)
+  ) +
+  labs(title = "7 dpf larvae", 
+       subtitle = "ECM_RECEPTOR\nINTERACTION") +
+  theme_classic()  +
+  theme(
+    aspect.ratio = 1,
+    title = element_text(size = 10, face = "bold"))
+
+f7 <- toptables_cqn.nhi$`Q96_K97del/+` %>%
+  dplyr::filter(gene_id %in% KEGG.notfiltered$KEGG_OXIDATIVE_PHOSPHORYLATION) %>%
+  dplyr::select(gene_name, logFC.exp2 = logFC) %>%
+  left_join(toptables_cqn$adult$`EOfAD-like` %>% 
+              dplyr::select(gene_name, logFC.exp1 = logFC)) %>%
+  dplyr::distinct(gene_name, .keep_all = T) %>%
+  #column_to_rownames("gene_name") %>%  
+  ggscatter(x = "logFC.exp1", 
+            y = "logFC.exp2",
+            color = "black", shape = 21, size = 3, # Points color, shape and size
+            add = "reg.line",  # Add regressin line
+            add.params = list(color = "blue", fill = "lightgray"), # Customize reg. line
+            conf.int = TRUE, # Add confidence interval
+            cor.coef = TRUE, # Add correlation coefficient. see ?stat_cor
+            cor.coeff.args = list(method = "pearson", label.y = 1.1)
+  ) +
+  # geom_label_repel(aes(label = gene_name),
+  #                  nudge_x = 0.1,
+  #                  nudge_y = -0.1,
+  #                  data = . %>% 
+  #                    dplyr::filter(logFC.exp2 > 0.5)) +
+   labs(title = "6 m brain", 
+       subtitle = "OXIDATIVE\nPHOSPHORYLATION") +
+  theme_classic()  +
+  theme(
+    aspect.ratio = 1,
+    title = element_text(size = 10, face = "bold"))
+
+
+g7<- toptables_cqn.nhi$`Q96_K97del/+` %>%
+  dplyr::filter(gene_id %in% KEGG.notfiltered$KEGG_RIBOSOME) %>%
+  dplyr::select(gene_name, logFC.exp2 = logFC) %>%
+  left_join(toptables_cqn$adult$`EOfAD-like` %>% 
+              dplyr::select(gene_name, logFC.exp1 = logFC)) %>%
+  dplyr::distinct(gene_name, .keep_all = T) %>%
+  #column_to_rownames("gene_name") %>%
+  ggscatter(x = "logFC.exp1", 
+            y = "logFC.exp2",
+            color = "black", shape = 21, size = 3, # Points color, shape and size
+            add = "reg.line",  # Add regressin line
+            add.params = list(color = "blue", fill = "lightgray"), # Customize reg. line
+            conf.int = TRUE, # Add confidence interval
+            cor.coef = TRUE, # Add correlation coefficient. see ?stat_cor
+            cor.coeff.args = list(method = "pearson", label.y = 0.5)
+  ) +
+  # geom_label_repel(aes(label = gene_name),
+  #                  nudge_x = 0.1,
+  #                  nudge_y = 0.1,
+  #                  data = . %>% 
+  #                    dplyr::filter(logFC.exp2 > 0.5)) +
+  labs(title = "6 m brain", 
+       subtitle = "RIBOSOME") +
+  theme_classic()  +
+  theme(
+    aspect.ratio = 1,
+    title = element_text(size = 10, face = "bold"))
+
+h7 <- toptables_cqn.nhi$`Q96_K97del/+` %>%
+  dplyr::filter(gene_id %in% KEGG.notfiltered$KEGG_ALZHEIMERS_DISEASE) %>%
+  dplyr::select(gene_name, logFC.exp2 = logFC) %>%
+  left_join(toptables_cqn$adult$`EOfAD-like` %>% 
+              dplyr::select(gene_name, logFC.exp1 = logFC)) %>%
+  dplyr::distinct(gene_name, .keep_all = T) %>%
+  #column_to_rownames("gene_name") %>%
+  ggscatter(x = "logFC.exp1", 
+            y = "logFC.exp2",
+            color = "black", shape = 21, size = 3, # Points color, shape and size
+            add = "reg.line",  # Add regressin line
+            add.params = list(color = "blue", fill = "lightgray"), # Customize reg. line
+            conf.int = TRUE, # Add confidence interval
+            cor.coef = TRUE, # Add correlation coefficient. see ?stat_cor
+            cor.coeff.args = list(method = "pearson", label.y = 1.6)
+  ) +
+  # geom_label_repel(aes(label = gene_name),
+  #                  nudge_x = 0.1,
+  #                  data = . %>% 
+  #                    dplyr::filter(logFC.exp2 > 0.5)) +
+  labs(title = "6 m brain", 
+       subtitle = "ALZHEIMERS_DISEASE") +
+  theme_classic()  +
+  theme(
+    aspect.ratio = 1,
+    title = element_text(size = 10, face = "bold"))
+
+i7<- toptables_cqn.nhi$`Q96_K97del/+` %>%
+  dplyr::filter(gene_id %in% KEGG.notfiltered$KEGG_LYSOSOME) %>%
+  dplyr::select(gene_name, logFC.exp2 = logFC) %>%
+  left_join(toptables_cqn$adult$`EOfAD-like` %>% 
+              dplyr::select(gene_name, logFC.exp1 = logFC)) %>%
+  dplyr::distinct(gene_name, .keep_all = T) %>%
+  #column_to_rownames("gene_name") %>%
+  ggscatter(x = "logFC.exp1", 
+            y = "logFC.exp2",
+            color = "black", shape = 21, size = 3, # Points color, shape and size
+            add = "reg.line",  # Add regressin line
+            add.params = list(color = "blue", fill = "lightgray"), # Customize reg. line
+            conf.int = TRUE, # Add confidence interval
+            cor.coef = TRUE, # Add correlation coefficient. see ?stat_cor
+            cor.coeff.args = list(method = "pearson", label.y = 0.5)
+  ) +
+  # geom_label_repel(aes(label = gene_name),
+  #                  nudge_x = 0.1,
+  #                  nudge_y = 0.1,
+  #                  data = . %>% 
+  #                    dplyr::filter(logFC.exp2 > 0.5)) +
+  labs(title = "6 m brain", 
+       subtitle = "LYSOSOME") +
+  theme_classic()  +
+  theme(
+    aspect.ratio = 1,
+    title = element_text(size = 10, face = "bold"))
+
+j7<- toptables_cqn.nhi$`Q96_K97del/+` %>%
+  dplyr::filter(gene_id %in% KEGG.notfiltered$KEGG_PARKINSONS_DISEASE) %>%
+  dplyr::select(gene_name, logFC.exp2 = logFC) %>%
+  left_join(toptables_cqn$adult$`EOfAD-like` %>% 
+              dplyr::select(gene_name, logFC.exp1 = logFC)) %>%
+  dplyr::distinct(gene_name, .keep_all = T) %>%
+  #column_to_rownames("gene_name") %>%
+  ggscatter(x = "logFC.exp1", 
+            y = "logFC.exp2",
+            color = "black", shape = 21, size = 3, # Points color, shape and size
+            add = "reg.line",  # Add regressin line
+            add.params = list(color = "blue", fill = "lightgray"), # Customize reg. line
+            conf.int = TRUE, # Add confidence interval
+            cor.coef = TRUE, # Add correlation coefficient. see ?stat_cor
+            cor.coeff.args = list(method = "pearson", label.y = 1.2)
+  ) +
+  # geom_label_repel(aes(label = gene_name),
+  #                  nudge_x = 0.1,
+  #                  nudge_y = 0.1,
+  #                  data = . %>% 
+  #                    dplyr::filter(logFC.exp2 > 0.5)) +
+  labs(title = "6 m brain", 
+       subtitle = "PARKINSONS_DISEASE") +
+  theme_classic()  +
+  theme(
+    aspect.ratio = 1,
+    title = element_text(size = 10, face = "bold"))
+
+
+
+```
+
+
+## final fig. 
+```{r}
+
+ggarrange(
+
+ggarrange(a7, b7, 
+          common.legend = TRUE, 
+          labels = c("A", "B"),
+          legend.grob = ggpubr::get_legend(b7, position = "top")),
+
+ggarrange(c7, d7, ggplot + theme_void(base_rect_size = 1),
+          nrow = 1,
+          widths = c(1,1,0.2),
+          labels = c("C", "D")
+          ), 
+
+ggarrange(e7, f7 , g7 , h7, i7, j7, 
+          #nrow = 2, 
+          labels = c("E", "F", "G", "H", "I", "J")), 
+
+ncol = 1, 
+widths = c(2 ,5, 1), 
+heights = c(1,1,1.2)
+) +
+ ggsave("output/plots4pub/fig7compQ96.png", width = 18, height = 25, units = "cm",
+         bg = "white",
+         dpi = 400, scale = 1.5)  
+```  
+
+
+
+# Supp figs
+
+## S5 CQN plots
+```{r}
+ggarrange(
+  ggplot() + theme_void(), # plot spacer
+  plotgclen(toptables_1$larvae), 
+  ggplot() + theme_void(), 
+  plotgclen(toptables_1$adult), 
+  labels = c("A   7 dpf larvae", 
+             "",
+             "B   6m adult brain", 
+             ""), 
+  
+  common.legend = TRUE, 
+  heights = c(0.1,1,0.1,1),
+  nrow = 4
+) +
+  ggsave("output/plots4pub/FigS5_cqn.png", 
+         width = 15, height = 15, 
+         scale = 1.5,
+         units = "cm", dpi = 400, 
+         bg = "white")
+
+```
+
+## S6 lyso glycoosamin etc hms 
+
+```{r}
+pLyso <- 
+  toptables_cqn$larvae %>% 
+  bind_rows() %>% 
+  dplyr::filter(gene_id %in% KEGG.larvae$KEGG_LYSOSOME) %>% 
+  dplyr::select(gene_name, logFC, coef) %>% 
+  dplyr::distinct(gene_name, coef, .keep_all = T) %>% 
+  spread(key = "coef", value = "logFC") %>% 
+  column_to_rownames("gene_name") %>% 
+  #@t %>% 
+  pheatmap(color = colorRampPalette(rev(brewer.pal(n = 11,
+                                                   name = "RdBu")))(256), 
+           main = paste("LYSOSOME"), 
+           breaks = seq(-0.5,0.5, by = 1/256), 
+           #cellheight = 30,
+           #height = ,
+           #cellwidth = 30,
+           angle_col = 45,
+           treeheight_row = 0, 
+           treeheight_col = 0, 
+           show_colnames = F, 
+           legend = T, 
+           border_color = NA, 
+           fontsize = 16
+  )
+
+potherGlycan <- 
+  toptables_cqn$larvae %>% 
+  bind_rows() %>% 
+  dplyr::filter(gene_id %in% KEGG.larvae$KEGG_OTHER_GLYCAN_DEGRADATION) %>% 
+  dplyr::select(gene_name, logFC, coef) %>% 
+  dplyr::distinct(gene_name, coef, .keep_all = T) %>% 
+  spread(key = "coef", value = "logFC") %>% 
+  column_to_rownames("gene_name") %>% 
+  t %>% 
+  pheatmap(color = colorRampPalette(rev(brewer.pal(n = 11,
+                                                   name = "RdBu")))(256), 
+           main = paste("OTHER_GLYCAN_DEGRADATION"), 
+           breaks = seq(-0.5,0.5, by = 1/256), 
+           cellheight = 30,
+           #height = ,
+           #cellwidth = 30,
+           angle_col = 315,
+           treeheight_row = 0, 
+           treeheight_col = 0, 
+           show_colnames = T, 
+           legend = F, 
+           border_color = NA, 
+           fontsize = 16
+  )
+  
+pGlysoaminglycan <-  toptables_cqn$larvae %>% 
+  bind_rows() %>% 
+  dplyr::filter(gene_id %in% KEGG.larvae$KEGG_GLYCOSAMINOGLYCAN_DEGRADATION) %>% 
+  dplyr::select(gene_name, logFC, coef) %>% 
+  dplyr::distinct(gene_name, coef, .keep_all = T) %>% 
+  spread(key = "coef", value = "logFC") %>% 
+  column_to_rownames("gene_name") %>% 
+  t %>% 
+  pheatmap(color = colorRampPalette(rev(brewer.pal(n = 11,
+                                                   name = "RdBu")))(256), 
+           main = paste("GLYCOSAMINOGLYCAN_DEGRADATION"), 
+           breaks = seq(-0.5,0.5, by = 1/256), 
+           cellheight = 30,
+           #cellwidth = 30,
+           angle_col = 315,
+           treeheight_row = 0, 
+           treeheight_col = 0, 
+           show_colnames = T, 
+           legend = F, 
+           border_color = NA, 
+           fontsize = 16
+  )  
+```
+### arrange hms
+
+```{r}
+heatmap_list <- list(
+a = as.grob(pLyso), 
+b = as.grob(potherGlycan), 
+c = as.grob(pGlysoaminglycan)
+)
+
+
+ggarrange(plot_grid(plotlist = heatmap_list, ncol = 1), 
+          common.legend = T) +
+  ggsave("output/plots4pub/FigS6_lysosomalHeatmapsMPSIIIB.png", 
+         width = 18, height = 18, units = "cm", 
+         scale = 1.2, 
+         bg = "white")
+
+```
+
+
+
+
+## S9 upset showing overlap of DEGs in GO terms in MPS IIIV
+
+```{r}
+## upset
+## Get significant GO terms
+
+sigGo <- goseq$larvae.MPSIIIB %>%
+    dplyr::filter(FDR < 0.05) %>%
+    .$category
+
+DEGs <- toptables_cqn.adult$`MPS-III` %>% 
+  dplyr::filter(DE ==T) %>% 
+  .$gene_id
+
+png("output/plots/upsetAdultGO.png", width = 30, height = 30, units = "cm", res = 300)
+GO[sigGo] %>% 
+  lapply(function(x) {
+    x %>% 
+      as.data.frame() %>% 
+      set_colnames("gene_id") %>% 
+      dplyr::filter(gene_id %in% DEGs) %>% 
+      .$gene_id
+  }
+  ) %>% 
+  fromList() %>% 
+  upset(nsets = length(.),
+        order.by = "freq", 
+        mb.ratio = c(0.4,0.6)
+        )
+dev.off()
+ 
+```
+
+# export results
+## toptables
+
+```{r}
+list(
+  larvae.MPSIIIB = toptables_cqn$larvae$`MPS IIIB`, 
+  larvae.EOfAD = toptables_cqn$larvae$`EOfAD-like`, 
+  adult.MPSIIIB = toptables_cqn$adult$`MPS IIIB`, 
+  adult.EOfAD = toptables_cqn$adult$`EOfAD-like` 
+     ) %>% 
+writexl::write_xlsx("output/spreadsheets/toptables_cqn.xlsx")
+```
+
+## goseq
+```{r}
+goseq %>% 
+  writexl::write_xlsx("output/spreadsheets/goseq_cqn.xlsx")
+```
+
+## hmp
+
+```{r}
+list(
+  adult.IREgenes = HMP.ire.adult, 
+  larvae.IREgenes = HMP.ire.larvae, 
+  adult.KEGG = HMP.KEGG.adult, 
+  larvae.KEGG = HMP.KEGG.larvae, 
+  larvae.celltype = fry.cell.larvae %>% 
+    bind_rows(), 
+  adult.celltype = fry.cell.adult %>% 
+    bind_rows()
+) %>% 
+  writexl::write_xlsx("output/spreadsheets/gene_set_results.xlsx")
+```
+
+```{r}
+hmp.KEGG.nhi %>% 
+  dplyr::filter(sig == T)
+```
+
+
+# TEMP
+
+```{r}
+
+```
+
+```{r}
+
+plotnetwork = function( goseq.table, 
+                        toptable, 
+                        geneset.object){
+## Get significant GO terms
+sigGo <- goseq.table %>%
+    dplyr::filter(FDR < 0.05) %>%
+    .$category
+
+DEGs <- toptable %>% 
+  dplyr::filter(FDR < 0.05) %>% 
+  .$gene_id
+
+
+## Convert list of GO terms by gene to list of genes by GO term
+geneByGo <- GO.adult
+
+## Get DE genes that belong to significant GO terms
+goGenes <- lapply(
+  sigGo, 
+  function(x){
+    geneByGo[[x]][geneset.object[[x]] %in% DEGs]
+  }
+) 
+names(goGenes) <- sigGo
+
+## Make tibble of GO terms
+goTerms <- names(goGenes) %>%
+    tibble::enframe(name = NULL, value = "label")
+## Make tibble of genes
+genes <- unlist(goGenes) %>% 
+    unique() %>%
+    tibble::enframe(name = NULL, value = "label") %>%
+    mutate
+
+## Join to create node list
+nodes <-   rbind(goTerms, genes) %>%
+  rowid_to_column("id") %>% 
+  left_join(toptable  %>% 
+              dplyr::select(label = gene_id, gene_name)) %>% 
+  mutate(name = label, 
+         name = case_when(
+           grepl(name, pattern = "^ENS") ~ gene_name, 
+           TRUE ~ name), 
+         colour = case_when(
+            grepl(name, pattern = "^GO") ~ 2,
+            TRUE ~ 4
+         ), 
+         name.label = str_remove(name, 
+                                 pattern = "GO_"), 
+         name.label = str_replace_all(name.label, 
+                                     pattern = "_", 
+                                     replacement = " "), 
+         name.label = str_wrap(name.label, 
+                               width = 20)
+         
+         
+         )
+
+## Create edge list
+edges <- goGenes %>%
+    stack() %>%
+    as_tibble() %>%
+    dplyr::select(goTerm = ind, geneId = values) %>%
+    dplyr::arrange(goTerm) %>%
+    mutate(goTerm = as.character(goTerm)) %>%
+    left_join(nodes, by = c("goTerm" = "label")) %>%
+    dplyr::rename(from = id) %>%
+    left_join(nodes, by = c("geneId" = "label")) %>%
+    dplyr::rename(to = id) %>%
+    dplyr::select(from, to)
+
+## Setup colours
+colours <- length(sigGo) %>%
+    rainbow()
+
+## Create tidygraph object
+tidy <- tbl_graph(
+    nodes = nodes, 
+    edges = edges, 
+    directed = FALSE
+) %>%
+    activate(nodes) %>%
+    mutate(
+        goTerms = case_when(
+            id <= length(sigGo) ~ label
+        ),
+        term = Term(label),
+        gene_id = case_when(
+            !label %in% sigGo ~ label
+        ),
+        size = ifelse(id <= length(sigGo), 4, 2)
+    ) %>%  
+    activate(edges) %>%
+    mutate(
+        colour = case_when(
+            from <= length(sigGo) ~ colours[from]
+        )
+    )
+
+## Set seed to allow same graph to be produced each time function is executed
+set.seed(4)
+
+## Plot network graph
+e <- ggraph(tidy, layout = "auto") +
+    # scale_fill_manual(
+    #     values = "white", 
+    #     na.value = "black"
+    # ) +
+    scale_edge_color_manual(
+        values = "black", 
+        na.value = "gray80"
+    ) +
+    geom_edge_arc0(
+        colour = "black", 
+        alpha = 0.5, 
+        show.legend = FALSE, 
+        curvature = 0.5
+    ) +
+    geom_node_point(
+        aes(fill = colour,
+            colour = colour
+            #size = size
+            ),
+        shape = 21,
+        stroke = 0.5, 
+        show.legend = FALSE
+    ) +
+    geom_node_label(
+        aes(label = name.label, 
+            colour = colour
+            ),
+        repel = TRUE,
+        size = 3,
+        alpha = 0.8,
+        label.padding = 0.2
+    ) +
+  scale_color_viridis(end = 0.5, option = "rocket") +
+  scale_fill_viridis(end = 0.5, option = "rocket") +
+  theme_graph() +
+  theme(legend.position = "none", 
+        text = element_text(face = "bold")) 
+e
+}
+
+plotnetwork(goseq.table = goseq$adult.MPSIIIB, 
+            toptable = toptables_cqn$adult$`MPS IIIB`, 
+            geneset.object = GO.adult) +
+  ggsave("output/plots4pub/MPSIIIB-adult-networkGOplot.png", 
+         width = 20, height = 15, units = "cm", dpi = 400, 
+         scale = 2)
+
+plotnetwork(goseq.table = goseq$adult.EOfADlike, 
+            toptable = toptables_cqn$adult$`EOfAD-like`, 
+            geneset.object = GO.adult) +
+  ggsave("output/plots4pub/EOfAD-adult-networkGOplot.png", 
+         width = 20, height = 9, units = "cm", dpi = 400, 
+         scale = 1)
+
+```
+

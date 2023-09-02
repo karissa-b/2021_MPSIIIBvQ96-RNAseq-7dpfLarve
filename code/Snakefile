@@ -1,0 +1,343 @@
+import os
+from snakemake.io import expand
+
+# This snakefile contains the processing steps of analysing 
+# the 2x98bp PE sequencing + 8bp UMI using MGI DNBSEQ-G400 chemisty 
+# from SAGC. 
+
+## the code to run sm
+# -n means dry run
+# snakemake --profile smk/slurm -n 
+
+# each of the fq files per sample were merged previously
+# 
+# define some variables. 
+pair_ids = ["_R1_001", "_R2_001"]
+ext = ".fastq.gz"
+FQC_EXT = ["zip", "html"]
+
+# some python code to extract the "sample id" from the file names. 
+# 
+samples = os.listdir("01_rawdata/fastq")
+samples = [sample.replace(ext, "") for sample in samples]
+for id in pair_ids:
+    samples = [sample.replace(id, "") for sample in samples]
+samples = list(set(samples))
+
+# Make sure the samle names are right
+#print(samples)
+
+# here, we need to define the files which are the end products of the workflow. 
+# Any files which are the input for a next step do not need to be included. 
+# I have all of them in here, since I built this pipeline from scratch essentially. 
+# This expand function will generate file names which alter based on these "wildcardds". 
+# A nice explanantion of how expand() works can be found here:
+# https://endrebak.gitbooks.io/the-snakemake-book/content/chapters/expand/expand.html 
+
+rule all:
+    input:
+        expand("01_rawdata/fastqc/{SAMPLE}{PAIR}_fastqc.{EXT}", SAMPLE = samples, PAIR = pair_ids, EXT = FQC_EXT),
+        expand("02_trimdata/fastq/{SAMPLE}{PAIR}{EXT}", SAMPLE = samples, PAIR = pair_ids, EXT = ext),
+        expand("02_trimdata/fastqc/{SAMPLE}{PAIR}_fastqc.{EXT}", SAMPLE = samples, PAIR = pair_ids, EXT = FQC_EXT), 
+        "starIndex/",
+        expand("03_alignstar/bam/{SAMPLE}.Aligned.sortedByCoord.out.bam", SAMPLE = samples),
+        expand("03_alignstar/bam/{SAMPLE}.Aligned.sortedByCoord.out.bam.bai", SAMPLE = samples),
+        expand("03_alignstar/FastQC/{SAMPLE}.Aligned.sortedByCoord.out_fastqc.{EXT}", SAMPLE = samples, EXT = FQC_EXT),
+        expand("04_dedup/bam/{SAMPLE}.Aligned.sortedByCoord.dedup.out.bam", SAMPLE = samples),
+        expand("04_dedup/bam/{SAMPLE}.Aligned.sortedByCoord.dedup.out.bam.bai", SAMPLE = samples),
+        expand("04_dedup/FastQC/{SAMPLE}.Aligned.sortedByCoord.dedup.out_fastqc.{EXT}", SAMPLE = samples, EXT = FQC_EXT),
+        "05_featureCounts/counts.out"
+
+# # First, I will run fastqc on the raw data. 
+rule fastqc:
+    input:
+        R1 = "01_rawdata/fastq/{SAMPLE}.fastq.gz"
+    params:
+        outdir = "01_rawdata/fastqc/"
+    output:    
+        html = "01_rawdata/fastqc/{SAMPLE}_fastqc.html",
+        zip = "01_rawdata/fastqc/{SAMPLE}_fastqc.zip"
+    conda:
+        "smk/envs/default.yaml"
+    resources: # parameters which will submit to phoenix
+        cpu = 2,
+        ntasks = 2,
+        time = "00-01:00:00",
+        mem_mb = 6000
+    shell:
+        """
+        fastqc \
+        -t {resources.cpu} \
+        -o {params.outdir} \
+        {input}
+        """
+# Here, I will generate a indexed genome for input to STAR
+# I willbe using GRCz11, Ensembl release 109
+# I obtained the fasta seqquences from this link (using wget)
+# http://ftp.ensembl.org/pub/release-109/fasta/danio_rerio/dna/Danio_rerio.GRCz11.dna.primary_assembly.fa.gz
+
+# And the gtf file from here.. NOTE THE CHR GTF 
+# http://ftp.ensembl.org/pub/release-109/gtf/danio_rerio/Danio_rerio.GRCz11.109.chr.gtf.gz
+rule indexGenome:
+    input:
+        FA = "refs/Danio_rerio.GRCz11.dna.primary_assembly.fa", 
+        GTF = "refs/Danio_rerio.GRCz11.109.chr.gtf"
+    output:
+        outdir = directory("starIndex/")
+    params:
+        overhang = 98
+    conda: 
+        "smk/envs/default.yaml"
+    resources:
+        cpu = 16,
+        ntasks = 1,
+        time = "00-01:00:00",
+        mem_mb = 50000
+    shell:   
+        """
+        # Make the folder, as snakemake apparently cant do this... 
+        mkdir starIndex
+
+        STAR \
+        --runThreadN {resources.cpu} \
+        --runMode genomeGenerate \
+        --genomeDir {output.outdir} \
+        --genomeFastaFiles {input.FA} \
+        --sjdbGTFfile {input.GTF} \
+        --sjdbOverhang {params.overhang}
+        """
+
+
+# The next step is to run adaptor removal using fastp. 
+# I will only retain reads which are more than 20 nt in length after 
+# trimming, and have a quality score of at least 15 phred. 
+
+
+rule trim:
+    input:
+        R1 = "01_rawdata/fastq/{SAMPLE}_R1_001.fastq.gz",
+        R2 = "01_rawdata/fastq/{SAMPLE}_R2_001.fastq.gz"
+    output:
+        R1 = "02_trimdata/fastq/{SAMPLE}_R1_001.fastq.gz",
+        R2 = "02_trimdata/fastq/{SAMPLE}_R2_001.fastq.gz",
+        json = "02_trimdata/log/{SAMPLE}.json",
+        html = "02_trimdata/log/{SAMPLE}.html"
+    params:
+        bname = "02_trimdata/fastq/{SAMPLE}"
+    conda:
+        "smk/envs/default.yaml"
+    resources:
+        cpu = 1,
+        ntasks = 1,
+        time = "00-01:00:00",
+        mem_mb = 4000
+    shell:
+        """        
+        fastp \
+            -l 20 \
+            --json {output.json} \
+            --html {output.html} \
+            --detect_adapter_for_pe \
+            --out1 {output.R1} \
+            --out2 {output.R2} \
+            -i {input.R1} \
+            -I {input.R2}
+        """
+
+# repeat fastqc after trimming.         
+rule trimqc:
+    input:
+        R1 = "02_trimdata/fastq/{SAMPLE}.fastq.gz"
+    params:
+        outdir = "02_trimdata/fastqc/"  
+    output:    
+        html = "02_trimdata/fastqc/{SAMPLE}_fastqc.html",
+        zip = "02_trimdata/fastqc/{SAMPLE}_fastqc.zip"
+    conda:
+        "smk/envs/default.yaml"
+    resources:
+        cpu = 2,
+        ntasks = 2,
+        time = "00-01:00:00",
+        mem_mb = 6000
+    shell:
+        """
+        fastqc \
+        -f fastq \
+        -t {resources.cpu} \
+        -o {params.outdir} \
+        --noextract \
+        {input}
+        """
+
+
+rule align:
+# here, we are aligning to the zebrafish genome (ensembll release 101) generated in the previous rule
+    input:
+        R1 = "02_trimdata/fastq/{SAMPLE}_R1_001.fastq.gz",
+        R2 = "02_trimdata/fastq/{SAMPLE}_R2_001.fastq.gz" 
+    params:
+        genomedir = "starIndex/",
+        bname = "03_alignstar/bam/{SAMPLE}."
+    output:    
+        bam = "03_alignstar/bam/{SAMPLE}.Aligned.sortedByCoord.out.bam"
+    conda:
+        "smk/envs/default.yaml"
+    resources:
+        cpu = 16,
+        ntasks = 1,
+        time = "00-05:00:00",
+        mem_mb = 50000
+    shell:
+        """
+        STAR \
+        --genomeDir {params.genomedir}\
+        --runThreadN {resources.cpu} \
+        --readFilesIn {input.R1} {input.R2} \
+        --readFilesCommand "gunzip -c" \
+        --outSAMtype BAM SortedByCoordinate \
+        --outFileNamePrefix {params.bname}
+
+        mkdir -p 03_alignstar/log
+		mv {params.bname}*out 03_alignstar/log
+		mv {params.bname}*tab 03_alignstar/log
+        """
+
+rule fastqcalign:
+    input:
+        bam = "03_alignstar/bam/{SAMPLE}.Aligned.sortedByCoord.out.bam"
+    output:
+        "03_alignstar/FastQC/{SAMPLE}.Aligned.sortedByCoord.out_fastqc.zip",
+        "03_alignstar/FastQC/{SAMPLE}.Aligned.sortedByCoord.out_fastqc.html"
+    params:
+        outDir = "03_alignstar/FastQC/"
+    conda:
+        "smk/envs/default.yaml"
+    resources:
+        cpu = 2,
+        ntasks = 2,
+        time = "00-03:00:00",
+        mem_mb = 6000
+    shell:
+        """
+        fastqc -t {resources.cpu} \
+        -o {params.outDir} \
+        --noextract \
+        {input.bam}
+        """
+
+rule indexBam:
+    input:
+        "03_alignstar/bam/{SAMPLE}.Aligned.sortedByCoord.out.bam"
+    output:
+        "03_alignstar/bam/{SAMPLE}.Aligned.sortedByCoord.out.bam.bai"
+    conda:
+        "smk/envs/default.yaml"
+    resources:
+        cpu = 4,
+        ntasks = 1, 
+        time = "00-01:00:00",
+        mem_mb = 6000
+    shell:
+        """
+        samtools index {input} {output}
+        """
+
+# Next I need to de-duplicate the UMIs, which will remove PCR duplicates
+# Note the output bam files are sorted by default. 
+
+rule umi_dedup:
+    input:
+        bam = "03_alignstar/bam/{SAMPLE}.Aligned.sortedByCoord.out.bam"
+    output:
+        bamDedup = "04_dedup/bam/{SAMPLE}.Aligned.sortedByCoord.dedup.out.bam"
+    conda:
+        "smk/envs/default.yaml"
+    resources:
+        cpu = 6,
+        ntasks = 2,
+        time = "00-05:00:00",
+        mem_mb = 24000
+    shell:
+        """
+        umi_tools dedup \
+        -I {input.bam} \
+        --temp-dir="04_dedup/temp" \
+        -S {output.bamDedup} \
+        --umi-separator=":" \
+        --chimeric-pairs='discard' \
+        --paired 
+        """
+
+# repeat the fastqc on the umi-deduplicated reads. 
+rule fastqcaligndedup:
+    input:
+        bamDedup = "04_dedup/bam/{SAMPLE}.Aligned.sortedByCoord.dedup.out.bam"
+    output:
+        "04_dedup/FastQC/{SAMPLE}.Aligned.sortedByCoord.dedup.out_fastqc.zip",
+        "04_dedup/FastQC/{SAMPLE}.Aligned.sortedByCoord.dedup.out_fastqc.html"
+    params:
+        outDir = "04_dedup/FastQC/"
+    conda:
+        "smk/envs/default.yaml"
+    resources:
+        cpu = 2,
+        ntasks = 2,
+        time = "00-01:00:00",
+        mem_mb = 6000
+    shell:
+        """
+        fastqc -t {resources.cpu} \
+        -o {params.outDir} \
+        --noextract \
+        {input.bamDedup}
+        """
+
+rule indexBamDedup:
+    input:
+        bamDedup = "04_dedup/bam/{SAMPLE}.Aligned.sortedByCoord.dedup.out.bam"
+    output:
+        "04_dedup/bam/{SAMPLE}.Aligned.sortedByCoord.dedup.out.bam.bai"
+    conda:
+        "smk/envs/default.yaml"
+    resources:
+        cpu = 2,
+        ntasks = 1, 
+        time = "00-01:00:00",
+        mem_mb = 6000
+    shell:
+        """
+        samtools index {input} {output}
+        """        
+
+
+rule featureCounts:
+    input:
+        bam = expand("04_dedup/bam/{SAMPLE}.Aligned.sortedByCoord.dedup.out.bam", SAMPLE = samples),
+        GTF = "refs/Danio_rerio.GRCz11.109.chr.gtf"
+    output:
+        counts = "05_featureCounts/counts.out"
+    conda:
+        "smk/envs/default.yaml"
+    resources:
+        cpu = 2,
+        ntasks = 2,
+        time = "00-01:30:00",
+        mem_mb = 6000
+    params:
+        q = 10
+# Settings for featureCounts. 
+# To set this to count strictly exonic reads, set fracOverlap to be the value 1. 
+# The value minOverlap may also need adjusting based on your own read lengths. 
+# the -Q option is set to 10, meaining a mapping quality of at least 10. 
+# the -p flag indicates the input bam files were generated from paired end data
+    shell:
+       """
+       featureCounts \
+       -Q {params.q} \
+       -T {resources.cpu} \
+       -a {input.GTF} \
+       -o {output} \
+       -p \
+       {input.bam}
+       """

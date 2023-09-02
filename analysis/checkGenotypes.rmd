@@ -1,0 +1,292 @@
+---
+title: "checkGenotypes"
+author: "Karissa Barthelson"
+date: "2023-05-02"
+output: workflowr::wflow_html
+editor_options:
+  chunk_output_type: console
+---
+
+## Introduction
+
+```{r}
+library(Gviz)
+library(GenomicRanges)
+library(ensembldb)
+library(BSgenome.Drerio.UCSC.danRer11)
+library(gridExtra)
+
+# turn off UCSC chr namess, as we use ensembl
+options(ucscChromosomeNames=FALSE)
+```
+
+```{r}
+# 
+# ah <- AnnotationHub() %>%
+# 	subset(species == "Danio rerio") %>%
+# 	subset(rdataclass == "EnsDb")
+# 
+# ensDb <- ah[["AH83189"]] # for release 101, latest version and the alignment
+# grGenes <- genes(ensDb)
+# 
+
+```
+# psen1 
+
+## genome axis track
+```{r}
+genomeTrack.psen1 <- GenomeAxisTrack(grGenes, 
+                                     chromosome="17", 
+                                     start=51218350,
+                                     end=51218360)
+
+plotTracks(list(genomeTrack.psen1))
+```
+
+
+## gene region track 
+```{r}
+# psen1
+gr.psen1 <- getGeneRegionTrackForGviz(ensDb, 
+                          chromosome="17",  
+                          filter = list(SymbolFilter("psen1")),
+                          start=51218350,
+                          end=51218360)
+
+grTrack <- GeneRegionTrack(gr.psen1)
+
+plotTracks(list(grTrack))
+
+# naglu
+# gr.naglu <- getGeneRegionTrackForGviz(ensDb, 
+#                           chromosome="chr24", 
+#                           start=36303637,
+#                           end=36316104)
+```
+
+## sequence track
+
+```{r}
+# this is the ensDB object frmo library(BSgenome.Drerio.UCSC.danRer11) call 
+Drerio
+
+# change from UCSC to ensembl
+seqlevelsStyle(Drerio) <- "Ensembl"
+
+# make the strack obkect
+strack <- SequenceTrack(Drerio, chromosome = "17")
+
+plotTracks(list(strack),
+           from=51218350,
+           to=51218370)
+```
+
+## alignment track 
+```{r}
+# bam dir , only workds when phoenix is mounted
+bamdir = "/hpcfs/users/a1211024/2022_q96vnaglu_zf_adultbrain_6m/04_dedup/bam"
+
+# list of bam files
+bams <- list.files(bamdir, full.names = T, pattern = ".bam$")
+
+# prep the alignment track
+atrack <- AlignmentsTrack(bams[1], 
+                          showIndels = TRUE,
+                          isPaired = TRUE,
+                          chromosome="17", 
+                          type = "pileup",
+                          stacking = "full",
+                          col.deletion = "red"
+                          
+)
+                          
+plotTracks(list( 
+  gen, 
+                #grTrack,
+                atrack, strack),
+           from=51218300,
+           to=51218420)
+
+```
+
+# ideogram track
+```{r}
+itrack <- IdeogramTrack(genome = "danRer7", chromosome = "17")
+chromosome(itrack) <- 17
+```
+
+
+# write a function
+
+psen1 chr17:51,218,344-51,218,378
+naglu:  chr24:36,305,350-36,305,405
+
+```{r}
+plotGenotype <- function(bam, start, end, chr, gene) {
+ 
+  # genome ruler track
+  gTrack <- GenomeAxisTrack(grGenes, 
+                            chromosome=chr, 
+                            start=start,
+                            end=end) 
+  
+  # gene model track
+  geneModelTrack <- getGeneRegionTrackForGviz(ensDb, 
+                                              chromosome = chr,  
+                                              filter = list(SymbolFilter(gene)),
+                                              start=start,
+                                              end=end 
+                                             ) %>% 
+    GeneRegionTrack(name = gene)
+
+  # sequence track
+  strack <- SequenceTrack(Drerio, 
+                          chromosome = chr)
+  
+  # alignment track
+  atrack <- AlignmentsTrack(bam, 
+                            showIndels = TRUE,
+                            showMismatches = T, 
+                            isPaired = TRUE,
+                            chromosome=chr, 
+                            type = "pileup",
+                            stacking = "full",
+                            col.deletion = "red", 
+                            name = bam %>% 
+                              str_remove(pattern = "/hpcfs/users/a1211024/2022_q96vnaglu_zf_adultbrain_6m/03_alignstar/bam/") %>% 
+                              str_remove(pattern = "_S.+_merged.Aligned.sortedByCoord.out.bam") %>% 
+                              as.data.frame() %>% 
+                              set_colnames("ULN") %>% 
+                              left_join(x$samples) %>% 
+                              .$sample, 
+                            background.title = "darkblue", 
+                            cex = 0.5, 
+                            min.height = 10, 
+                            noLetters = F, 
+                            col.mismatch = NA, 
+                            lty.mismatch = 0, 
+                            )
+  
+  # plot the tracks
+  plotTracks(list(gTrack, 
+                  geneModelTrack,
+                  atrack, 
+                  strack
+                  ),
+             from=start,
+             to=end, add = TRUE
+             )                
+
+}
+```
+
+```{r}
+# bam dir , only workds when phoenix is mounted
+bamdir = "/hpcfs/users/a1211024/2022_q96vnaglu_zf_adultbrain_6m/03_alignstar/bam"
+
+# list of bam files
+bams <- list.files(bamdir, full.names = T, pattern = ".bam$")
+
+plotGenotype(bam = bams[4], 
+             start = 36305355, 
+             end = 36305355 + 50,
+             chr = "24", 
+             gene = "naglu"
+              )
+
+
+plotGenotype(bam = bams[1], 
+             start = 51218330,
+             end = 51218330 + 50,
+             chr = "17", 
+             gene = "psen1"
+              ) 
+
+
+```
+
+# check parameters for exporting figures
+
+```{r}
+dev.off()
+dev.off()
+png("output/plots/checkgeno/temp.png", width = 20, height = 15, units = "cm", res = 400)
+grid.newpage()
+# 1x2 layout
+pushViewport(viewport(layout=grid.layout(1, 2)))
+# 1,1 first plot
+pushViewport(viewport(layout.pos.col=1,layout.pos.row=1))
+
+# naglu:  chr24:36305350-36,305,405
+  
+    plotGenotype(bam = bams[23], 
+                 start = 36305365, 
+                 end = 36305365 + 30, 
+                 chr = "24", 
+                 gene = "naglu"
+    )
+    
+    popViewport()
+    
+    # 1,2 second plot
+    pushViewport(viewport(layout.pos.col=2,layout.pos.row=1))
+    
+    plotGenotype(bam = bams[23], 
+                 start = 51218345,
+                 end = 51218345 + 30,
+                 chr = "17", 
+                 gene = "psen1"
+    ) 
+popViewport()
+popViewport()
+
+dev.off()
+```
+
+#  function to export all alignemtns in 1 go 
+```{r}
+bams[18:24] %>% 
+  sapply(function(x) {
+    # initialise the png, name it accpromg to the ULN
+    png(paste0("output/plots/checkgeno/", x %>% 
+                 str_remove("/hpcfs/users/a1211024/2022_q96vnaglu_zf_adultbrain_6m/03_alignstar/bam/") %>% 
+                 str_remove("_S.+_merged.Aligned.sortedByCoord.out.bam"),  
+               ".png"),  
+               width = 20, height = 15, units = "cm", res = 400) 
+    
+    grid.newpage()
+    # 1x2 layout
+    pushViewport(viewport(layout=grid.layout(1, 2)))
+    # 1,1 first plot
+    pushViewport(viewport(layout.pos.col=1,layout.pos.row=1))
+    
+    plotGenotype(bam = x, 
+                 start = 36305365, 
+                 end = 36305365 + 30, 
+                 chr = "24", 
+                 gene = "naglu"
+    )
+    
+    popViewport()
+    
+    # 1,2 second plot
+    pushViewport(viewport(layout.pos.col=2,layout.pos.row=1))
+    
+    plotGenotype(bam = x, 
+                 start = 51218345,
+                 end = 51218345 + 30,
+                 chr = "17", 
+                 gene = "psen1"
+    ) 
+    popViewport()
+    popViewport()
+    
+    dev.off()
+    
+  })
+```
+
+
+
+
+

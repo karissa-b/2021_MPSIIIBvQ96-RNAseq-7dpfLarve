@@ -254,10 +254,7 @@ x$counts %>%
 
 # Check genotypes
 
-psen1: chr17:51,218,304-51,218,443
-
-naglu: chr24:36,305,350-36,305,405
-
+This is in the `checkGenotypes.rmd` file. All fish carry the genotypes indicated from the PCR genotyping. 
 
 ## %GC and Length check
 
@@ -484,6 +481,7 @@ KEGG <- msigdbr("Danio rerio", category = "C2", subcategory = "CP:KEGG") %>%
   distinct(gs_name, gene_id, .keep_all = TRUE) %>% 
   split(f = .$gs_name) %>%
   lapply(extract2, "gene_id")
+
 
 # C2 <- msigdbr("Danio rerio", category = "C2") %>%
 #   left_join(x$genes, by = c("gene_symbol" = "gene_name")) %>%
@@ -750,31 +748,43 @@ fry_GO <-  design %>% colnames() %>% .[2:3] %>%
              sig = FDR.Mixed < 0.05)
   }, simplify = FALSE)
 
-fry_GO$`MPS-IIIB` %>% 
-  dplyr::slice(1:50) %>% 
-  ggplot(aes(x = -log10(PValue.Mixed), y = reorder(pathway, -PValue.Mixed))) +
-  geom_col(aes(fill = FDR.Mixed < 0.05)) +
-  scale_fill_manual(values = c("grey50", 'red')) +
+sigGOs <- fry_GO %>% 
+  bind_rows() %>% 
+  dplyr::filter(sig == TRUE) %>% 
+  .$pathway
+
+fry_GO %>% 
+  bind_rows() %>% dplyr::filter(pathway == "GO_IRON_ION_TRANSPORT")
+  dplyr::filter(pathway %in% sigGOs) %>% 
+  arrange(desc(coef), PValue.Mixed) %>% 
+  mutate(order = rownames(.)) %>% 
+  ggplot(aes(x = coef, y = pathway)) +
+  geom_tile(
+    aes(fill = -log10(PValue.Mixed))
+    ) +
   theme_pubr() +
-  labs(fill = "FDR < 0.05", 
-       x = "-log10(PValue)", 
+  scale_fill_viridis_c(option = "magma") +
+  labs(fill = "-log10(PValue)", 
+       x = "", 
        y = "", 
-       title = "MPS-IIIB") 
-  #theme(text = element_text(size = 40)) 
-  # ggsave("output/plots/geneSetsInMPS-IIIB.png", width = 10, height = 7, 
-  #        units = "cm", dpi = 300, scale= 5)
+       title = "MPS-IIIB")
+  theme(text = element_text(size = 25)) 
+  ggsave("output/plots/gotermsMPS-IIIB.png", width = 10, height = 7, 
+         units = "cm", dpi = 300, scale= 5)
   
 
 fry_GO$`EOfAD-like` %>% 
-  dplyr::slice(1:10) %>% 
+  dplyr::slice(1:32) %>% 
   ggplot(aes(x = -log10(PValue.Mixed), y = reorder(pathway, -PValue.Mixed))) +
-  geom_col(aes(fill = FDR.Mixed < 0.05)) +
-  scale_fill_manual(values = c("grey50", 'red')) +
+  geom_col(aes(fill = -log10(PValue.Mixed))) +
+  scale_fill_viridis_c() +
   theme_pubr() +
   labs(fill = "FDR < 0.05", 
        x = "-log10(PValue)", 
        y = "", 
-       title = "EOfAD")
+       title = "MPS IIIB") 
+  ggsave("output/plots/gotermsMPS-IIIB.png", width = 10, height = 5, 
+         units = "cm", dpi = 300, scale= 4)
 ```
 
 
@@ -1021,11 +1031,11 @@ HMP_kegg <- runHMP(gene.set.obj = KEGG,
                    logCPM.df = logCPM, 
                    toptable = toptables_cqn)
 
-sigpaths <- HMP_kegg %>% 
+ <- HMP_kegg %>% 
   dplyr::filter(harmonic_p_FDR < 0.05) %>% 
   .$pathway
 
-HMP %>% 
+HMP_kegg %>% 
   dplyr::filter(pathway %in% sigpaths) %>% 
   ggplot(aes(x = coef, y = reorder(pathway, -harmonic_p))) + 
   geom_tile(aes(fill = -log10(harmonic_p), 
@@ -1063,7 +1073,7 @@ HMP_ire %>%
 
 ### All c2
 ```{r}
-HMP_C2 <- runHMP(gene.set.obj = C2, 
+HMP_C2 <- runHMP(gene.set.obj = c(KEGG, GO, ireGenes), 
                    design = design, 
                    logCPM.df = logCPM, 
                    toptable = toptables_cqn)
@@ -1082,6 +1092,7 @@ HMP_C2 %>%
   ggeasy::easy_rotate_x_labels(angle = -45) +
   scale_fill_viridis_c()
 ```
+
 # Post-hoc power calc
 ```{r}
 set.seed(2016)
@@ -1114,7 +1125,7 @@ power$power %>%
   geom_line() +
   coord_cartesian(xlim = c(0,30)) +
   geom_hline(yintercept = 0.7, linetype = 2, colour = "red") +
-  geom_hline(yintercept = 0.51, linetype = 2, colour = "blue") +
+  geom_hline(yintercept = 0.51, linetype = 2, colour = "blue") 
   ggsave("output/plots/posthocPowerLarvae.png", width = 10, height = 5, units = "cm", 
          dpi = 200, scale = 1.5)
 
@@ -1199,11 +1210,37 @@ toptable_dongetal %>%
   geom_abline(slope = 1) +
   labs(title = "Pearson corr of genes in KEGG_ECM_RECEPTOR_INTERACTION")
   
+pwf.dong <- toptable_dongetal %>%
+      with(
+        nullp(
+          DEgenes = structure(DE, names = gene_id), 
+          bias.data = aveLength 
+        )
+      )
+
+goseq_dong <- goseq(pwf.dong, gene2cat = GO) %>% 
+  as_tibble() %>% 
+  #dplyr::filter(numDEInCat > 0) %>% 
+  mutate(FDR = p.adjust(over_represented_pvalue, method = "fdr")) %>% 
+  dplyr::select(-under_represented_pvalue) 
+
+goseq_dong %>% dplyr::filter(category == "GO_PROTON_TRANSPORTING_V_TYPE_ATPASE_COMPLEX")
+
+goseq_mpsiiib %>% 
+  dplyr::slice(1:10) %>% 
+  mutate(propDE = numDEInCat/numInCat) %>% 
+  ggplot(aes(x = -log10(over_represented_pvalue), y = reorder(category, -over_represented_pvalue))) +
+  geom_col(aes(fill = propDE, alpha = FDR < 0.05)) +
+  scale_fill_viridis_c() +
+  scale_alpha_manual(values = c(0.4, 1)) +
+  labs(y = "GO Term", 
+       fill = "Proportion of \nDE genes in \nGO term") 
+
 ```
 
 ## HMP with dong et al. 
 ```{r}
-design.dong <- model.matrix(~0 + pair + Genotype + W_1, x.Dong$samples) %>% 
+design.dong <- model.matrix(~Genotype + W_1, x.Dong$samples) %>% 
   set_colnames(str_replace(colnames(.), pattern = "Genotype.+", "EOfAD-like"))
 
 fry <- 
@@ -1327,6 +1364,47 @@ varpar %>%
   geom_boxplot(width = 0.1)
 
 ```
+## power calc Dong
+# Post-hoc power calc
+```{r}
+set.seed(2016)
+
+mu2 <- 
+  x.Dong$counts %>%
+  as.data.frame() %>%
+  .[,(x.Dong$samples %>% dplyr::filter(Genotype == "wt") %>% .$sample)] %>%
+  rowMeans()
+
+disp2 <-  x.Dong %>% estimateDisp() %>% . $tagwise.dispersion
+
+fc <- function(y){exp(rnorm(y, log(1), 0.5*log(1.5)))}
+
+power2 <- ssizeRNA_vary(nGenes = dim(x.Dong)[1], # Num detectable genes
+              pi0 = 0.8, # Proportion of non-DE genes
+              m = 30, # pseudo sample size
+              mu = mu2, # Average read count for each gene in control group. Calculated from this current dataset)
+              disp = disp2, # Dispersion parameter for each gene
+              fc = fc, # Fold change per gene
+              fdr = 0.05, # FDR level to control
+              #power = 0.7, # power level
+              maxN = 40,
+              replace = T
+                )
+
+power2$power %>% 
+  set_colnames(c("n", "power")) %>% 
+  ggplot(aes(x = n, y = power)) +
+  geom_point() +
+  geom_line() +
+  coord_cartesian(xlim = c(0,30)) +
+  geom_vline(xintercept = 8)
+  geom_hline(yintercept = 0.51, linetype = 2, colour = "blue") +
+  ggsave("output/plots/posthocPowerLarvae.png", width = 10, height = 5, units = "cm", 
+         dpi = 200, scale = 1.5)
+
+```
+
+
 
 
 
@@ -1342,4 +1420,90 @@ fry.cell %>% saveRDS("data/R_objects/larvae/celltype_larvae.rds")
 
 ```
 
+
+
+# a few extra plots
+
+```{r}
+png("output/plots4poster/KEGG_ECM.png", width = 7, height = 10, units = "cm", res = 300)
+toptable_dongetal %>% 
+  dplyr::filter(gene_id %in% KEGG$KEGG_ECM_RECEPTOR_INTERACTION) %>% 
+  dplyr::select(gene_name, logFC.pools = logFC) %>% 
+  left_join(toptables_cqn$`EOfAD-like` %>% dplyr::select(gene_name, logFC.individuals = logFC)) %>% 
+  left_join(toptables_cqn$`MPS-IIIB` %>% dplyr::select(gene_name, logFC.MPSIIIB = logFC)) %>% 
+  dplyr::distinct(gene_name, .keep_all = T) %>% 
+  column_to_rownames("gene_name") %>% 
+  pheatmap(color = colorRampPalette(rev(brewer.pal(n = 5,
+                                               name = "RdBu")))(200), 
+           gaps_row = 2,
+           breaks = seq(-0.5, 0.5, length.out = 200), 
+           angle_col = 315,
+           show_rownames = F, 
+           border_color = NA,
+           main ="KEGG_ECM_RECEPTOR_INTERACTION")
+dev.off()
+
+x.Dong %>% 
+  cpm(log=T) %>% 
+  as.data.frame() %>% 
+  .[GO$GO_IRON_ION_TRANSPORT,] %>% 
+  na.omit() %>% 
+  pheatmap(scale = "row")
+
+png("output/plots4poster/go_protontranspostrtinVatpase.png", width = 7, height = 10, units = "cm", res = 300)
+toptable_dongetal %>% 
+  dplyr::filter(gene_id %in% GO$GO_PROTON_TRANSPORTING_V_TYPE_ATPASE_COMPLEX) %>% 
+  dplyr::select(gene_name, logFC.pools = logFC) %>% 
+  left_join(toptables_cqn$`EOfAD-like` %>% dplyr::select(gene_name, logFC.individuals = logFC)) %>% 
+  left_join(toptables_cqn$`MPS-IIIB` %>% dplyr::select(gene_name, logFC.MPSIIIB = logFC)) %>% 
+  dplyr::distinct(gene_name, .keep_all = T) %>% 
+  column_to_rownames("gene_name") %>% 
+  na.omit %>% 
+  pheatmap(color = colorRampPalette(rev(brewer.pal(n = 5,
+                                               name = "RdBu")))(200), 
+             gaps_row = 2,
+           breaks = seq(-0.5, 0.5, length.out = 200), 
+           angle_col = 315,
+           show_rownames = F, 
+           border_color = NA,
+           main ="GO_PROTON_TRANSPORTING_V_TYPE_ATPASE_COMPLEX")
+ dev.off()
+
+ 
+ png("output/plots4poster/go_irontransport.png", width = 7, height = 10, units = "cm", res = 300)
+toptable_dongetal %>% 
+  dplyr::filter(gene_id %in% GO$GO_IRON_ION_TRANSPORT) %>% 
+  dplyr::select(gene_name, logFC.pools = logFC) %>% 
+  left_join(toptables_cqn$`EOfAD-like` %>% dplyr::select(gene_name, logFC.individuals = logFC)) %>% 
+  left_join(toptables_cqn$`MPS-IIIB` %>% dplyr::select(gene_name, logFC.MPSIIIB = logFC)) %>% 
+  dplyr::distinct(gene_name, .keep_all = T) %>% 
+  column_to_rownames("gene_name") %>% 
+  na.omit %>% 
+  pheatmap(color = colorRampPalette(rev(brewer.pal(n = 5,
+                                               name = "RdBu")))(200), 
+             gaps_row = 2,
+           breaks = seq(-0.6, 0.6, length.out = 200), 
+           angle_col = 315,
+           show_rownames = F, 
+           border_color = NA,
+           main ="GO_IRON_ION_TRANSPORT")
+ dev.off()
+
+
+```
+
+```{r}
+cpm(x.Dong, log = T) %>% 
+      fry(
+        index = GO,
+        design = design.dong, 
+        contrast = "EOfAD-like", 
+        sort = "mixed"
+      ) %>% 
+      rownames_to_column("pathway") %>% 
+      as_tibble() %>% 
+      mutate(coef = "EOfAD-like", 
+             sig = FDR.Mixed < 0.05)
+
+```
 

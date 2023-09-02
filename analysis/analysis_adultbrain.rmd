@@ -454,7 +454,7 @@ fit_1 <- x %>%
   estimateDisp(design) %>% 
   glmFit(design)
 
-toptable_1 <- design %>% colnames() %>% .[2:3] %>% 
+toptable_1 <- design %>% colnames() %>% .[2:3] %>%
   sapply(function(x){
     glmLRT(fit_1, coef = x) %>%
       topTags(n = Inf) %>%
@@ -926,7 +926,7 @@ Here, I will perform the fast approx of ROAST: fry, frmo the limma package on th
 fryKEGG <- 
   design %>% colnames() %>% .[2:3] %>% 
   sapply(function(y) {
-    logCPM %>% 
+    cpm(x, log = T) %>% 
       fry(
         index = KEGG,
         design = design, 
@@ -1003,7 +1003,7 @@ toptables_cqn %>%
 
 toptables_cqn %>% 
   bind_rows() %>% 
-    dplyr::filter(gene_id %in% cell_type_markers$`Oligodendrocyte-enriched`) %>% 
+    dplyr::filter(gene_id %in% GO$GO_PH_REDUCTION) %>% 
   dplyr::select(gene_name, logFC, coef) %>% 
   dplyr::distinct(gene_name, coef, .keep_all = T) %>% 
   spread(key = "coef", value = "logFC") %>% 
@@ -1047,26 +1047,23 @@ fryIRE %>%
   #ggsave("output/plots/AB_ire.png", width = 20, height = 10, units = "cm", dpi = 400, scale = 2)
 
 
+png("output/plots4poster/KEGG_oxphos.png", width = 6, height = 10, units = "cm", res = 300)
 toptables_cqn %>% 
   bind_rows() %>% 
-    dplyr::filter(gene_id %in% ireGenes$ire3_all) %>% 
+    dplyr::filter(gene_id %in% KEGG$KEGG_OXIDATIVE_PHOSPHORYLATION) %>% 
   dplyr::select(gene_name, logFC, coef) %>% 
   dplyr::distinct(gene_name, coef, .keep_all = T) %>% 
   spread(key = "coef", value = "logFC") %>% 
   column_to_rownames("gene_name") %>% 
-  t() %>% 
   pheatmap(color = colorRampPalette(rev(brewer.pal(n = 5,
-                                               name = "RdBu")))(100), 
-           main = "3' IRE genes: FDR = 0.066", 
-           breaks = c(seq(min(.), 0, length.out=ceiling(100/2) + 1), 
-              seq(max(.)/100, max(.), length.out=50)), 
-           cellheight = 30, 
-           cellwidth = 1,
-           angle_col = 45,
-           treeheight_row = 0, 
-           treeheight_col = 0, 
-           show_colnames = F
+                                               name = "RdBu")))(200), 
+           breaks = seq(-0.5, 0.5, length.out = 200), 
+           angle_col = 315,
+           show_rownames = F, 
+           border_color = NA,
+           main ="KEGG_OXIDATIVE_PHOSPHORYLATION")
            )
+dev.off()
 ```
 
 ### Cell type prop check
@@ -1327,7 +1324,7 @@ hmp.fry %>%
 ```{r}
 toptables_cqn %>% 
   bind_rows() %>% 
-    dplyr::filter(gene_id %in% KEGG$KEGG_RIBOSOME) %>% 
+    dplyr::filter(gene_id %in% cell_type_markers$`Neural stem cell`) %>% 
   dplyr::select(gene_name, logFC, coef) %>% 
   dplyr::distinct(gene_name, coef, .keep_all = T) %>% 
   spread(key = "coef", value = "logFC") %>% 
@@ -1335,15 +1332,16 @@ toptables_cqn %>%
   t() %>% 
   pheatmap(color = colorRampPalette(rev(brewer.pal(n = 5,
                                                name = "RdBu")))(100), 
-           main = "KEGG_RIBOSOME", 
+         #  main = "KEGG_RIBOSOME", 
            breaks = c(seq(min(.), 0, length.out=ceiling(100/2) + 1), 
               seq(max(.)/100, max(.), length.out=50)), 
            cellheight = 30, 
-           cellwidth = 3,
+           #cellwidth = 3,
            angle_col = 45,
            treeheight_row = 0, 
            treeheight_col = 0, 
-           show_colnames = F
+           show_colnames = T, 
+         fontsize = 20
            )
 
 toptables_cqn %>% 
@@ -1362,7 +1360,7 @@ toptables_cqn %>%
 
 toptables_cqn %>% 
   bind_rows() %>% 
-    dplyr::filter(gene_id %in% KEGG$KEGG_OXIDATIVE_PHOSPHORYLATION) %>% 
+    dplyr::filter(gene_id %in% KEGG$ %>% ) %>% 
   dplyr::select(gene_name, logFC, coef) %>% 
   dplyr::distinct(gene_name, coef, .keep_all = T) %>% 
   spread(key = "coef", value = "logFC") %>% 
@@ -1421,6 +1419,28 @@ hmp.ire %>%
 
 ```
 
+# check the tf and ferritin genes
+```{r}
+iron_genes <- x$genes %>% 
+  dplyr::filter(grepl(description, pattern = "transferrin|ferri")) %>% 
+  .$gene_id
+
+
+logCPM.adult[iron_genes,] %>%
+  as.data.frame() %>% 
+  rownames_to_column("gene_id") %>% 
+  gather(key = "sample", value = "logCPM", 2:25) %>% 
+  left_join(x.adult$samples) %>% 
+  left_join(x$genes) %>% 
+  ggplot(aes(x = Genotype, y = logCPM)) +
+  geom_boxplot(outlier.shape = NA) +
+  geom_jitter(aes(shape = sex)) +
+  stat_mean(geom = "bar", colour = "black", fill = NA) +
+  facet_wrap(~gene_name, scales = "free_y")
+  
+```
+
+
 # Post-hoc power calc
 ```{r}
 set.seed(2016)
@@ -1435,16 +1455,16 @@ disp <-  x %>% estimateDisp() %>% . $tagwise.dispersion
 fc <- function(y){exp(rnorm(y, log(1), 0.5*log(2)))}
 
 power <- ssizeRNA_vary(nGenes = dim(x)[1], # Num detectable genes
-              pi0 = 0.9, # Proportion of non-DE genes
-              m = 40, # pseudo sample size
+              pi0 = 0.8, # Proportion of non-DE genes
+              m = 50, # pseudo sample size
               mu = mu, # Average read count for each gene in control group. Calculated from this current dataset)
               disp = disp, # Dispersion parameter for each gene
               fc = fc, # Fold change per gene
               fdr = 0.05, # FDR level to control
-              power = 0.7, # power level
+              power = 0.6, # power level
               maxN = 40,
               replace = T
-                )
+                ) 
 
 power$power %>% 
   as_tibble() %>% 
@@ -1466,6 +1486,156 @@ hmp.fry %>% saveRDS("data/R_objects/adult_brain/hmp_kegg.rds")
 hmp.ire %>% saveRDS("data/R_objects/adult_brain/hmp_ire.rds")
 celltype %>% saveRDS("data/R_objects/adult_brain/celltype.rds") 
 ```
+
+
+
+
+## extra plots
+```{r}
+hmp.fry %>% 
+  dplyr::filter(pathway %in% sigpaths) %>% 
+  arrange(harmonic_p_FDR) %>% 
+  mutate(order = case_when(
+    pathway %in% c("KEGG_OXIDATIVE_PHOSPHORYLATION", "KEGG_RIBOSOME") ~ 1,
+    pathway == "KEGG_PARKINSONS_DISEASE" ~ 2,
+    pathway == "KEGG_LYSOSOME" ~ 3,
+    pathway == "KEGG_OTHER_GLYCAN_DEGRADATION" ~ 4,
+    pathway == "KEGG_AMINO_SUGAR_AND_NUCLEOTIDE_SUGAR_METABOLISM" ~ 5,
+    pathway == "KEGG_GLYCOSAMINOGLYCAN_DEGRADATION" ~ 6,
+    TRUE ~7
+           )
+    ) %>% 
+  ggplot(aes(x = coef, y = reorder(pathway, -order))) + 
+  geom_tile(aes(fill = -log10(harmonic_p), 
+                alpha = sig)) +
+  geom_label(aes(label = signif(harmonic_p_FDR, digits = 2)), 
+             fill = NA) +
+  scale_fill_viridis_c() +
+  labs(y = "KEGG gene set", 
+       x = "", 
+       alpha = "FDR p < 0.05") +
+  theme_classic()
+```
+
+# compare with Nhis experiment
+```{r}
+
+x.nhi <- readRDS("data/R_objects/adult_brain/dgeNhi.rds")
+logCPM.nhi <- readRDS("data/R_objects/adult_brain/logcpmNhi.rds")
+toptable.cqn.nhi <- readRDS("data/R_objects/adult_brain/toptablescqnNhi.rds")
+
+hmp.ire.nhi <- readRDS("data/R_objects/adult_brain/hmp_ireNhi.rds")
+fry.go.nhi <- readRDS("data/R_objects/adult_brain/fryGoNhi.rds")
+hmp.kegg.nhi <- readRDS("data/R_objects/adult_brain/hmp_keggNhi.rds")
+
+```
+
+```{r}
+toptable.cqn.nhi <- toptable.cqn.nhi$`Q96_K97del/+` %<>% 
+  mutate(coef = "EOfAD-like/+ exp 2")
+```
+
+
+```{r}
+png("output/plots/oxphos_kegg_adultBrain2.png", width = 7, height = 10, units = "cm", res = 300)
+toptables_cqn %>% 
+  bind_rows() %>% 
+  bind_rows(toptable.cqn.nhi) %>% 
+  dplyr::filter(gene_id %in% KEGG$KEGG_OXIDATIVE_PHOSPHORYLATION) %>% 
+  dplyr::select(gene_name, logFC, coef) %>% 
+  dplyr::distinct(gene_name, coef, .keep_all = T) %>% 
+  spread(key = "coef", value = "logFC") %>% 
+  column_to_rownames("gene_name") %>% 
+  na.omit %>% 
+  pheatmap(color = colorRampPalette(rev(brewer.pal(n = 5,
+                                               name = "RdBu")))(100),
+           breaks = seq(-0.4,0.4, length.out = 100), 
+           #cellheight = 30, cellwidth = 12,
+           border_color = NA, 
+           angle_col = 45,
+           show_rownames = F,
+           cluster_rows = T,
+           treeheight_row = 0, treeheight_col = 0
+           )
+dev.off()
+```
+
+```{r}
+png("output/plots/lyso_kegg_adultBrain2.png", width = 7, height = 10, units = "cm", res = 300)
+toptables_cqn %>% 
+  bind_rows() %>% 
+  bind_rows(toptable.cqn.nhi) %>% 
+  dplyr::filter(gene_id %in% KEGG$KEGG_LYSOSOME) %>% 
+  dplyr::select(gene_name, logFC, coef) %>% 
+  dplyr::distinct(gene_name, coef, .keep_all = T) %>% 
+  spread(key = "coef", value = "logFC") %>% 
+  column_to_rownames("gene_name") %>% 
+  na.omit %>% 
+  pheatmap(color = colorRampPalette(rev(brewer.pal(n = 5,
+                                               name = "RdBu")))(100),
+           breaks = seq(-0.5,0.5, length.out = 100), 
+           #cellheight = 30, cellwidth = 12,
+           border_color = NA, 
+           angle_col = 45,
+           show_rownames = F,
+           cluster_rows = T,
+           treeheight_row = 0, treeheight_col = 0
+           )
+dev.off()
+```
+
+```{r}
+png("output/plots/complement__adultBrain2.png", width = 7, height = 10, units = "cm", res = 300)
+toptables_cqn %>% 
+  bind_rows() %>% 
+  bind_rows(toptable.cqn.nhi) %>% 
+  dplyr::filter(gene_id %in% KEGG$KEGG_COMPLEMENT_AND_COAGULATION_CASCADES) %>% 
+  dplyr::select(gene_name, logFC, coef) %>% 
+  dplyr::distinct(gene_name, coef, .keep_all = T) %>% 
+  spread(key = "coef", value = "logFC") %>% 
+  column_to_rownames("gene_name") %>% 
+  na.omit %>% 
+  pheatmap(color = colorRampPalette(rev(brewer.pal(n = 5,
+                                               name = "RdBu")))(100),
+           breaks = seq(-0.75,0.75, length.out = 100), 
+           #cellheight = 30, cellwidth = 12,
+           border_color = NA, 
+           angle_col = 45,
+           show_rownames = F,
+           cluster_rows = T,
+           treeheight_row = 0, treeheight_col = 0
+           )
+dev.off()
+```
+
+```{r}
+png("output/plots/complement__adultBrain2.png", width = 7, height = 10, units = "cm", res = 300)
+toptables_cqn %>% 
+  bind_rows() %>% 
+  bind_rows(toptable.cqn.nhi) %>% 
+  dplyr::filter(gene_id %in% GO$GO_IRON_ION_BINDING) %>% 
+  dplyr::select(gene_name, logFC, coef) %>% 
+  dplyr::distinct(gene_name, coef, .keep_all = T) %>% 
+  spread(key = "coef", value = "logFC") %>% 
+  column_to_rownames("gene_name") %>% 
+  na.omit %>% 
+  pheatmap(color = colorRampPalette(rev(brewer.pal(n = 5,
+                                               name = "RdBu")))(100),
+           breaks = seq(-0.75,0.75, length.out = 100), 
+           #cellheight = 30, cellwidth = 12,
+           border_color = NA, 
+           angle_col = 45,
+           show_rownames = F,
+           cluster_rows = T,
+           treeheight_row = 0, treeheight_col = 0
+           )
+dev.off()
+```
+
+
+
+
+
 
 
 
