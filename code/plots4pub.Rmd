@@ -1183,3 +1183,72 @@ logCPMs$adult[c("ENSDARG00000036186", "ENSDARG00000089413"),] %>%
   facet_wrap(~gene_name)
 ```
 
+# a few extra plots
+
+```{r}
+png("output/plots4poster/KEGG_ECM.png", width = 7, height = 10, units = "cm", res = 300)
+toptable_dongetal %>%
+  dplyr::filter(gene_id %in% KEGG$KEGG_ECM_RECEPTOR_INTERACTION) %>%
+  dplyr::select(gene_name, logFC.pools = logFC) %>%
+  left_join(toptables_cqn$`EOfAD-like` %>% dplyr::select(gene_name, logFC.individuals = logFC)) %>%
+  left_join(toptables_cqn$`MPS-IIIB` %>% dplyr::select(gene_name, logFC.MPSIIIB = logFC)) %>%
+  dplyr::distinct(gene_name, .keep_all = T) %>%
+  column_to_rownames("gene_name") %>%
+  pheatmap(color = colorRampPalette(rev(brewer.pal(n = 5,
+                                               name = "RdBu")))(200),
+           gaps_row = 2,
+           breaks = seq(-0.5, 0.5, length.out = 200),
+           angle_col = 315,
+           show_rownames = F,
+           border_color = NA,
+           main ="KEGG_ECM_RECEPTOR_INTERACTION")
+dev.off()
+
+x.Dong %>%
+  cpm(log=T) %>%
+  as.data.frame() %>%
+  .[GO$GO_IRON_ION_TRANSPORT,] %>%
+  na.omit() %>%
+  pheatmap(scale = "row")
+
+png("output/plots4poster/go_protontranspostrtinVatpase.png", width = 7, height = 10, units = "cm", res = 300)
+toptable_dongetal %>%
+  dplyr::filter(gene_id %in% GO$GO_PROTON_TRANSPORTING_V_TYPE_ATPASE_COMPLEX) %>%
+  dplyr::select(gene_name, logFC.pools = logFC) %>%
+  left_join(toptables_cqn$`EOfAD-like` %>% dplyr::select(gene_name, logFC.individuals = logFC)) %>%
+  left_join(toptables_cqn$`MPS-IIIB` %>% dplyr::select(gene_name, logFC.MPSIIIB = logFC)) %>%
+  dplyr::distinct(gene_name, .keep_all = T) %>%
+  column_to_rownames("gene_name") %>%
+  na.omit %>%
+  pheatmap(color = colorRampPalette(rev(brewer.pal(n = 5,
+                                               name = "RdBu")))(200),
+             gaps_row = 2,
+           breaks = seq(-0.5, 0.5, length.out = 200),
+           angle_col = 315,
+           show_rownames = F,
+           border_color = NA,
+           main ="GO_PROTON_TRANSPORTING_V_TYPE_ATPASE_COMPLEX")
+ dev.off()
+
+
+ png("output/plots4poster/go_irontransport.png", width = 7, height = 10, units = "cm", res = 300)
+toptable_dongetal %>%
+  dplyr::filter(gene_id %in% GO$GO_IRON_ION_TRANSPORT) %>%
+  dplyr::select(gene_name, logFC.pools = logFC) %>%
+  left_join(toptables_cqn$`EOfAD-like` %>% dplyr::select(gene_name, logFC.individuals = logFC)) %>%
+  left_join(toptables_cqn$`MPS-IIIB` %>% dplyr::select(gene_name, logFC.MPSIIIB = logFC)) %>%
+  dplyr::distinct(gene_name, .keep_all = T) %>%
+  column_to_rownames("gene_name") %>%
+  na.omit %>%
+  pheatmap(color = colorRampPalette(rev(brewer.pal(n = 5,
+                                               name = "RdBu")))(200),
+             gaps_row = 2,
+           breaks = seq(-0.6, 0.6, length.out = 200),
+           angle_col = 315,
+           show_rownames = F,
+           border_color = NA,
+           main ="GO_IRON_ION_TRANSPORT")
+ dev.off()
+
+
+```

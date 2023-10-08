@@ -1328,7 +1328,7 @@ set.seed(2016)
 
 mu.larvae <- x.larvae$counts %>%
   as.data.frame() %>%
-  .[grepl(colnames(x.larvae$counts), pattern = "wt")] %>%
+  .[grepl(colnames(x.larvae$counts), pattern = "MPS")] %>%
   rowMeans()
 
 disp.larvae <-  x.larvae %>% estimateDisp(designlist$larvae) %>% . $tagwise.dispersion
