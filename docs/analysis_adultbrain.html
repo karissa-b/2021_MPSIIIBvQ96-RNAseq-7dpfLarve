@@ -1,0 +1,2617 @@
+<!DOCTYPE html>
+
+<html>
+
+<head>
+
+<meta charset="utf-8" />
+<meta name="generator" content="pandoc" />
+<meta http-equiv="X-UA-Compatible" content="IE=EDGE" />
+
+
+<meta name="author" content="Karissa Barthelson" />
+
+<meta name="date" content="2023-03-01" />
+
+<title>analysis_adultbrain</title>
+
+<script src="site_libs/header-attrs-2.26/header-attrs.js"></script>
+<script src="site_libs/jquery-3.6.0/jquery-3.6.0.min.js"></script>
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<link href="site_libs/bootstrap-3.3.5/css/cosmo.min.css" rel="stylesheet" />
+<script src="site_libs/bootstrap-3.3.5/js/bootstrap.min.js"></script>
+<script src="site_libs/bootstrap-3.3.5/shim/html5shiv.min.js"></script>
+<script src="site_libs/bootstrap-3.3.5/shim/respond.min.js"></script>
+<style>h1 {font-size: 34px;}
+       h1.title {font-size: 38px;}
+       h2 {font-size: 30px;}
+       h3 {font-size: 24px;}
+       h4 {font-size: 18px;}
+       h5 {font-size: 16px;}
+       h6 {font-size: 12px;}
+       code {color: inherit; background-color: rgba(0, 0, 0, 0.04);}
+       pre:not([class]) { background-color: white }</style>
+<script src="site_libs/jqueryui-1.13.2/jquery-ui.min.js"></script>
+<link href="site_libs/tocify-1.9.1/jquery.tocify.css" rel="stylesheet" />
+<script src="site_libs/tocify-1.9.1/jquery.tocify.js"></script>
+<script src="site_libs/navigation-1.1/tabsets.js"></script>
+<script src="site_libs/navigation-1.1/codefolding.js"></script>
+<link href="site_libs/highlightjs-9.12.0/textmate.css" rel="stylesheet" />
+<script src="site_libs/highlightjs-9.12.0/highlight.js"></script>
+
+<link rel="icon" href="https://github.com/workflowr/workflowr-assets/raw/main/img/reproducible.png">
+<!-- Add a small amount of space between sections. -->
+<style type="text/css">
+div.section {
+  padding-top: 12px;
+}
+</style>
+
+
+
+<style type="text/css">
+  code{white-space: pre-wrap;}
+  span.smallcaps{font-variant: small-caps;}
+  span.underline{text-decoration: underline;}
+  div.column{display: inline-block; vertical-align: top; width: 50%;}
+  div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+  ul.task-list{list-style: none;}
+    </style>
+
+<style type="text/css">code{white-space: pre;}</style>
+<script type="text/javascript">
+if (window.hljs) {
+  hljs.configure({languages: []});
+  hljs.initHighlightingOnLoad();
+  if (document.readyState && document.readyState === "complete") {
+    window.setTimeout(function() { hljs.initHighlighting(); }, 0);
+  }
+}
+</script>
+
+
+
+
+
+
+
+
+
+<style type = "text/css">
+.main-container {
+  max-width: 940px;
+  margin-left: auto;
+  margin-right: auto;
+}
+img {
+  max-width:100%;
+}
+.tabbed-pane {
+  padding-top: 12px;
+}
+.html-widget {
+  margin-bottom: 20px;
+}
+button.code-folding-btn:focus {
+  outline: none;
+}
+summary {
+  display: list-item;
+}
+details > summary > p:only-child {
+  display: inline;
+}
+pre code {
+  padding: 0;
+}
+</style>
+
+
+<style type="text/css">
+.dropdown-submenu {
+  position: relative;
+}
+.dropdown-submenu>.dropdown-menu {
+  top: 0;
+  left: 100%;
+  margin-top: -6px;
+  margin-left: -1px;
+  border-radius: 0 6px 6px 6px;
+}
+.dropdown-submenu:hover>.dropdown-menu {
+  display: block;
+}
+.dropdown-submenu>a:after {
+  display: block;
+  content: " ";
+  float: right;
+  width: 0;
+  height: 0;
+  border-color: transparent;
+  border-style: solid;
+  border-width: 5px 0 5px 5px;
+  border-left-color: #cccccc;
+  margin-top: 5px;
+  margin-right: -10px;
+}
+.dropdown-submenu:hover>a:after {
+  border-left-color: #adb5bd;
+}
+.dropdown-submenu.pull-left {
+  float: none;
+}
+.dropdown-submenu.pull-left>.dropdown-menu {
+  left: -100%;
+  margin-left: 10px;
+  border-radius: 6px 0 6px 6px;
+}
+</style>
+
+<script type="text/javascript">
+// manage active state of menu based on current page
+$(document).ready(function () {
+  // active menu anchor
+  href = window.location.pathname
+  href = href.substr(href.lastIndexOf('/') + 1)
+  if (href === "")
+    href = "index.html";
+  var menuAnchor = $('a[href="' + href + '"]');
+
+  // mark the anchor link active (and if it's in a dropdown, also mark that active)
+  var dropdown = menuAnchor.closest('li.dropdown');
+  if (window.bootstrap) { // Bootstrap 4+
+    menuAnchor.addClass('active');
+    dropdown.find('> .dropdown-toggle').addClass('active');
+  } else { // Bootstrap 3
+    menuAnchor.parent().addClass('active');
+    dropdown.addClass('active');
+  }
+
+  // Navbar adjustments
+  var navHeight = $(".navbar").first().height() + 15;
+  var style = document.createElement('style');
+  var pt = "padding-top: " + navHeight + "px; ";
+  var mt = "margin-top: -" + navHeight + "px; ";
+  var css = "";
+  // offset scroll position for anchor links (for fixed navbar)
+  for (var i = 1; i <= 6; i++) {
+    css += ".section h" + i + "{ " + pt + mt + "}\n";
+  }
+  style.innerHTML = "body {" + pt + "padding-bottom: 40px; }\n" + css;
+  document.head.appendChild(style);
+});
+</script>
+
+<!-- tabsets -->
+
+<style type="text/css">
+.tabset-dropdown > .nav-tabs {
+  display: inline-table;
+  max-height: 500px;
+  min-height: 44px;
+  overflow-y: auto;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+}
+
+.tabset-dropdown > .nav-tabs > li.active:before, .tabset-dropdown > .nav-tabs.nav-tabs-open:before {
+  content: "\e259";
+  font-family: 'Glyphicons Halflings';
+  display: inline-block;
+  padding: 10px;
+  border-right: 1px solid #ddd;
+}
+
+.tabset-dropdown > .nav-tabs.nav-tabs-open > li.active:before {
+  content: "\e258";
+  font-family: 'Glyphicons Halflings';
+  border: none;
+}
+
+.tabset-dropdown > .nav-tabs > li.active {
+  display: block;
+}
+
+.tabset-dropdown > .nav-tabs > li > a,
+.tabset-dropdown > .nav-tabs > li > a:focus,
+.tabset-dropdown > .nav-tabs > li > a:hover {
+  border: none;
+  display: inline-block;
+  border-radius: 4px;
+  background-color: transparent;
+}
+
+.tabset-dropdown > .nav-tabs.nav-tabs-open > li {
+  display: block;
+  float: none;
+}
+
+.tabset-dropdown > .nav-tabs > li {
+  display: none;
+}
+</style>
+
+<!-- code folding -->
+<style type="text/css">
+.code-folding-btn { margin-bottom: 4px; }
+</style>
+
+
+
+<style type="text/css">
+
+#TOC {
+  margin: 25px 0px 20px 0px;
+}
+@media (max-width: 768px) {
+#TOC {
+  position: relative;
+  width: 100%;
+}
+}
+
+@media print {
+.toc-content {
+  /* see https://github.com/w3c/csswg-drafts/issues/4434 */
+  float: right;
+}
+}
+
+.toc-content {
+  padding-left: 30px;
+  padding-right: 40px;
+}
+
+div.main-container {
+  max-width: 1200px;
+}
+
+div.tocify {
+  width: 20%;
+  max-width: 260px;
+  max-height: 85%;
+}
+
+@media (min-width: 768px) and (max-width: 991px) {
+  div.tocify {
+    width: 25%;
+  }
+}
+
+@media (max-width: 767px) {
+  div.tocify {
+    width: 100%;
+    max-width: none;
+  }
+}
+
+.tocify ul, .tocify li {
+  line-height: 20px;
+}
+
+.tocify-subheader .tocify-item {
+  font-size: 0.90em;
+}
+
+.tocify .list-group-item {
+  border-radius: 0px;
+}
+
+
+</style>
+
+
+
+</head>
+
+<body>
+
+
+<div class="container-fluid main-container">
+
+
+<!-- setup 3col/9col grid for toc_float and main content  -->
+<div class="row">
+<div class="col-xs-12 col-sm-4 col-md-3">
+<div id="TOC" class="tocify">
+</div>
+</div>
+
+<div class="toc-content col-xs-12 col-sm-8 col-md-9">
+
+
+
+
+<div class="navbar navbar-default  navbar-fixed-top" role="navigation">
+  <div class="container">
+    <div class="navbar-header">
+      <button type="button" class="navbar-toggle collapsed" data-toggle="collapse" data-bs-toggle="collapse" data-target="#navbar" data-bs-target="#navbar">
+        <span class="icon-bar"></span>
+        <span class="icon-bar"></span>
+        <span class="icon-bar"></span>
+      </button>
+      <a class="navbar-brand" href="index.html">2021_MPSIIIBvQ96-RNAseq-7dpfLarve</a>
+    </div>
+    <div id="navbar" class="navbar-collapse collapse">
+      <ul class="nav navbar-nav">
+        <li>
+  <a href="index.html">Home</a>
+</li>
+<li>
+  <a href="QC.html">QC_larvae</a>
+</li>
+<li>
+  <a href="analysis_larvae.html">analysis_larvae</a>
+</li>
+<li>
+  <a href="QC_adult.html">QC_adult</a>
+</li>
+<li>
+  <a href="analysis_adultbrain.html">analysis_adultbrain</a>
+</li>
+<li>
+  <a href="proteomics.html">proteomics_adult</a>
+</li>
+      </ul>
+      <ul class="nav navbar-nav navbar-right">
+        
+      </ul>
+    </div><!--/.nav-collapse -->
+  </div><!--/.container -->
+</div><!--/.navbar -->
+
+<div id="header">
+
+<div class="btn-group pull-right float-right">
+<button type="button" class="btn btn-default btn-xs btn-secondary btn-sm dropdown-toggle" data-toggle="dropdown" data-bs-toggle="dropdown" aria-haspopup="true" aria-expanded="false"><span>Code</span> <span class="caret"></span></button>
+<ul class="dropdown-menu dropdown-menu-right" style="min-width: 50px;">
+<li><a id="rmd-show-all-code" href="#">Show All Code</a></li>
+<li><a id="rmd-hide-all-code" href="#">Hide All Code</a></li>
+</ul>
+</div>
+
+
+
+<h1 class="title toc-ignore">analysis_adultbrain</h1>
+<h4 class="author">Karissa Barthelson</h4>
+<h4 class="date">2023-03-01</h4>
+
+</div>
+
+
+<p>
+<button type="button" class="btn btn-default btn-workflowr btn-workflowr-report" data-toggle="collapse" data-target="#workflowr-report">
+<span class="glyphicon glyphicon-list" aria-hidden="true"></span>
+workflowr <span class="glyphicon glyphicon-ok text-success"
+aria-hidden="true"></span>
+</button>
+</p>
+<div id="workflowr-report" class="collapse">
+<ul class="nav nav-tabs">
+<li class="active">
+<a data-toggle="tab" href="#summary">Summary</a>
+</li>
+<li>
+<a data-toggle="tab" href="#checks"> Checks <span
+class="glyphicon glyphicon-ok text-success" aria-hidden="true"></span>
+</a>
+</li>
+<li>
+<a data-toggle="tab" href="#versions">Past versions</a>
+</li>
+</ul>
+<div class="tab-content">
+<div id="summary" class="tab-pane fade in active">
+<p>
+<strong>Last updated:</strong> 2024-11-01
+</p>
+<p>
+<strong>Checks:</strong> <span
+class="glyphicon glyphicon-ok text-success" aria-hidden="true"></span> 7
+<span class="glyphicon glyphicon-exclamation-sign text-danger"
+aria-hidden="true"></span> 0
+</p>
+<p>
+<strong>Knit directory:</strong>
+<code>2021_MPSIIIBvQ96-RNAseq-7dpfLarve/</code> <span
+class="glyphicon glyphicon-question-sign" aria-hidden="true"
+title="This is the local directory in which the code in this file was executed.">
+</span>
+</p>
+<p>
+This reproducible <a href="https://rmarkdown.rstudio.com">R Markdown</a>
+analysis was created with <a
+  href="https://github.com/workflowr/workflowr">workflowr</a> (version
+1.7.1). The <em>Checks</em> tab describes the reproducibility checks
+that were applied when the results were created. The <em>Past
+versions</em> tab lists the development history.
+</p>
+<hr>
+</div>
+<div id="checks" class="tab-pane fade">
+<div id="workflowr-checks" class="panel-group">
+<div class="panel panel-default">
+<div class="panel-heading">
+<p class="panel-title">
+<a data-toggle="collapse" data-parent="#workflowr-checks" href="#strongRMarkdownfilestronguptodate">
+<span class="glyphicon glyphicon-ok text-success"
+aria-hidden="true"></span> <strong>R Markdown file:</strong> up-to-date
+</a>
+</p>
+</div>
+<div id="strongRMarkdownfilestronguptodate"
+class="panel-collapse collapse">
+<div class="panel-body">
+<p>Great! Since the R Markdown file has been committed to the Git
+repository, you know the exact version of the code that produced these
+results.</p>
+</div>
+</div>
+</div>
+<div class="panel panel-default">
+<div class="panel-heading">
+<p class="panel-title">
+<a data-toggle="collapse" data-parent="#workflowr-checks" href="#strongEnvironmentstrongempty">
+<span class="glyphicon glyphicon-ok text-success"
+aria-hidden="true"></span> <strong>Environment:</strong> empty </a>
+</p>
+</div>
+<div id="strongEnvironmentstrongempty" class="panel-collapse collapse">
+<div class="panel-body">
+<p>Great job! The global environment was empty. Objects defined in the
+global environment can affect the analysis in your R Markdown file in
+unknown ways. For reproduciblity it’s best to always run the code in an
+empty environment.</p>
+</div>
+</div>
+</div>
+<div class="panel panel-default">
+<div class="panel-heading">
+<p class="panel-title">
+<a data-toggle="collapse" data-parent="#workflowr-checks" href="#strongSeedstrongcodesetseed20211120code">
+<span class="glyphicon glyphicon-ok text-success"
+aria-hidden="true"></span> <strong>Seed:</strong>
+<code>set.seed(20211120)</code> </a>
+</p>
+</div>
+<div id="strongSeedstrongcodesetseed20211120code"
+class="panel-collapse collapse">
+<div class="panel-body">
+<p>The command <code>set.seed(20211120)</code> was run prior to running
+the code in the R Markdown file. Setting a seed ensures that any results
+that rely on randomness, e.g. subsampling or permutations, are
+reproducible.</p>
+</div>
+</div>
+</div>
+<div class="panel panel-default">
+<div class="panel-heading">
+<p class="panel-title">
+<a data-toggle="collapse" data-parent="#workflowr-checks" href="#strongSessioninformationstrongrecorded">
+<span class="glyphicon glyphicon-ok text-success"
+aria-hidden="true"></span> <strong>Session information:</strong>
+recorded </a>
+</p>
+</div>
+<div id="strongSessioninformationstrongrecorded"
+class="panel-collapse collapse">
+<div class="panel-body">
+<p>Great job! Recording the operating system, R version, and package
+versions is critical for reproducibility.</p>
+</div>
+</div>
+</div>
+<div class="panel panel-default">
+<div class="panel-heading">
+<p class="panel-title">
+<a data-toggle="collapse" data-parent="#workflowr-checks" href="#strongCachestrongnone">
+<span class="glyphicon glyphicon-ok text-success"
+aria-hidden="true"></span> <strong>Cache:</strong> none </a>
+</p>
+</div>
+<div id="strongCachestrongnone" class="panel-collapse collapse">
+<div class="panel-body">
+<p>Nice! There were no cached chunks for this analysis, so you can be
+confident that you successfully produced the results during this
+run.</p>
+</div>
+</div>
+</div>
+<div class="panel panel-default">
+<div class="panel-heading">
+<p class="panel-title">
+<a data-toggle="collapse" data-parent="#workflowr-checks" href="#strongFilepathsstrongrelative">
+<span class="glyphicon glyphicon-ok text-success"
+aria-hidden="true"></span> <strong>File paths:</strong> relative </a>
+</p>
+</div>
+<div id="strongFilepathsstrongrelative" class="panel-collapse collapse">
+<div class="panel-body">
+<p>Great job! Using relative paths to the files within your workflowr
+project makes it easier to run your code on other machines.</p>
+</div>
+</div>
+</div>
+<div class="panel panel-default">
+<div class="panel-heading">
+<p class="panel-title">
+<a data-toggle="collapse" data-parent="#workflowr-checks" href="#strongRepositoryversionstrongahrefhttpsgithubcomkarissab2021MPSIIIBvQ96RNAseq7dpfLarvetree7bb9ce697cf60b5a72b13752e492d75b4a21d5eetargetblank7bb9ce6a">
+<span class="glyphicon glyphicon-ok text-success"
+aria-hidden="true"></span> <strong>Repository version:</strong>
+<a href="https://github.com/karissa-b/2021_MPSIIIBvQ96-RNAseq-7dpfLarve/tree/7bb9ce697cf60b5a72b13752e492d75b4a21d5ee" target="_blank">7bb9ce6</a>
+</a>
+</p>
+</div>
+<div
+id="strongRepositoryversionstrongahrefhttpsgithubcomkarissab2021MPSIIIBvQ96RNAseq7dpfLarvetree7bb9ce697cf60b5a72b13752e492d75b4a21d5eetargetblank7bb9ce6a"
+class="panel-collapse collapse">
+<div class="panel-body">
+<p>
+Great! You are using Git for version control. Tracking code development
+and connecting the code version to the results is critical for
+reproducibility.
+</p>
+<p>
+The results in this page were generated with repository version
+<a href="https://github.com/karissa-b/2021_MPSIIIBvQ96-RNAseq-7dpfLarve/tree/7bb9ce697cf60b5a72b13752e492d75b4a21d5ee" target="_blank">7bb9ce6</a>.
+See the <em>Past versions</em> tab to see a history of the changes made
+to the R Markdown and HTML files.
+</p>
+<p>
+Note that you need to be careful to ensure that all relevant files for
+the analysis have been committed to Git prior to generating the results
+(you can use <code>wflow_publish</code> or
+<code>wflow_git_commit</code>). workflowr only checks the R Markdown
+file, but you know if there are other scripts or data files that it
+depends on. Below is the status of the Git repository when the results
+were generated:
+</p>
+<pre><code>
+Ignored files:
+    Ignored:    .DS_Store
+    Ignored:    .RData
+    Ignored:    .Rapp.history
+    Ignored:    .Rhistory
+    Ignored:    .Rproj.user/
+    Ignored:    analysis/.DS_Store
+    Ignored:    code/.DS_Store
+    Ignored:    code/fromHPC/.DS_Store
+    Ignored:    code/fromHPC/smk/.DS_Store
+    Ignored:    code/fromHPC/smk/slurm/.DS_Store
+    Ignored:    data/.DS_Store
+    Ignored:    data/Nhi_data/.DS_Store
+    Ignored:    data/R_objects/.DS_Store
+    Ignored:    data/R_objects/larvae/.DS_Store
+    Ignored:    data/adult_brain/.DS_Store
+    Ignored:    data/adult_brain/05_featureCounts/.DS_Store
+    Ignored:    data/adult_brain/fastqc_raw/.DS_Store
+    Ignored:    data/gene_sets/.DS_Store
+    Ignored:    data/larvae/.DS_Store
+    Ignored:    data/larvae/fastqc_align/.DS_Store
+    Ignored:    data/larvae/fastqc_align_dedup/.DS_Store
+    Ignored:    data/larvae/fastqc_raw/.DS_Store
+    Ignored:    data/larvae/fastqc_trim/.DS_Store
+    Ignored:    data/larvae/featureCounts/.DS_Store
+    Ignored:    data/larvae/meta/.DS_Store
+    Ignored:    data/larvae/starAlignLog/.DS_Store
+    Ignored:    output/.DS_Store
+    Ignored:    output/plots/
+    Ignored:    output/plots4poster/.DS_Store
+    Ignored:    output/plots4pub/
+
+Untracked files:
+    Untracked:  Rplot01.pdf
+    Untracked:  Rplot02.png
+    Untracked:  code/6mBrain_RNAseq_genoSex.rmd
+    Untracked:  code/6mBrain_fems.rmd
+    Untracked:  code/HS.R
+    Untracked:  code/about.Rmd
+    Untracked:  code/analysis.Rmd
+    Untracked:  code/analysis_final.rmd
+    Untracked:  code/analysis_final_v2.rmd
+    Untracked:  code/checkGenotypes.rmd
+    Untracked:  code/explorationRUV.Rmd
+    Untracked:  code/genotypeCheck.Rmd
+    Untracked:  code/license.Rmd
+    Untracked:  code/nhi6mdata.rmd
+    Untracked:  code/plots4pub2.rmd
+    Untracked:  code/plots4pub_RNAseq_afterreview1.R
+    Untracked:  code/wgcna.rmd
+    Untracked:  data/R_objects/adult_brain/HMPKEGG_6m_brain_genosex_CQN.rds
+    Untracked:  data/R_objects/adult_brain/HMP_ire_6m_brain_genosex_CQN.rds
+    Untracked:  data/R_objects/adult_brain/cqn_logCPM_6m_brain.rds
+    Untracked:  data/R_objects/adult_brain/dge_6m_brain_cqn.rds
+    Untracked:  data/R_objects/adult_brain/fry_cell_6m_brain_genosex_CQN.rds
+    Untracked:  data/R_objects/adult_brain/fry_cell_RNAseq.rds
+    Untracked:  data/R_objects/adult_brain/goseqtibbles_6m_brain_genosex_CQN.rds
+    Untracked:  data/R_objects/adult_brain/hmp.kegg.rna.rds
+    Untracked:  data/R_objects/adult_brain/toptablescqn_bysex.rds
+    Untracked:  data/allLLIDs.rds
+    Untracked:  data/ensembl_zebrafish.rds
+    Untracked:  data/proteomics/
+    Untracked:  data/with_go_evidence.rds
+    Untracked:  dre00020.pathview.multi.png
+    Untracked:  dre00020.png
+    Untracked:  dre00020.xml
+    Untracked:  hsa04650.EOfADproteomes.multi.png
+    Untracked:  hsa04650.MPSIIIBproteomes.multi.png
+    Untracked:  hsa04650.png
+    Untracked:  hsa04650.xml
+    Untracked:  hsa04666.EOfADproteomes.multi.png
+    Untracked:  hsa04666.MPSIIIBproteomes.multi.png
+    Untracked:  hsa04666.png
+    Untracked:  hsa04666.xml
+    Untracked:  larvae dre00020.pathview.multi.png
+    Untracked:  output/DE_proteins_for_string/
+    Untracked:  output/GOenrichment_enrichmentTable.csv
+    Untracked:  output/plots4RADposter/
+    Untracked:  output/plots4kim/
+    Untracked:  output/plots4pub2/
+    Untracked:  output/plots4pub3/
+    Untracked:  output/spreadsheets/RNAseqlarvae_celltypeFry.xlsx
+    Untracked:  output/spreadsheets/RNAseqlarvae_hmpoutputs.xlsx
+    Untracked:  output/spreadsheets/geneset_RNAseq_v2.xlsx
+    Untracked:  output/spreadsheets/goseq_RNAseq_v2.xlsx
+    Untracked:  output/spreadsheets/limma_proteomics_6mbrain.xlsx
+    Untracked:  output/spreadsheets/proteomics_6mbrain_hmpoutputs.xlsx
+    Untracked:  output/spreadsheets/toptables_RNAseq_v2.xlsx
+    Untracked:  temp.png
+
+Unstaged changes:
+    Deleted:    analysis/6mBrain_fems.rmd
+    Deleted:    analysis/HS.R
+    Deleted:    analysis/about.Rmd
+    Deleted:    analysis/analysis.Rmd
+    Deleted:    analysis/analysis_adultbrain.knit.md
+    Deleted:    analysis/analysis_final.rmd
+    Deleted:    analysis/checkGenotypes.rmd
+    Deleted:    analysis/explorationRUV.Rmd
+    Deleted:    analysis/genotypeCheck.Rmd
+    Deleted:    analysis/license.Rmd
+    Deleted:    analysis/nhi6mdata.rmd
+    Deleted:    analysis/plots4pub2.rmd
+    Modified:   data/R_objects/adult_brain/dge.rds
+    Modified:   data/R_objects/adult_brain/hmp_ire.rds
+    Modified:   data/R_objects/adult_brain/logcpm.rds
+    Modified:   data/R_objects/larvae/celltype_larvae.rds
+    Modified:   data/R_objects/larvae/dge.rds
+    Modified:   data/R_objects/larvae/hmp_ire.rds
+    Modified:   data/R_objects/larvae/hmp_kegg.rds
+    Modified:   data/R_objects/larvae/logcpm.rds
+    Modified:   data/R_objects/larvae/toptablescqn.rds
+    Modified:   data/adult_brain/karissas_metadata.xlsx
+    Modified:   output/spreadsheets/toptables_cqn.xlsx
+
+</code></pre>
+<p>
+Note that any generated files, e.g. HTML, png, CSS, etc., are not
+included in this status report because it is ok for generated content to
+have uncommitted changes.
+</p>
+</div>
+</div>
+</div>
+</div>
+<hr>
+</div>
+<div id="versions" class="tab-pane fade">
+
+<p>
+These are the previous versions of the repository in which changes were
+made to the R Markdown (<code>analysis/analysis_adultbrain.rmd</code>)
+and HTML (<code>docs/analysis_adultbrain.html</code>) files. If you’ve
+configured a remote Git repository (see <code>?wflow_git_remote</code>),
+click on the hyperlinks in the table below to view the files as they
+were in that past version.
+</p>
+<div class="table-responsive">
+<table class="table table-condensed table-hover">
+<thead>
+<tr>
+<th>
+File
+</th>
+<th>
+Version
+</th>
+<th>
+Author
+</th>
+<th>
+Date
+</th>
+<th>
+Message
+</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+Rmd
+</td>
+<td>
+<a href="https://github.com/karissa-b/2021_MPSIIIBvQ96-RNAseq-7dpfLarve/blob/7bb9ce697cf60b5a72b13752e492d75b4a21d5ee/analysis/analysis_adultbrain.rmd" target="_blank">7bb9ce6</a>
+</td>
+<td>
+Karissa Barthelson
+</td>
+<td>
+2024-11-01
+</td>
+<td>
+wflow_publish("analysis/*")
+</td>
+</tr>
+<tr>
+<td>
+Rmd
+</td>
+<td>
+<a href="https://github.com/karissa-b/2021_MPSIIIBvQ96-RNAseq-7dpfLarve/blob/6e89e87b574b48466fa1c16e3fcc43f5421cdeb5/analysis/analysis_adultbrain.rmd" target="_blank">6e89e87</a>
+</td>
+<td>
+Karissa Barthelson
+</td>
+<td>
+2023-09-02
+</td>
+<td>
+final analysis complete
+</td>
+</tr>
+<tr>
+<td>
+Rmd
+</td>
+<td>
+<a href="https://github.com/karissa-b/2021_MPSIIIBvQ96-RNAseq-7dpfLarve/blob/9f57eae079b1a41bb0d82eb15f17819b7d9c58d9/analysis/analysis_adultbrain.rmd" target="_blank">9f57eae</a>
+</td>
+<td>
+Karissa Barthelson
+</td>
+<td>
+2023-04-28
+</td>
+<td>
+test
+</td>
+</tr>
+<tr>
+<td>
+Rmd
+</td>
+<td>
+<a href="https://github.com/karissa-b/2021_MPSIIIBvQ96-RNAseq-7dpfLarve/blob/973da7b904bcd0fb4990508b872350997f6d9721/analysis/analysis_adultbrain.rmd" target="_blank">973da7b</a>
+</td>
+<td>
+Karissa Barthelson
+</td>
+<td>
+2023-03-09
+</td>
+<td>
+Message that describes what this change does
+</td>
+</tr>
+<tr>
+<td>
+Rmd
+</td>
+<td>
+<a href="https://github.com/karissa-b/2021_MPSIIIBvQ96-RNAseq-7dpfLarve/blob/6d8b85a8d2db45cc350d67dabeb1cca26a0652b0/analysis/analysis_adultbrain.rmd" target="_blank">6d8b85a</a>
+</td>
+<td>
+Karissa Barthelson
+</td>
+<td>
+2023-03-03
+</td>
+<td>
+added adult brain
+</td>
+</tr>
+</tbody>
+</table>
+</div>
+<hr>
+</div>
+</div>
+</div>
+<pre class="r"><code>library(tidyverse)
+library(magrittr)
+library(readxl)
+library(ngsReports)
+library(AnnotationHub)
+library(pander)
+library(scales)
+library(pheatmap)
+library(ggpubr)
+library(msigdbr)
+library(scales)
+library(ggrepel)
+library(ggfortify)
+library(RColorBrewer)
+library(ComplexHeatmap)
+library(tidyHeatmap)
+library(circlize)
+library(UpSetR)
+library(edgeR)
+library(goseq)
+library(fgsea)
+library(cqn)
+library(kableExtra)
+library(harmonicmeanp)
+library(ssizeRNA)
+
+theme_set(
+  theme_bw() +
+    theme(
+      plot.title = element_text(hjust = 0.5)
+    ))</code></pre>
+<div id="read-in-data" class="section level1">
+<h1>Read in data</h1>
+<pre class="r"><code>ah &lt;- AnnotationHub() %&gt;%
+    subset(species == &quot;Danio rerio&quot;) %&gt;%
+    subset(rdataclass == &quot;EnsDb&quot;)
+
+ensDb &lt;- ah[[&quot;AH83189&quot;]] # for release 101, latest version and the alignment
+grTrans &lt;- transcripts(ensDb)
+trLengths &lt;- exonsBy(ensDb, &quot;tx&quot;) %&gt;%
+    width() %&gt;%
+    vapply(sum, integer(1))
+mcols(grTrans)$length &lt;- trLengths[names(grTrans)]
+gcGene &lt;- grTrans %&gt;%
+  mcols() %&gt;%
+  as.data.frame() %&gt;%
+  dplyr::select(gene_id, tx_id, gc_content, length) %&gt;%
+  as_tibble() %&gt;%
+  group_by(gene_id) %&gt;%
+  summarise(
+    gc_content = sum(gc_content*length) / sum(length),
+    length = ceiling(median(length))
+  )
+grGenes &lt;- genes(ensDb)
+mcols(grGenes) %&lt;&gt;%
+  as.data.frame() %&gt;%
+  left_join(gcGene) %&gt;%
+  as.data.frame() %&gt;%
+  DataFrame()</code></pre>
+<pre class="r"><code># readin meta and tidy up columns
+meta &lt;- read_excel(&quot;data/adult_brain/karissas_metadata.xlsx&quot;, sheet = &quot;onlyseq&quot;) %&gt;% 
+  mutate(genotype = case_when(
+    `usable genotype?` == &quot;wt&quot; ~ &quot;wt&quot;, 
+    `usable genotype?` == &quot;EOfAD&quot; ~ &quot;EOfADlike&quot;, 
+    `usable genotype?` == &quot;MPS-III&quot; ~ &quot;MPSIIIB&quot;
+  ) %&gt;% 
+    factor(levels = c(&quot;wt&quot;,  &quot;EOfADlike&quot;, &quot;MPSIIIB&quot;)), 
+  tank = as.factor(tank), 
+  sex  = as.factor(sex),
+  sample = paste0(fish, &quot;_&quot;, genotype), 
+  group = paste0(genotype, &quot;_&quot;, sex) %&gt;% as.factor(),
+  age = &quot;6 m adult brain&quot;,
+  RIN = as.numeric(`RIN/DIN`)
+  ) %&gt;% 
+  dplyr::select(
+    # reorder the metadata nicely
+    fish,genotype,sex,group,batch,tank,RIN,everything()
+    ) %&gt;% 
+  as_tibble()</code></pre>
+<pre class="r"><code># read in counts and cleanup
+featureCounts &lt;- 
+  read_delim(&quot;data/adult_brain/05_featureCounts/counts.out&quot;, delim = &quot;\t&quot;, skip = 1) %&gt;%
+  set_names(basename(names(.))) %&gt;% 
+  set_names(names(.) %&gt;% str_remove(pattern = &quot;_S[0-9]+_merged.Aligned.sortedByCoord.dedup.out.bam&quot;)) %&gt;% 
+  as_tibble() %&gt;% 
+  dplyr::select(-c(Chr, Start, End, Length, Strand)) %&gt;% 
+  gather(key = &quot;ULN&quot;, value = &quot;counts&quot;, starts_with(&quot;22&quot;)) %&gt;% 
+  left_join(meta) %&gt;% 
+  mutate(sample = paste0(fish, &quot;_&quot;, genotype)) %&gt;% 
+  dplyr::select(Geneid, counts, sample) %&gt;% 
+  spread(key = &quot;sample&quot;, value = &quot;counts&quot;) %&gt;% 
+  column_to_rownames(&quot;Geneid&quot;) %&gt;% 
+  .[,1:24]</code></pre>
+</div>
+<div id="filter-lowly-expressed-genes" class="section level1">
+<h1>filter lowly expressed genes</h1>
+<p>Genes which are lowly expressed are considered uninformative for de
+analysis. Here, we set the threshold to be a min CPM of 0.5 (following
+the 10/min lib size rule proposed by gordon smyth). The effect of
+filtering is found below.</p>
+<p>DGEList objects were created, which brings together the sample
+metadata and counts in each experiment. TMM normalisation to the counts
+is also applied when making these objects.</p>
+<pre class="r"><code>a &lt;- featureCounts %&gt;% 
+    cpm(log = TRUE) %&gt;%
+    as.data.frame() %&gt;% 
+  pivot_longer(
+    cols = everything(),
+    names_to = &quot;sample&quot;,
+    values_to = &quot;logCPM&quot;
+  ) %&gt;%
+  split(f = .$sample) %&gt;%
+  lapply(function(x){
+    d &lt;- density(x$logCPM)
+    tibble(
+      sample = unique(x$sample),
+      x = d$x,
+      y = d$y
+    )
+  }) %&gt;%
+  bind_rows() %&gt;%
+  left_join(meta) %&gt;% 
+  ggplot(aes(x, y, colour = genotype, group = sample)) +
+  geom_line() +
+  labs(
+    x = &quot;logCPM&quot;,
+    y = &quot;Density&quot;,
+    colour = &quot;genotype&quot;
+  )+
+  ggtitle(&quot;Before filtering&quot;) +
+  theme_bw()
+b &lt;- featureCounts %&gt;% 
+  .[rowSums(cpm(.) &gt;= 0.5) &gt;= 8,] %&gt;% 
+    cpm(log = TRUE) %&gt;%
+    as.data.frame() %&gt;% 
+  pivot_longer(
+    cols = everything(),
+    names_to = &quot;sample&quot;,
+    values_to = &quot;logCPM&quot;
+  ) %&gt;%
+  split(f = .$sample) %&gt;%
+  lapply(function(x){
+    d &lt;- density(x$logCPM)
+    tibble(
+      sample = unique(x$sample),
+      x = d$x,
+      y = d$y
+    )
+  }) %&gt;%
+  bind_rows() %&gt;%
+  left_join(meta) %&gt;% 
+  ggplot(aes(x, y, colour = genotype, group = sample)) +
+  geom_line() +
+  labs(
+    x = &quot;logCPM&quot;,
+    y = &quot;Density&quot;,
+    colour = &quot;genotype&quot;
+  )+
+  ggtitle(&quot;After filtering&quot;)
+
+ggarrange(a, b, common.legend = TRUE)</code></pre>
+<p><img src="figure/analysis_adultbrain.rmd/filt-1.png" width="75%" height="75%" style="display: block; margin: auto;" /></p>
+<pre class="r"><code>x &lt;- featureCounts %&gt;% 
+  as.matrix() %&gt;% 
+ .[rowSums(cpm(.) &gt;= 0.5) &gt;= 8,] %&gt;%
+  DGEList(
+    samples = tibble(sample = colnames(.)) %&gt;%
+      left_join(meta),
+    genes = grGenes[rownames(.)] %&gt;%
+      as.data.frame() %&gt;%
+      dplyr::select(
+        chromosome = seqnames, start, end, 
+        gene_id, gene_name, gene_biotype, description, entrezid
+      ) %&gt;% 
+      left_join(gcGene) %&gt;% 
+      as_tibble()
+  ) %&gt;%
+  calcNormFactors()</code></pre>
+<div id="pca" class="section level2">
+<h2>PCA</h2>
+<p>I first want to explore the overall similarity between samples by
+PCA. No distinct clusters of samples are observed. However, there might
+be some subtle seperatation of the MPS IIIB mutants.</p>
+<pre class="r"><code>x %&gt;% 
+  cpm(log=TRUE) %&gt;% 
+  t() %&gt;% 
+  prcomp() %&gt;% 
+  autoplot(data = tibble(sample = rownames(.$x)) %&gt;%
+      left_join(x$samples),
+    colour = &quot;genotype&quot;, 
+    shape = &quot;sex&quot;,
+    size = 6
+  ) +
+  theme(aspect.ratio = 1) +
+  labs(colour = &quot;genotype&quot;) </code></pre>
+<p><img src="figure/analysis_adultbrain.rmd/unnamed-chunk-2-1.png" width="75%" height="75%" style="display: block; margin: auto;" /></p>
+<pre class="r"><code>x$counts %&gt;% 
+  cpm(log=TRUE) %&gt;% 
+  t() %&gt;% 
+  prcomp() %&gt;% 
+  autoplot(data = tibble(sample = rownames(.$x)) %&gt;%
+      left_join(x$samples),
+    colour = &quot;sex&quot;, 
+    size = 6
+  ) +
+  theme(aspect.ratio = 1) +
+  labs(colour = &quot;Sex&quot;) </code></pre>
+<p><img src="figure/analysis_adultbrain.rmd/unnamed-chunk-2-2.png" width="75%" height="75%" style="display: block; margin: auto;" /></p>
+<pre class="r"><code>x$counts %&gt;% 
+  cpm(log=TRUE) %&gt;% 
+  t() %&gt;% 
+  prcomp() %&gt;% 
+  autoplot(data = tibble(sample = rownames(.$x)) %&gt;%
+      left_join(x$samples),
+    colour = &quot;tank&quot;, 
+    size = 6
+  ) +
+  theme(aspect.ratio = 1) +
+  labs(colour = &quot;Tank&quot;) </code></pre>
+<p><img src="figure/analysis_adultbrain.rmd/unnamed-chunk-2-3.png" width="75%" height="75%" style="display: block; margin: auto;" /></p>
+<div id="within-sexes" class="section level3">
+<h3>within sexes</h3>
+<p>Since it is a bit hard to see whats going on within sexes, I will
+next perform PCAs on each sex seperately</p>
+<pre class="r"><code>fem.samples &lt;- x$samples %&gt;% 
+  dplyr::filter(sex == &quot;F&quot;) %&gt;% 
+  rownames()
+
+male.samples &lt;- x$samples %&gt;% 
+  dplyr::filter(sex == &quot;M&quot;) %&gt;% 
+  rownames()
+
+x %&gt;% 
+  cpm(log = TRUE) %&gt;% 
+  .[,fem.samples] %&gt;% 
+  t %&gt;% 
+  prcomp() %&gt;% 
+  autoplot(data = tibble(sample = rownames(.$x)) %&gt;%
+             left_join(x$samples),
+           colour = &quot;genotype&quot;,
+           shape = &quot;sex&quot;, 
+           size = 6
+  ) +
+  theme(aspect.ratio = 1) +
+  labs(
+    title = &quot;Females&quot;
+  )</code></pre>
+<p><img src="figure/analysis_adultbrain.rmd/unnamed-chunk-3-1.png" width="75%" height="75%" style="display: block; margin: auto;" /></p>
+<pre class="r"><code>x %&gt;% 
+  cpm(log = TRUE) %&gt;% 
+  .[,male.samples] %&gt;% 
+  t %&gt;% 
+  prcomp() %&gt;% 
+  autoplot(data = tibble(sample = rownames(.$x)) %&gt;%
+             left_join(x$samples),
+           colour = &quot;genotype&quot;,
+           shape = &quot;sex&quot;, 
+           size = 6
+  ) +
+  theme(aspect.ratio = 1) +
+  labs(
+    title = &quot;Males&quot;
+  )</code></pre>
+<p><img src="figure/analysis_adultbrain.rmd/unnamed-chunk-3-2.png" width="75%" height="75%" style="display: block; margin: auto;" /></p>
+</div>
+</div>
+</div>
+<div id="initial-de-analysis-to-check-for-gc-and-length-bias"
+class="section level1">
+<h1>Initial DE analysis to check for %GC and length bias</h1>
+<p>For this analysis, I will keep the model matrix simple and look at
+only effect of genotype. This should be sufficient to look for bias due
+to GC and length, ans so whether CQN is required.</p>
+<pre class="r"><code>design.simple &lt;- model.matrix(~genotype, data = x$samples) %&gt;% 
+  set_colnames(gsub(colnames(.), pattern = &quot;genotype&quot;, replacement = &quot;&quot;))
+
+fit_1 &lt;- x %&gt;% 
+  estimateDisp(design.simple) %&gt;% 
+  glmFit(design.simple)
+
+toptable_1 &lt;- design.simple %&gt;% colnames() %&gt;% .[2:3] %&gt;%
+  sapply(function(x){
+    glmLRT(fit_1, coef = x) %&gt;%
+      topTags(n = Inf) %&gt;%
+      .[[&quot;table&quot;]] %&gt;%
+      as_tibble() %&gt;%
+      arrange(PValue) %&gt;%
+       mutate(
+        coef = x,
+        DE = FDR &lt; 0.05
+      ) %&gt;% 
+      dplyr::select(
+        gene_name, logFC, logCPM, PValue, FDR, DE, everything()  
+      )
+      
+  }, simplify = FALSE)
+
+toptable_1 %&gt;%
+  bind_rows() %&gt;% 
+  ggplot(aes(y = -log10(PValue), x = logFC, colour = DE)) +
+  geom_point(
+    alpha = 0.5, size = 1.25
+  ) +
+  facet_wrap(~coef) +
+  # geom_label_repel(
+  #   aes(label = gene_name),
+  #   data = .  %&gt;% dplyr::filter(FDR &lt; 0.05),
+  #   show.legend = FALSE
+  #   ) +
+  coord_cartesian(xlim = c(-2.5,2.5), 
+                  ylim = c(0, 20) )+
+  theme(legend.position = &quot;none&quot;) +
+  scale_color_manual(values = c(&quot;grey50&quot;, &quot;red&quot;)) </code></pre>
+<p><img src="figure/analysis_adultbrain.rmd/unnamed-chunk-4-1.png" width="75%" height="75%" style="display: block; margin: auto;" /></p>
+<pre class="r"><code>toptable_1 %&gt;%
+  bind_rows() %&gt;% 
+  ggplot(aes(x = logCPM, y = logFC,  colour = DE)) +
+  geom_point(
+    alpha = 0.5
+  ) +
+  
+  facet_wrap(~coef) +
+  # geom_label_repel(
+  #   aes(label = gene_name), 
+  #   data = .  %&gt;% dplyr::filter(FDR &lt; 0.05), 
+  #   show.legend = FALSE
+  #   ) +
+  theme(legend.position = &quot;none&quot;) +
+  scale_color_manual(values = c(&quot;grey50&quot;, &quot;red&quot;))</code></pre>
+<p><img src="figure/analysis_adultbrain.rmd/unnamed-chunk-4-2.png" width="75%" height="75%" style="display: block; margin: auto;" /></p>
+<div id="vis" class="section level3">
+<h3>Vis</h3>
+<pre class="r"><code>ggarrange(
+toptable_1 %&gt;% 
+  bind_rows() %&gt;% 
+  mutate(rankstat = sign(logFC)*-log10(PValue)) %&gt;% 
+  ggplot(aes(x = length, y = rankstat)) +
+  geom_point(
+    aes(colour = DE),
+    alpha = 0.5
+  ) +
+  geom_smooth(se = FALSE, method = &quot;gam&quot;) +
+  facet_grid(rows = vars(coef)) +
+  theme_bw() +
+  theme(legend.position = &quot;none&quot;) +
+  scale_color_manual(values = c(&quot;grey50&quot;, &quot;red&quot;)) +
+  scale_x_log10()+
+  labs(x = &quot;Average transcript length per gene&quot;,
+       colour = &quot;Differentially expressed?&quot;,
+       y = &quot;sign(logFC)*-log10(PValue)&quot;) +
+  coord_cartesian(ylim = c(-10, 10)),
+
+toptable_1 %&gt;% 
+  bind_rows() %&gt;% 
+  mutate(rankstat = sign(logFC)*-log10(PValue)) %&gt;% 
+  ggplot(aes(x = gc_content, y = rankstat)) +
+  geom_point(
+    aes(colour = DE),
+    alpha = 0.5
+  ) +
+  geom_smooth(se = FALSE, method = &quot;gam&quot;) +
+  facet_grid(rows = vars(coef)) +
+  theme_bw() +
+  theme(legend.position = &quot;none&quot;) +
+  scale_color_manual(values = c(&quot;grey50&quot;, &quot;red&quot;)) +
+  coord_cartesian(ylim = c(-10,10)) + 
+  labs(x = &quot;Weighted average GC content (%) per gene&quot;, 
+       colour = &quot;Differentially expressed?&quot;, 
+       y = &quot;sign(logFC)*-log10(PValue)&quot;),
+common.legend = TRUE, 
+labels = &quot;AUTO&quot;
+) </code></pre>
+<p><img src="figure/analysis_adultbrain.rmd/unnamed-chunk-5-1.png" width="75%" height="75%" style="display: block; margin: auto;" /></p>
+</div>
+</div>
+<div id="cqn" class="section level1">
+<h1>CQN</h1>
+<p>Some bias is observed, and so CQN will be applied.</p>
+<pre class="r"><code>cqn &lt;- 
+  x %&gt;% 
+  with(
+    cqn(
+      counts = counts,
+      x = genes$gc_content,
+      lengths = genes$length,
+      sizeFactors = samples$lib.size
+    )
+  )
+# 
+logCPM &lt;- cqn$y + cqn$offset</code></pre>
+<div id="plot-out-the-model-fits" class="section level3">
+<h3>plot out the model fits</h3>
+<pre class="r"><code>par(mfrow = c(1, 2))
+cqnplot(cqn, n = 1, xlab = &quot;GC Content&quot;)
+cqnplot(cqn, n = 2, xlab = &quot;Length&quot;)</code></pre>
+<div class="figure" style="text-align: center">
+<img src="figure/analysis_adultbrain.rmd/unnamed-chunk-7-1.png" alt="*Model fits for GC content and gene length under the CQN model. Variability is clearly visible at either end*" width="75%" height="75%" />
+<p class="caption">
+<em>Model fits for GC content and gene length under the CQN model.
+Variability is clearly visible at either end</em>
+</p>
+</div>
+<pre class="r"><code>par(mfrow = c(1, 1))</code></pre>
+</div>
+<div id="pca-after-cqn" class="section level3">
+<h3>PCA after cqn</h3>
+<p>PCA analysis was repeated. Similar clustering of samples was
+observed, with MPS-IIIA samples appearing to form a more distinct
+cluster from the rest of the samples. The sgsh/+ samples appear much
+more variable.</p>
+<pre class="r"><code>genocols = c(&quot;#000000&quot;, &quot;#DBDB2F&quot;, &quot;#377EB8&quot;)
+
+ggarrange(
+  cpm(x, log = T) %&gt;%
+    t() %&gt;%
+    prcomp() %&gt;% 
+    autoplot(data = tibble(sample = rownames(.$x)) %&gt;%
+               left_join(x$samples),
+             colour = &quot;genotype&quot;, 
+             shape = &quot;sex&quot;, 
+             size = 4
+    ) +
+    scale_colour_manual(values = genocols) +
+    theme(aspect.ratio = 1) +
+    ggtitle(&quot;Before CQN&quot;),
+  
+  logCPM %&gt;% 
+    t() %&gt;% 
+    prcomp() %&gt;%
+    autoplot(data = tibble(sample = rownames(.$x)) %&gt;%
+               left_join(x$samples),
+             colour = &quot;genotype&quot;, 
+             size = 4
+    ) +
+    scale_colour_manual(values = genocols) +
+    theme(aspect.ratio = 1) +
+    ggtitle(&quot;After CQN&quot;),
+  common.legend = T, 
+  labels = &quot;AUTO&quot;
+) </code></pre>
+<p><img src="figure/analysis_adultbrain.rmd/unnamed-chunk-8-1.png" width="75%" height="75%" style="display: block; margin: auto;" /></p>
+<pre class="r"><code>#ggsave(&quot;plotsforpub/PCA_cqn.png&quot;, width = 18, height = 8, units = &quot;cm&quot;, scale = 1.4)</code></pre>
+</div>
+<div id="de-with-cqn" class="section level2">
+<h2>DE with cqn</h2>
+<p>The DE analysis was then repeated, this time including the offset
+generated by <code>cqn</code> in the model.</p>
+<p>Will also create a new design and contrasts matrices to be able to
+determine the DEGs within sexes.</p>
+<pre class="r"><code># Add the offset to the dge object 
+x$offset &lt;- cqn$glm.offset
+
+# new desing matrix
+design.bygroup &lt;- 
+  model.matrix(~0 + group, data = x$samples %&gt;% 
+                 droplevels()) %&gt;% 
+   set_colnames(gsub(colnames(.), pattern = &quot;group&quot;, replacement = &quot;&quot;))
+
+
+contrasts &lt;- makeContrasts( 
+ 
+  MPSIIIB_M - wt_M , # effect of MPS IIIB in males
+  MPSIIIB_F - wt_F, # effect of MPS IIIB in females
+  
+  EOfADlike_M - wt_M, # effect of EOfAD in males
+  EOfADlike_F - wt_F, # effect of EOfAD in females
+
+  levels = design.bygroup
+  )
+
+# fit the glm
+fit_cqn_simple &lt;- x %&gt;% 
+  estimateDisp(design.simple) %&gt;% 
+  glmFit(design.simple)
+
+fit_cqn_bysex &lt;- x %&gt;% 
+  estimateDisp(design.bygroup) %&gt;% 
+  glmFit(design.bygroup)
+
+# call toptables 
+toptables_cqn_simple &lt;- design.simple %&gt;% colnames() %&gt;% .[2:3] %&gt;% 
+  sapply(function(x){
+    glmLRT(fit_cqn_simple, coef = x) %&gt;%
+      topTags(n = Inf) %&gt;%
+      .[[&quot;table&quot;]] %&gt;%
+      as_tibble() %&gt;%
+      arrange(PValue) %&gt;%
+       mutate(
+        coef = x,
+        DE = FDR &lt; 0.05
+      ) %&gt;% 
+      dplyr::select(
+        gene_name, logFC, logCPM, PValue, FDR, DE, everything()  
+      )
+      
+  }, simplify = FALSE)
+
+toptables_cqn_bygroup &lt;- 
+  colnames(contrasts) %&gt;% 
+  sapply(function(x) {
+    glmLRT(fit_cqn_bysex, contrast = contrasts[,x]) %&gt;% 
+      topTags(n = Inf)  %&gt;% 
+      .[[&quot;table&quot;]] %&gt;%
+      as_tibble() %&gt;%
+      arrange(PValue) %&gt;%
+      mutate(
+        coef = x,
+        coef = str_remove(coef, pattern = &quot; - .+&quot;),
+        DE = FDR &lt; 0.05
+      ) %&gt;% 
+      dplyr::select(
+        gene_name, logFC, logCPM, PValue, FDR, DE, everything()
+      )
+        }, simplify = FALSE)
+
+# tidy up the names of this. 
+names(toptables_cqn_bygroup) %&lt;&gt;% 
+  str_remove(pattern = &quot; - .+&quot;)</code></pre>
+</div>
+<div id="visualisation" class="section level2">
+<h2>Visualisation</h2>
+<div id="tables-of-n-de" class="section level3">
+<h3>tables of n DE</h3>
+<pre class="r"><code>toptables_cqn_bygroup %&gt;% 
+  lapply(function(y) {
+    y %&gt;% 
+      mutate(
+      direction = sign(logFC), .after = logFC
+      ) %&gt;% 
+      dplyr::filter(DE == TRUE) %&gt;% 
+      group_by(direction) %&gt;% 
+      summarise(n = n())
+  })</code></pre>
+<pre><code>$MPSIIIB_M
+# A tibble: 2 × 2
+  direction     n
+      &lt;dbl&gt; &lt;int&gt;
+1        -1   141
+2         1   212
+
+$MPSIIIB_F
+# A tibble: 2 × 2
+  direction     n
+      &lt;dbl&gt; &lt;int&gt;
+1        -1   123
+2         1    77
+
+$EOfADlike_M
+# A tibble: 2 × 2
+  direction     n
+      &lt;dbl&gt; &lt;int&gt;
+1        -1     3
+2         1     1
+
+$EOfADlike_F
+# A tibble: 2 × 2
+  direction     n
+      &lt;dbl&gt; &lt;int&gt;
+1        -1    11
+2         1     1</code></pre>
+<pre class="r"><code>toptables_cqn_bygroup %&gt;% lapply(dplyr::filter, DE == T)</code></pre>
+<pre><code>$MPSIIIB_M
+# A tibble: 353 × 17
+   gene_name      logFC  logCPM   PValue      FDR DE    chromosome  start    end
+   &lt;chr&gt;          &lt;dbl&gt;   &lt;dbl&gt;    &lt;dbl&gt;    &lt;dbl&gt; &lt;lgl&gt; &lt;fct&gt;       &lt;int&gt;  &lt;int&gt;
+ 1 tmem14cb      -3.10   1.62   1.12e-31 2.14e-27 TRUE  24         3.61e7 3.61e7
+ 2 si:ch1073-16…  4.26  -0.244  2.77e-27 2.64e-23 TRUE  24         3.86e7 3.87e7
+ 3 im:7160594     1.00   3.14   1.47e-22 9.32e-19 TRUE  24         3.92e7 3.92e7
+ 4 dnaaf3l        2.04   0.439  4.81e-22 2.29e-18 TRUE  24         3.69e7 3.69e7
+ 5 mybpc2b        5.39   3.21   3.10e-17 1.18e-13 TRUE  24         3.83e7 3.83e7
+ 6 CU651662.1     2.62   2.03   1.43e-16 4.55e-13 TRUE  7          7.15e7 7.15e7
+ 7 tspan36        1.21   2.78   1.37e-13 3.73e-10 TRUE  8          2.97e7 2.97e7
+ 8 si:ch211-234… -0.826  4.14   3.55e-13 8.45e-10 TRUE  24         3.82e7 3.82e7
+ 9 cluap1        -0.613  4.54   4.46e-13 9.23e-10 TRUE  24         3.75e7 3.75e7
+10 sb:cb1058      2.01   0.0176 4.84e-13 9.23e-10 TRUE  7          2.50e7 2.50e7
+# ℹ 343 more rows
+# ℹ 8 more variables: gene_id &lt;chr&gt;, gene_biotype &lt;chr&gt;, description &lt;chr&gt;,
+#   entrezid &lt;named list&gt;, gc_content &lt;dbl&gt;, length &lt;dbl&gt;, LR &lt;dbl&gt;, coef &lt;chr&gt;
+
+$MPSIIIB_F
+# A tibble: 200 × 17
+   gene_name      logFC  logCPM   PValue      FDR DE    chromosome  start    end
+   &lt;chr&gt;          &lt;dbl&gt;   &lt;dbl&gt;    &lt;dbl&gt;    &lt;dbl&gt; &lt;lgl&gt; &lt;fct&gt;       &lt;int&gt;  &lt;int&gt;
+ 1 tmem14cb      -2.86   1.62   6.55e-38 1.25e-33 TRUE  24         3.61e7 3.61e7
+ 2 dnaaf3l        2.07   0.439  2.92e-19 2.78e-15 TRUE  24         3.69e7 3.69e7
+ 3 si:ch1073-16…  3.08  -0.244  9.15e-19 5.82e-15 TRUE  24         3.86e7 3.87e7
+ 4 cluap1        -0.619  4.54   4.56e-14 2.17e-10 TRUE  24         3.75e7 3.75e7
+ 5 mybphb        -1.72   1.98   6.77e-14 2.58e-10 TRUE  6          5.50e7 5.51e7
+ 6 c7b           -1.60   4.77   8.06e-13 2.56e- 9 TRUE  21         2.09e7 2.09e7
+ 7 plp1a         -1.20   4.65   1.37e-12 3.74e- 9 TRUE  14         1.46e7 1.46e7
+ 8 sb:cb1058      2.20   0.0176 7.54e-12 1.80e- 8 TRUE  7          2.50e7 2.50e7
+ 9 bri3           0.672  5.53   1.32e-11 2.79e- 8 TRUE  3          6.14e7 6.14e7
+10 gpd1c          1.43   1.56   1.75e-11 3.33e- 8 TRUE  19         3.18e5 3.26e5
+# ℹ 190 more rows
+# ℹ 8 more variables: gene_id &lt;chr&gt;, gene_biotype &lt;chr&gt;, description &lt;chr&gt;,
+#   entrezid &lt;named list&gt;, gc_content &lt;dbl&gt;, length &lt;dbl&gt;, LR &lt;dbl&gt;, coef &lt;chr&gt;
+
+$EOfADlike_M
+# A tibble: 4 × 17
+  gene_name         logFC logCPM   PValue     FDR DE    chromosome  start    end
+  &lt;chr&gt;             &lt;dbl&gt;  &lt;dbl&gt;    &lt;dbl&gt;   &lt;dbl&gt; &lt;lgl&gt; &lt;fct&gt;       &lt;int&gt;  &lt;int&gt;
+1 nenf              0.958  2.53  3.12e-10 5.94e-6 TRUE  17         4.54e7 4.54e7
+2 zgc:172014       -3.18  -0.146 1.05e- 6 1.00e-2 TRUE  4          3.08e7 3.08e7
+3 col12a1a         -1.43   3.53  4.52e- 6 2.87e-2 TRUE  17         4.98e7 5.00e7
+4 si:dkey-170l10.1 -1.13   0.832 1.03e- 5 4.93e-2 TRUE  17         3.16e7 3.16e7
+# ℹ 8 more variables: gene_id &lt;chr&gt;, gene_biotype &lt;chr&gt;, description &lt;chr&gt;,
+#   entrezid &lt;named list&gt;, gc_content &lt;dbl&gt;, length &lt;dbl&gt;, LR &lt;dbl&gt;, coef &lt;chr&gt;
+
+$EOfADlike_F
+# A tibble: 12 × 17
+   gene_name        logFC  logCPM  PValue     FDR DE    chromosome  start    end
+   &lt;chr&gt;            &lt;dbl&gt;   &lt;dbl&gt;   &lt;dbl&gt;   &lt;dbl&gt; &lt;lgl&gt; &lt;fct&gt;       &lt;int&gt;  &lt;int&gt;
+ 1 si:dkey-13p1.3   -1.61  0.215  1.76e-9 3.36e-5 TRUE  17         3.16e7 3.16e7
+ 2 si:ch211-213a13… -3.47  1.87   9.97e-9 9.51e-5 TRUE  22         8.98e6 9.00e6
+ 3 si:dkey-71b5.7   -3.46  0.926  4.05e-7 2.57e-3 TRUE  16         2.19e7 2.20e7
+ 4 si:ch211-213a13… -2.91  1.14   9.49e-7 3.98e-3 TRUE  22         9.06e6 9.10e6
+ 5 traf3ip2l        -3.19  1.04   1.04e-6 3.98e-3 TRUE  6          3.69e7 3.69e7
+ 6 si:dkey-253d23.4 -2.51  1.70   1.25e-6 3.98e-3 TRUE  22         9.87e6 9.88e6
+ 7 mybpc2b          -2.84  3.21   2.19e-6 5.96e-3 TRUE  24         3.83e7 3.83e7
+ 8 si:ch211-261n11… -2.68  1.41   4.11e-6 9.79e-3 TRUE  8          2.25e7 2.25e7
+ 9 BX322618.1       -2.71  2.91   2.13e-5 4.24e-2 TRUE  20         1.22e7 1.22e7
+10 si:ch73-21k16.5   1.12  3.88   2.39e-5 4.24e-2 TRUE  20         4.69e7 4.69e7
+11 rad51            -1.61  2.13   2.45e-5 4.24e-2 TRUE  20         4.64e7 4.64e7
+12 timm23b          -1.94 -0.0258 2.67e-5 4.24e-2 TRUE  13         3.88e6 3.93e6
+# ℹ 8 more variables: gene_id &lt;chr&gt;, gene_biotype &lt;chr&gt;, description &lt;chr&gt;,
+#   entrezid &lt;named list&gt;, gc_content &lt;dbl&gt;, length &lt;dbl&gt;, LR &lt;dbl&gt;, coef &lt;chr&gt;</code></pre>
+<pre class="r"><code>toptables_cqn_simple %&gt;% 
+  lapply(function(y) {
+    y %&gt;% 
+      mutate(
+      direction = sign(logFC), .after = logFC
+      ) %&gt;% 
+      dplyr::filter(DE == TRUE) %&gt;% 
+      group_by(direction) %&gt;% 
+      summarise(n = n())
+  })</code></pre>
+<pre><code>$EOfADlike
+# A tibble: 2 × 2
+  direction     n
+      &lt;dbl&gt; &lt;int&gt;
+1        -1    10
+2         1     1
+
+$MPSIIIB
+# A tibble: 2 × 2
+  direction     n
+      &lt;dbl&gt; &lt;int&gt;
+1        -1   333
+2         1   284</code></pre>
+</div>
+<div id="volcano-plot" class="section level3">
+<h3>Volcano plot</h3>
+<pre class="r"><code>toptables_cqn_simple %&gt;%
+  bind_rows() %&gt;% 
+  ggplot(aes(y = -log10(PValue), x = logFC, colour = DE)) +
+  geom_point(
+    alpha = 0.5, size = 1.25
+  ) +
+  facet_wrap(~coef) +
+  # geom_label_repel(
+  #   aes(label = gene_name),
+  #   data = .  %&gt;% dplyr::filter(FDR &lt; 0.05),
+  #   show.legend = FALSE
+  #   ) +
+  coord_cartesian(xlim = c(-2.5,2.5), 
+                  ylim = c(0, 20) )+
+  theme(legend.position = &quot;none&quot;) +
+  scale_color_manual(values = c(&quot;grey50&quot;, &quot;red&quot;)) </code></pre>
+<p><img src="figure/analysis_adultbrain.rmd/unnamed-chunk-11-1.png" width="75%" height="75%" style="display: block; margin: auto;" /></p>
+<pre class="r"><code>toptables_cqn_bygroup %&gt;%
+  bind_rows() %&gt;% 
+  ggplot(aes(y = -log10(PValue), x = logFC, colour = DE)) +
+  geom_point(
+    alpha = 0.5, size = 1.25
+  ) +
+  facet_wrap(~coef) +
+  # geom_label_repel(
+  #   aes(label = gene_name),
+  #   data = .  %&gt;% dplyr::filter(FDR &lt; 0.05),
+  #   show.legend = FALSE
+  #   ) +
+  coord_cartesian(xlim = c(-2.5,2.5), 
+                  ylim = c(0, 20) )+
+  theme(legend.position = &quot;none&quot;) +
+  scale_color_manual(values = c(&quot;grey50&quot;, &quot;red&quot;)) </code></pre>
+<p><img src="figure/analysis_adultbrain.rmd/unnamed-chunk-11-2.png" width="75%" height="75%" style="display: block; margin: auto;" /></p>
+</div>
+<div id="md-plot" class="section level3">
+<h3>MD plot</h3>
+<pre class="r"><code>toptables_cqn_bygroup %&gt;%
+  bind_rows() %&gt;% 
+  ggplot(aes(x = logCPM, y = logFC)) +
+  geom_point(
+    aes(colour = DE),
+    alpha = 0.5
+  ) +
+  facet_wrap(~coef, ncol = 1) +
+  theme(legend.position = &quot;none&quot;) +
+  scale_color_manual(values = c(&quot;grey50&quot;, &quot;red&quot;)) +
+  geom_smooth(se = F)</code></pre>
+<p><img src="figure/analysis_adultbrain.rmd/unnamed-chunk-12-1.png" width="75%" height="75%" style="display: block; margin: auto;" /></p>
+</div>
+</div>
+</div>
+<div id="gene-set-enrichment-analysis" class="section level1">
+<h1>Gene set enrichment analysis</h1>
+<p>I now am going to test the KEGG, gene ontology (GO), iron-responsive
+element (IRE), cell type markers and chromosomal location gene sets to
+determine whether any of them display changes to gene expression as a
+group. The gene sets were obtained from MSIGDB using the msigdbr
+package.</p>
+<div id="gene-sets" class="section level3">
+<h3>Gene sets</h3>
+<p>The KEGG and GO terms were obtained from msigdb using msigdbr. These
+gene sets were filtered to only contain the genes above the detectable
+threshold in this experiment. Also, any gene sets with less than 5 genes
+were omitted, as these probably arent very biologically meaninigful. The
+GO terms were also restricted to those with 3 or more steps back to the
+ontology root terms.</p>
+<p>The iron-responsive element (IRE) genes were obtained from Hin et
+al. 2021 (DOI: 10.3233/JAD-210200). The zebrafish IRE-containing genes
+were used, and were also filtered to only retain the detectable
+genes.</p>
+<p>The chromosome gene sets were generated from the DGE object.</p>
+<p>The cell type marker gene sets were obtained from the single-cell
+RNA-seq data of Jiang et al. 2021 (<a
+href="https://doi.org/10.3389/fcell.2021.743421)/"
+class="uri">https://doi.org/10.3389/fcell.2021.743421)/</a></p>
+<pre class="r"><code># Obtain the KEGG gene sets. 
+KEGG &lt;- msigdbr(&quot;Danio rerio&quot;, category = &quot;C2&quot;, subcategory = &quot;CP:KEGG&quot;) %&gt;% 
+  left_join(x$genes, by = c(&quot;gene_symbol&quot; = &quot;gene_name&quot;)) %&gt;% 
+  dplyr::filter(gene_id %in% rownames(x)) %&gt;% 
+  distinct(gs_name, gene_id, .keep_all = TRUE) %&gt;% 
+  split(f = .$gs_name) %&gt;%
+  lapply(extract2, &quot;gene_id&quot;)
+
+# calculate the number of genes per gene set
+sizes &lt;- KEGG %&gt;% 
+  lapply(length) %&gt;% 
+  unlist %&gt;% 
+  as.data.frame() %&gt;% 
+  set_colnames( &quot;n_genes&quot;) %&gt;% 
+  rownames_to_column(&quot;gs&quot;)
+
+
+# retain gene sets with at least 3 genes in it
+KEGG &lt;- KEGG[sizes %&gt;% dplyr::filter(n_genes &gt; 3) %&gt;% .$gs]
+
+# GO Terms summaries that The UofA biohub made. 
+goSummaries &lt;- url(&quot;https://uofabioinformaticshub.github.io/summaries2GO/data/goSummaries.RDS&quot;) %&gt;%
+  readRDS() %&gt;%
+  mutate(
+    Term = Term(id),
+    gs_name = Term %&gt;% str_to_upper() %&gt;% str_replace_all(&quot;[ -]&quot;, &quot;_&quot;),
+    gs_name = paste0(&quot;GO_&quot;, gs_name)
+    )
+
+minPath &lt;- 3
+
+# obtain the GO terms 
+GO &lt;- 
+  msigdbr(&quot;Danio rerio&quot;, category = &quot;C5&quot;) %&gt;% 
+  dplyr::filter(grepl(gs_name, pattern = &quot;^GO&quot;)) %&gt;% 
+  left_join(x$genes, by = c(&quot;gene_symbol&quot; = &quot;gene_name&quot;)) %&gt;% 
+  dplyr::filter(gene_id %in% rownames(x)) %&gt;% 
+  mutate(gs_name = str_replace(gs_name, pattern = &quot;GOBP_&quot;, replacement = &quot;GO_&quot;)) %&gt;% 
+  mutate(gs_name = str_replace(gs_name, pattern = &quot;GOMF_&quot;, replacement = &quot;GO_&quot;)) %&gt;%     
+  mutate(gs_name = str_replace(gs_name, pattern = &quot;GOCC_&quot;, replacement = &quot;GO_&quot;)) %&gt;%     
+  left_join(goSummaries) %&gt;% 
+  dplyr::filter(shortest_path &gt;= minPath) %&gt;%
+  distinct(gs_name, gene_id, .keep_all = TRUE) %&gt;% 
+  split(f = .$gs_name) %&gt;%
+  lapply(extract2, &quot;gene_id&quot;)
+
+GOdf &lt;-  msigdbr(&quot;Danio rerio&quot;, category = &quot;C5&quot;) %&gt;%
+  dplyr::filter(grepl(gs_name, pattern = &quot;^GO&quot;)) %&gt;%
+  left_join(x$genes, by = c(&quot;gene_symbol&quot; = &quot;gene_name&quot;)) %&gt;%
+  dplyr::filter(gene_id %in% rownames(x)) %&gt;%
+  mutate(
+    gs_full_name = gs_name, 
+    gs_name = str_replace(gs_name, pattern = &quot;GOBP_&quot;, replacement = &quot;GO_&quot;), 
+    gs_name = str_replace(gs_name, pattern = &quot;GOMF_&quot;, replacement = &quot;GO_&quot;), 
+    gs_name = str_replace(gs_name, pattern = &quot;GOCC_&quot;, replacement = &quot;GO_&quot;)
+  ) %&gt;%
+  left_join(goSummaries) %&gt;%
+  dplyr::filter(shortest_path &gt;= minPath) %&gt;%
+  distinct(gs_name, gene_id, .keep_all = TRUE) 
+
+sizes_GO &lt;- GO %&gt;%
+  lapply(length) %&gt;%
+  unlist %&gt;%
+  as.data.frame() %&gt;%
+  set_colnames( &quot;n_genes&quot;) %&gt;%
+  rownames_to_column(&quot;gs&quot;)
+
+
+# retain gene sets with at least 3 genes in it
+GO &lt;- GO[sizes_GO %&gt;% dplyr::filter(n_genes &gt; 3) %&gt;% .$gs]
+
+ireGenes &lt;- readRDS(&quot;data/gene_sets/zebrafishireGenes.rds&quot;) %&gt;% 
+  unlist() %&gt;% 
+  as.data.frame() %&gt;% 
+  rownames_to_column(&quot;ire&quot;) %&gt;% 
+  as_tibble() %&gt;% 
+  mutate(ire = str_extract(ire, pattern = &quot;ire[:digit:]_[:alpha:]+&quot;)) %&gt;% 
+  set_colnames(c(&quot;ire&quot;, &quot;gene_id&quot;)) %&gt;% 
+  dplyr::filter(gene_id %in% rownames(x)) %&gt;% 
+  split(f = .$ire) %&gt;% 
+  lapply(magrittr::extract2,&quot;gene_id&quot;) 
+
+chr &lt;- x$genes %&gt;% 
+  dplyr::select(gene_id, chromosome) %&gt;% 
+  split(f = .$chromosome) %&gt;%
+  lapply(extract2, &quot;gene_id&quot;) %&gt;% 
+  .[c(&quot;MT&quot;, seq(1:25))] # omit the ALT chromosmes and scaffolds
+
+
+cell_type_markers &lt;- 
+  read_xlsx(&quot;data/gene_sets/Suppdata2_jiangetal_2021_fcelldev.xlsx&quot;, sheet = &quot;Brain&quot;) %&gt;% 
+  dplyr::rename(&quot;gene_name&quot; = gene) %&gt;% 
+  left_join(x$genes) %&gt;% 
+  dplyr::filter(gene_id %in% rownames(x)) %&gt;% 
+  split(f = .$`cell type`) %&gt;% 
+  lapply(extract2, &quot;gene_id&quot;)
+  
+
+cell_type_markers %&lt;&gt;% 
+  lapply(function(y) {
+    y[y %in% rownames(x)]
+  })</code></pre>
+</div>
+<div id="goseq" class="section level2">
+<h2>GOSEQ</h2>
+<p>I first will look at enrichment of GO terms within the DE genes using
+goseq. I like goseq as it lets you include a covariate. Since there was
+still a bit of bias left after cqn for gene length, i will use this as
+the covariate.</p>
+<pre class="r"><code>pwfs &lt;- 
+  c(toptables_cqn_bygroup, toptables_cqn_simple) %&gt;% 
+  lapply(function(y) {
+    
+    y %&gt;% 
+      with(
+        nullp(
+          DEgenes = structure(DE, names = gene_id), 
+          bias.data = length
+        )
+      )
+  })</code></pre>
+<p><img src="figure/analysis_adultbrain.rmd/unnamed-chunk-14-1.png" width="75%" height="75%" style="display: block; margin: auto;" /><img src="figure/analysis_adultbrain.rmd/unnamed-chunk-14-2.png" width="75%" height="75%" style="display: block; margin: auto;" /><img src="figure/analysis_adultbrain.rmd/unnamed-chunk-14-3.png" width="75%" height="75%" style="display: block; margin: auto;" /><img src="figure/analysis_adultbrain.rmd/unnamed-chunk-14-4.png" width="75%" height="75%" style="display: block; margin: auto;" /><img src="figure/analysis_adultbrain.rmd/unnamed-chunk-14-5.png" width="75%" height="75%" style="display: block; margin: auto;" /><img src="figure/analysis_adultbrain.rmd/unnamed-chunk-14-6.png" width="75%" height="75%" style="display: block; margin: auto;" /></p>
+<pre class="r"><code>goseq.results &lt;- 
+  pwfs %&gt;% 
+  lapply(function(y) {
+    goseq(y, gene2cat = GO) %&gt;% 
+      as_tibble() %&gt;% 
+      mutate(
+        FDR = p.adjust(over_represented_pvalue, method = &quot;fdr&quot;)
+        ) %&gt;% 
+      dplyr::select(-under_represented_pvalue) %&gt;% 
+      left_join(GOdf %&gt;% dplyr::select(category = gs_name, gs_subcat) %&gt;% unique) %&gt;% 
+      dplyr::select(GO = category, GO_subcat = gs_subcat, everything())
+  })
+
+goseq.results %&lt;&gt;% 
+  map2(names(.), ~.x %&gt;% mutate(coef = .y))  </code></pre>
+</div>
+<div id="hmp" class="section level2">
+<h2>HMP</h2>
+<p>Since I’m not detecting any significant gene sets in the EOfAD-like
+mutants, I need to try another method. I will use the harmonic mean p
+val method which combines indivisual p vals from 3 gene set enrichmen
+analysis methods: fry, camera and gsea.</p>
+<pre class="r"><code># a function to run the HMP calculation. 
+runHMP = function(
+  geneset, 
+  logCPM,
+  toptable, 
+  design, 
+  contrasts
+  
+) {
+ 
+  # run fry
+  fry &lt;- 
+    colnames(contrasts) %&gt;% 
+  sapply(function(y) {
+    logCPM %&gt;%
+      limma::fry(
+        index = geneset,
+        design = design,
+        contrast = contrasts[,y],
+        sort = &quot;mixed&quot;
+      ) %&gt;%
+      rownames_to_column(&quot;pathway&quot;) %&gt;%
+      as_tibble() %&gt;% 
+      mutate(
+        coef = y, 
+        coef = str_remove(coef, pattern = &quot; - wt.+&quot;)
+        ) 
+  }, simplify = FALSE)
+
+  # run camera
+  camera &lt;- colnames(contrasts) %&gt;% 
+  sapply(function(y) {
+    logCPM %&gt;%
+      limma::camera(
+        index = geneset,
+        design = design,
+        contrast = contrasts[,y]
+      ) %&gt;%
+      rownames_to_column(&quot;pathway&quot;) %&gt;%
+      as_tibble() %&gt;% 
+      mutate(coef = y, 
+             coef = str_remove(coef, pattern = &quot; - wt.+&quot;)) 
+  }, simplify = FALSE)
+  
+  # create ranks for fgsea
+  ranks &lt;-
+    sapply(toptable, function(y) {
+      y %&gt;%
+        mutate(rankstat = sign(logFC) * log10(1/PValue)) %&gt;%
+        arrange(rankstat) %&gt;%
+        dplyr::select(c(&quot;gene_id&quot;, &quot;rankstat&quot;)) %&gt;% #only want the Pvalue with sign
+        with(structure(rankstat, names = gene_id)) %&gt;%
+        rev() # reverse so the start of the list is upregulated genes
+    }, simplify = FALSE)
+  
+  # run fgsea
+  set.seed(1)
+  fgsea &lt;- ranks %&gt;% 
+  sapply(function(x){
+    fgseaMultilevel(stats = x, 
+                    pathways = geneset) %&gt;%
+      as_tibble() %&gt;%
+      dplyr::rename(FDR = padj) %&gt;%
+      mutate(padj = p.adjust(pval, &quot;bonferroni&quot;)) %&gt;%
+      dplyr::select(pathway, pval, FDR, padj, everything()) %&gt;%
+      arrange(pval) 
+  }, simplify = F)
+  
+  fgsea %&lt;&gt;% 
+    map2(names(.), ~.x %&gt;% mutate(coef = .y))  
+
+  
+  # calculate HMP
+  hmp &lt;- 
+    fry %&gt;%
+    bind_rows() %&gt;%
+    dplyr::select(pathway, PValue.Mixed, coef) %&gt;%
+    dplyr::rename(fry_p = PValue.Mixed) %&gt;%
+    left_join(camera %&gt;%
+                bind_rows() %&gt;%
+                dplyr::select(pathway, PValue, coef),
+              by = c(&quot;pathway&quot;, &quot;coef&quot;)) %&gt;%
+    dplyr::rename(camera_p = PValue) %&gt;%
+    left_join(fgsea %&gt;%
+                bind_rows() %&gt;%
+                dplyr::select(pathway, pval, coef),
+              by = c(&quot;pathway&quot;, &quot;coef&quot;)) %&gt;%
+    dplyr::rename(fgsea_p = pval) %&gt;%
+    bind_rows() %&gt;%
+    nest(p = one_of(c(&quot;fry_p&quot;, &quot;camera_p&quot;, &quot;fgsea_p&quot;))) %&gt;%
+    mutate(harmonic_p = vapply(p, function(x){
+      x &lt;- unlist(x)
+      x &lt;- x[!is.na(x)]
+      p.hmp(x, L = 4)
+    }, numeric(1))
+    ) %&gt;%
+    unnest() %&gt;%
+    mutate(harmonic_p_FDR = p.adjust(harmonic_p, &quot;fdr&quot;),
+           sig = harmonic_p_FDR &lt; 0.05) %&gt;%
+    arrange(harmonic_p)
+  
+  return( 
+    list(
+      hmp = hmp,
+      fgsea = fgsea
+    ))
+}</code></pre>
+<div id="kegg" class="section level3">
+<h3>KEGG</h3>
+<pre class="r"><code>hmp.adult.kegg.cqn.bygroup &lt;- runHMP(
+  geneset = KEGG, logCPM = logCPM, 
+  toptable = toptables_cqn_bygroup, 
+  design = design.bygroup, contrasts = contrasts
+  )
+
+sig.kegg.morethan1 &lt;- hmp.adult.kegg.cqn.bygroup$hmp %&gt;% 
+  dplyr::filter(harmonic_p_FDR &lt; 0.05) %&gt;% 
+  group_by(pathway) %&gt;% 
+  summarise(n = n()) %&gt;% 
+  ungroup %&gt;% 
+  dplyr::filter(n &gt; 1)
+
+hmp.adult.kegg.cqn.bygroup$hmp %&gt;%   
+  dplyr::filter(pathway %in% sig.kegg.morethan1$pathway) %&gt;% 
+  left_join(sig.kegg.morethan1) %&gt;% 
+  mutate(
+    sex = case_when(
+      grepl(coef, pattern = &quot;_F&quot;) ~ &quot;female&quot;, 
+      grepl(coef, pattern = &quot;_M&quot;) ~ &quot;male&quot;
+    )
+  ) %&gt;% 
+  ggplot(
+    aes(
+      x = coef, 
+      y = reorder(pathway, n-harmonic_p)
+      )) +
+  geom_tile(
+    aes(fill = -log10(harmonic_p), alpha = sig)
+  ) +
+  geom_label(
+    aes(label = signif(harmonic_p_FDR, 2))
+  ) +
+  scale_fill_viridis_c() +
+  facet_wrap(~sex, scales = &quot;free_x&quot;)</code></pre>
+<p><img src="figure/analysis_adultbrain.rmd/unnamed-chunk-16-1.png" width="75%" height="75%" style="display: block; margin: auto;" /></p>
+<div id="oxidative-phosphorylation" class="section level4">
+<h4>oxidative phosphorylation</h4>
+<pre class="r"><code>oxphos.adult &lt;- toptables_cqn_bygroup %&gt;% 
+  bind_rows() %&gt;% 
+  dplyr::filter(gene_id %in% KEGG$KEGG_OXIDATIVE_PHOSPHORYLATION) %&gt;% 
+  dplyr::select(gene_name, logFC, coef) %&gt;% 
+  dplyr::distinct(gene_name, coef, .keep_all = T) %&gt;% 
+  spread(key = &quot;coef&quot;, value = &quot;logFC&quot;) %&gt;% 
+  column_to_rownames(&quot;gene_name&quot;) %&gt;% 
+  as.matrix()</code></pre>
+<pre class="r"><code>#png(&quot;output/plots/new_KEGG_hms/oxphos.png&quot;, width = 8, height = 12, units = &quot;cm&quot;, res = 300)
+pheatmap(
+  oxphos.adult, 
+  color = colorRampPalette(rev(brewer.pal(n = 7, name = &quot;RdBu&quot;)))(100), 
+  breaks = seq(-0.4,0.4, by = 0.01), 
+  cellwidth = 20, 
+  treeheight_row = 0, 
+  show_rownames = FALSE
+  )</code></pre>
+<p><img src="figure/analysis_adultbrain.rmd/unnamed-chunk-18-1.png" width="75%" height="75%" style="display: block; margin: auto;" /></p>
+<pre class="r"><code>#dev.off()</code></pre>
+<p>upset plot to show the overlap of leading edge genes</p>
+<pre class="r"><code>#png(&quot;output/plots/new_KEGG_hms/oxphos_upset.png&quot;, width = 3.5, height = 3.5, units = &quot;cm&quot;, res = 300)
+hmp.adult.kegg.cqn.bygroup$fgsea %&gt;% 
+  bind_rows() %&gt;% 
+  dplyr::filter(coef != &quot;MPSIIIB_M&quot;) %&gt;% 
+  dplyr::filter(pathway == &quot;KEGG_OXIDATIVE_PHOSPHORYLATION&quot;) %&gt;% 
+  dplyr::select(coef, leadingEdge) %&gt;% 
+  split(f = .$coef) %&gt;% 
+  lapply(function(y) {y$leadingEdge[[1]]}) %&gt;% 
+  fromList() %&gt;% 
+  upset(
+    order.by = &quot;freq&quot;, 
+    #mb.ratio = c(0.5,0.5),
+    text.scale = 0.4, 
+    point.size = 0.2,
+    line.size = 0.2, 
+    set_size.show = FALSE
+  )</code></pre>
+<p><img src="figure/analysis_adultbrain.rmd/unnamed-chunk-19-1.png" width="75%" height="75%" style="display: block; margin: auto;" /></p>
+<pre class="r"><code>#dev.off()</code></pre>
+<p>shared leading edge genes:</p>
+<pre class="r"><code>leadingedge.oxphos &lt;- hmp.adult.kegg.cqn.bygroup$fgsea %&gt;% 
+  bind_rows() %&gt;% 
+  dplyr::filter(pathway == &quot;KEGG_OXIDATIVE_PHOSPHORYLATION&quot;) %&gt;% 
+  dplyr::filter(coef != &quot;MPSIIIB_M&quot;) %&gt;% 
+  dplyr::select(coef, leadingEdge) %&gt;% 
+  split(f = .$coef) %&gt;% 
+  lapply(function(y) {y$leadingEdge[[1]]}) 
+
+
+#png(&quot;output/plots/new_KEGG_hms/oxphos_leadingedge.png&quot;, width = 8, height = 6, units = &quot;cm&quot;, res = 300)
+toptables_cqn_bygroup %&gt;% 
+  bind_rows() %&gt;% 
+  dplyr::filter(gene_id %in% Reduce(intersect, leadingedge.oxphos)) %&gt;% 
+  dplyr::select(gene_name, logFC, coef) %&gt;% 
+  dplyr::filter(coef != &quot;MPSIIIB_M&quot;) %&gt;% 
+  dplyr::distinct(gene_name, coef, .keep_all = T) %&gt;% 
+  spread(key = &quot;coef&quot;, value = &quot;logFC&quot;) %&gt;% 
+  column_to_rownames(&quot;gene_name&quot;) %&gt;% 
+  as.matrix() %&gt;% 
+  pheatmap(
+    color = colorRampPalette(rev(brewer.pal(n = 5, name = &quot;RdBu&quot;)))(100), 
+    breaks = seq(-0.4, 0.4, by = 0.1), 
+    cluster_cols = F, 
+    cellwidth = 20,
+    treeheight_row = 0, 
+    fontsize = 6, 
+    border_color = &quot;white&quot;, 
+    height = 20
+  )</code></pre>
+<p><img src="figure/analysis_adultbrain.rmd/unnamed-chunk-20-1.png" width="75%" height="75%" style="display: block; margin: auto;" /></p>
+<pre class="r"><code>#dev.off()</code></pre>
+</div>
+<div id="lysosome" class="section level4">
+<h4>lysosome</h4>
+<pre class="r"><code>lyso.adult &lt;- toptables_cqn_bygroup %&gt;% 
+  bind_rows() %&gt;% 
+  dplyr::filter(gene_id %in% KEGG$KEGG_LYSOSOME) %&gt;% 
+  dplyr::select(gene_name, logFC, coef) %&gt;% 
+  dplyr::distinct(gene_name, coef, .keep_all = T) %&gt;% 
+  spread(key = &quot;coef&quot;, value = &quot;logFC&quot;) %&gt;% 
+  column_to_rownames(&quot;gene_name&quot;) %&gt;% 
+  as.matrix()</code></pre>
+<pre class="r"><code>#png(&quot;output/plots/new_KEGG_hms/lyso.png&quot;, width = 8, height = 12, units = &quot;cm&quot;, res = 300)
+pheatmap(
+  lyso.adult, 
+  color = colorRampPalette(rev(brewer.pal(n = 7, name = &quot;RdBu&quot;)))(100), 
+  breaks = seq(-0.5,0.5, by = 0.01), 
+  cellwidth = 20, 
+  treeheight_row = 0, 
+  show_rownames = FALSE
+  )</code></pre>
+<p><img src="figure/analysis_adultbrain.rmd/unnamed-chunk-22-1.png" width="75%" height="75%" style="display: block; margin: auto;" /></p>
+<pre class="r"><code>#dev.off()</code></pre>
+<p>upset plot to show the overlap of leading edge genes</p>
+<pre class="r"><code>#png(&quot;output/plots/new_KEGG_hms/lyso_upset.png&quot;, width = 3.5, height = 3.5, units = &quot;cm&quot;, res = 300)
+hmp.adult.kegg.cqn.bygroup$fgsea %&gt;% 
+  bind_rows() %&gt;% 
+  dplyr::filter(pathway == &quot;KEGG_LYSOSOME&quot;) %&gt;% 
+  dplyr::select(coef, leadingEdge) %&gt;% 
+  split(f = .$coef) %&gt;% 
+  lapply(function(y) {y$leadingEdge[[1]]}) %&gt;%
+  fromList() %&gt;% 
+  upset(
+    order.by = &quot;freq&quot;, 
+    #mb.ratio = c(0.5,0.5),
+    text.scale = 0.4, 
+    point.size = 0.2,
+    line.size = 0.2, 
+    set_size.show = FALSE
+  )</code></pre>
+<p><img src="figure/analysis_adultbrain.rmd/unnamed-chunk-23-1.png" width="75%" height="75%" style="display: block; margin: auto;" /></p>
+<pre class="r"><code>#dev.off()</code></pre>
+<p>leading edge genes shared</p>
+<pre class="r"><code>leadingedge.lyso &lt;- hmp.adult.kegg.cqn.bygroup$fgsea %&gt;% 
+  bind_rows() %&gt;% 
+  dplyr::filter(pathway == &quot;KEGG_LYSOSOME&quot;) %&gt;% 
+  dplyr::select(coef, leadingEdge) %&gt;% 
+  split(f = .$coef) %&gt;% 
+  lapply(function(y) {y$leadingEdge[[1]]}) 
+
+#png(&quot;output/plots/new_KEGG_hms/lyso_leadingedge.png&quot;, width = 8, height = 6, units = &quot;cm&quot;, res = 300)
+toptables_cqn_bygroup %&gt;% 
+  bind_rows() %&gt;% 
+  dplyr::filter(gene_id %in% Reduce(intersect, leadingedge.lyso)) %&gt;% 
+  dplyr::select(gene_name, logFC, coef) %&gt;% 
+  dplyr::distinct(gene_name, coef, .keep_all = T) %&gt;% 
+  spread(key = &quot;coef&quot;, value = &quot;logFC&quot;) %&gt;% 
+  column_to_rownames(&quot;gene_name&quot;) %&gt;% 
+  as.matrix() %&gt;% 
+  pheatmap(
+    color = colorRampPalette(rev(brewer.pal(n = 5, name = &quot;RdBu&quot;)))(100), 
+    breaks = seq(-0.4, 0.4, by = 0.1), 
+    cluster_cols = F, 
+    cellwidth = 20,
+    treeheight_row = 0, 
+    fontsize = 6, 
+    border_color = &quot;white&quot;, 
+    height = 20
+  )</code></pre>
+<p><img src="figure/analysis_adultbrain.rmd/unnamed-chunk-24-1.png" width="75%" height="75%" style="display: block; margin: auto;" /></p>
+<pre class="r"><code>#dev.off()</code></pre>
+</div>
+<div id="ribosome" class="section level4">
+<h4>ribosome</h4>
+<pre class="r"><code>ribo.adult &lt;- toptables_cqn_bygroup %&gt;% 
+  bind_rows() %&gt;% 
+  dplyr::filter(gene_id %in% KEGG$KEGG_RIBOSOME) %&gt;% 
+  dplyr::select(gene_name, logFC, coef) %&gt;% 
+  dplyr::distinct(gene_name, coef, .keep_all = T) %&gt;% 
+  spread(key = &quot;coef&quot;, value = &quot;logFC&quot;) %&gt;% 
+  column_to_rownames(&quot;gene_name&quot;) %&gt;% 
+  as.matrix()</code></pre>
+<pre class="r"><code>#png(&quot;output/plots/new_KEGG_hms/ribo.png&quot;, width = 8, height = 12, units = &quot;cm&quot;, res = 300)
+pheatmap(
+  ribo.adult, 
+  color = colorRampPalette(rev(brewer.pal(n = 7, name = &quot;RdBu&quot;)))(100), 
+  breaks = seq(-0.5,0.5, by = 0.01), 
+  cellwidth = 20, 
+  treeheight_row = 0, 
+  show_rownames = FALSE, 
+  border_color = NA
+  )</code></pre>
+<p><img src="figure/analysis_adultbrain.rmd/unnamed-chunk-26-1.png" width="75%" height="75%" style="display: block; margin: auto;" /></p>
+<pre class="r"><code>#dev.off()</code></pre>
+<p>upset plot to show the overlap of leading edge genes</p>
+<pre class="r"><code># png(&quot;output/plots/new_KEGG_hms/ribo_upset.png&quot;, width = 3.5, height = 3.5, units = &quot;cm&quot;, res = 300)
+hmp.adult.kegg.cqn.bygroup$fgsea %&gt;% 
+  bind_rows() %&gt;% 
+  dplyr::filter(pathway == &quot;KEGG_RIBOSOME&quot;) %&gt;% 
+  dplyr::filter(coef != &quot;EOfADlike_M&quot;) %&gt;% 
+  dplyr::select(coef, leadingEdge) %&gt;% 
+  split(f = .$coef) %&gt;% 
+  lapply(function(y) {y$leadingEdge[[1]]}) %&gt;%
+  fromList() %&gt;% 
+  upset(
+    order.by = &quot;freq&quot;, 
+    #mb.ratio = c(0.5,0.5),
+    text.scale = 0.4, 
+    point.size = 0.2,
+    line.size = 0.2, 
+    set_size.show = FALSE
+  )</code></pre>
+<p><img src="figure/analysis_adultbrain.rmd/unnamed-chunk-27-1.png" width="75%" height="75%" style="display: block; margin: auto;" /></p>
+<pre class="r"><code>#dev.off()</code></pre>
+<p>shared leadging edge genes</p>
+<pre class="r"><code>leadingedge.ribo &lt;- hmp.adult.kegg.cqn.bygroup$fgsea %&gt;% 
+  bind_rows() %&gt;% 
+  dplyr::filter(pathway == &quot;KEGG_RIBOSOME&quot;) %&gt;% 
+  dplyr::filter(coef != &quot;EOfADlike_M&quot;) %&gt;% 
+  dplyr::select(coef, leadingEdge) %&gt;% 
+  split(f = .$coef) %&gt;% 
+  lapply(function(y) {y$leadingEdge[[1]]}) 
+
+#png(&quot;output/plots/new_KEGG_hms/ribo_leadingedge.png&quot;, width = 8, height = 10, units = &quot;cm&quot;, res = 300)
+toptables_cqn_bygroup %&gt;% 
+  bind_rows() %&gt;% 
+  dplyr::filter(coef != &quot;EOfADlike_M&quot;) %&gt;% 
+  dplyr::filter(gene_id %in% Reduce(intersect, leadingedge.ribo)) %&gt;% 
+  dplyr::select(gene_name, logFC, coef) %&gt;% 
+  dplyr::distinct(gene_name, coef, .keep_all = T) %&gt;% 
+  spread(key = &quot;coef&quot;, value = &quot;logFC&quot;) %&gt;% 
+  column_to_rownames(&quot;gene_name&quot;) %&gt;% 
+  as.matrix() %&gt;% 
+  pheatmap(
+    color = colorRampPalette(rev(brewer.pal(n = 5, name = &quot;RdBu&quot;)))(100), 
+    breaks = seq(-0.4, 0.4, by = 0.1), 
+    cluster_cols = F, 
+    cellwidth = 20,
+    treeheight_row = 0, 
+    fontsize = 6, 
+    border_color = &quot;white&quot;, 
+    height = 22
+  )</code></pre>
+<p><img src="figure/analysis_adultbrain.rmd/unnamed-chunk-28-1.png" width="75%" height="75%" style="display: block; margin: auto;" /></p>
+<pre class="r"><code>#dev.off()</code></pre>
+</div>
+<div id="inflammation-gene-sets" class="section level4">
+<h4>inflammation gene sets</h4>
+<pre class="r"><code>plot.cell.type.hm = function(celltype.gs, plot.title) {
+
+  toptables_cqn_bygroup %&gt;%
+    bind_rows() %&gt;%
+    mutate(
+      exp = &quot;mRNA&quot;
+    ) %&gt;%
+    dplyr::select(
+      gene_name, logFC, PValue, FDR, coef, exp
+    ) %&gt;%
+    bind_rows(
+      toptables %&gt;%
+        bind_rows() %&gt;%
+        mutate(exp = &quot;protein&quot;) %&gt;%
+        dplyr::filter(coef != &quot;wt_M - wt_F&quot;) %&gt;%
+        dplyr::select(
+          gene_name, logFC, PValue = pval, FDR, coef, exp
+        )
+    ) %&gt;%
+    dplyr::filter(
+      gene_name %in% celltype.gs
+    ) %&gt;%
+    group_by(exp) %&gt;%
+
+    tidyHeatmap::heatmap(
+      # input data
+      .column = gene_name,
+      .row = coef,
+      .value = logFC,
+
+      # colours
+      palette_value = circlize::colorRamp2(
+        seq(-0.4, 0.4, length.out = 11),
+        rev(RColorBrewer::brewer.pal(11, &quot;RdBu&quot;))),
+      rect_gp = grid::gpar(col = &quot;#161616&quot;, lwd = 0.5),
+
+      # sizes
+      row_names_gp = gpar(fontsize = 14),
+      column_names_gp = gpar(fontsize = 14),
+      heatmap_width = unit(28, &quot;cm&quot;),
+      heatmap_height = unit(11, &quot;cm&quot;),
+
+      # dendro
+      cluster_rows = FALSE,
+      show_column_dend = F,
+      show_row_dend = F
+    ) %&gt;%
+    annotation_tile(exp, show_legend = FALSE) %&gt;%
+    wrap_heatmap() +
+    ggtitle(label = paste(plot.title))
+
+}</code></pre>
+</div>
+</div>
+<div id="fry-cell-types" class="section level3">
+<h3>fry: cell types</h3>
+<pre class="r"><code>fry.celltype.RNAseq &lt;- 
+  colnames(contrasts) %&gt;% 
+  sapply(function(y) {
+    logCPM %&gt;%
+      limma::fry(
+        index = cell_type_markers,
+        design = design.bygroup,
+        contrast = contrasts[,y],
+        sort = &quot;directional&quot;
+      ) %&gt;%
+      rownames_to_column(&quot;pathway&quot;) %&gt;%
+      as_tibble() %&gt;% 
+      mutate(
+        coef = y, 
+        coef = str_remove(coef, pattern = &quot; - wt.+&quot;) # cleanup the coef col
+      ) 
+  }, simplify = FALSE)
+
+
+fry.celltype.RNAseq %&gt;% 
+  bind_rows() %&gt;% 
+  mutate(
+    logpval = -log10(PValue), 
+    FDR = signif(FDR, 2)
+    ) %&gt;% 
+  tidyHeatmap::heatmap(
+    
+    .row = pathway, 
+    .column = coef, 
+    .value = logpval, 
+    
+    show_column_dend = F,
+    show_row_dend = F,
+    
+    col = viridis::viridis(30)
+  
+) %&gt;% 
+  layer_text(
+    .value = FDR, 
+    FDR &lt; 0.1
+    )</code></pre>
+<p><img src="figure/analysis_adultbrain.rmd/unnamed-chunk-30-1.png" width="75%" height="75%" style="display: block; margin: auto;" /></p>
+</div>
+</div>
+<div id="hmp-ire" class="section level2">
+<h2>HMP IRE</h2>
+<pre class="r"><code>hmp.adult.IREgenes.cqn.bygroup &lt;- runHMP(
+  geneset = ireGenes, logCPM = logCPM, 
+  toptable = toptables_cqn_bygroup, 
+  design = design.bygroup, contrasts = contrasts
+  )
+
+hmp.adult.IREgenes.cqn.bygroup$hmp %&gt;% 
+  mutate(
+    logpval = -log10(harmonic_p), 
+    harmonic_p_FDR = signif(harmonic_p_FDR, 2)
+    ) %&gt;% 
+  tidyHeatmap::heatmap(
+    
+    .row = pathway, 
+    .column = coef, 
+    .value = logpval, 
+    
+    show_column_dend = F,
+    show_row_dend = F,
+    
+    col = colorRamp2(seq(0, 4, length = 10), viridis::viridis(10))
+  ) %&gt;% 
+  layer_text(
+    .value = harmonic_p_FDR,
+    )</code></pre>
+<p><img src="figure/analysis_adultbrain.rmd/unnamed-chunk-31-1.png" width="75%" height="75%" style="display: block; margin: auto;" /></p>
+</div>
+</div>
+<div id="post-hoc-power-calc" class="section level1">
+<h1>Post-hoc power calc</h1>
+<pre class="r"><code>set.seed(2016)
+
+# convert CQN logCPM to counts. 
+mu &lt;- logCPM %&gt;% 
+  as.data.frame() %&gt;% 
+  rownames_to_column(&quot;gene_id&quot;) %&gt;% 
+  gather(key = &quot;sample&quot;, value = &quot;logCPM&quot;, colnames(x)) %&gt;%
+  dplyr::filter(grepl(sample, pattern = &quot;wt&quot;)) %&gt;% 
+  left_join(
+    x$samples %&gt;% dplyr::select(sample, lib.size)
+    ) %&gt;% 
+  mutate(
+    CPM = 10^logCPM, 
+    counts = CPM * lib.size
+    ) %&gt;% 
+  as_tibble() %&gt;% 
+  dplyr::select(-logCPM, - lib.size, -CPM) %&gt;% 
+  pivot_wider(
+    names_from = &quot;sample&quot;, values_from = &quot;counts&quot;) %&gt;% 
+  column_to_rownames(&quot;gene_id&quot;) %&gt;% 
+  rowMeans()
+
+
+disp &lt;- logCPM %&gt;% 
+  as.data.frame() %&gt;% 
+  rownames_to_column(&quot;gene_id&quot;) %&gt;% 
+  gather(key = &quot;sample&quot;, value = &quot;logCPM&quot;, colnames(x)) %&gt;%
+  dplyr::filter(grepl(sample, pattern = &quot;wt&quot;)) %&gt;% 
+  left_join(
+    x$samples %&gt;% dplyr::select(sample, lib.size)
+    ) %&gt;% 
+  mutate(
+    CPM = 10^logCPM, 
+    counts = CPM * lib.size
+    ) %&gt;% 
+  as_tibble() %&gt;% 
+  dplyr::select(-logCPM, - lib.size, -CPM) %&gt;% 
+  pivot_wider(
+    names_from = &quot;sample&quot;, values_from = &quot;counts&quot;) %&gt;% 
+  column_to_rownames(&quot;gene_id&quot;) %&gt;% 
+  DGEList() %&gt;% 
+  estimateDisp() %&gt;% 
+  .$tagwise.dispersion
+
+fc &lt;- function(y){exp(rnorm(y, log(1), 0.5*log(2)))}
+
+power &lt;- ssizeRNA_vary(nGenes = dim(x)[1], # Num detectable genes
+              pi0 = 0.9, # Proportion of non-DE genes
+              m = 50, # pseudo sample size
+              mu = mu, # Average read count for each gene in control group. Calculated from this current dataset)
+              disp = disp, # Dispersion parameter for each gene
+              fc = fc, # Fold change per gene
+              fdr = 0.05, # FDR level to control
+              power = 0.9, # power level
+              maxN = 40,
+              replace = T
+                ) </code></pre>
+<p><img src="figure/analysis_adultbrain.rmd/unnamed-chunk-32-1.png" width="75%" height="75%" style="display: block; margin: auto;" /></p>
+<pre class="r"><code>power$power %&gt;% 
+  as_tibble() %&gt;% 
+  set_colnames(c(&quot;n&quot;, &quot;Power&quot;)) %&gt;% 
+  ggplot(aes(x = n, y = Power)) +
+  geom_point() + 
+  geom_line() +
+  scale_x_continuous(limits = c(0,20))</code></pre>
+<p><img src="figure/analysis_adultbrain.rmd/unnamed-chunk-32-2.png" width="75%" height="75%" style="display: block; margin: auto;" /></p>
+<div id="data-export" class="section level2">
+<h2>Data export</h2>
+<pre class="r"><code>x %&gt;% saveRDS(&quot;data/R_objects/adult_brain/dge.rds&quot;)
+logCPM %&gt;% saveRDS(&quot;data/R_objects/adult_brain/logcpm.rds&quot;)
+toptables_cqn_bygroup %&gt;% saveRDS(&quot;data/R_objects/adult_brain/toptablescqn_bysex.rds&quot;)
+fry.celltype.RNAseq %&gt;% saveRDS(&quot;data/R_objects/adult_brain/fry_cell_RNAseq.rds&quot;)
+hmp.adult.IREgenes.cqn.bygroup %&gt;% saveRDS(&quot;data/R_objects/adult_brain/hmp_ire.rds&quot;)
+hmp.adult.kegg.cqn.bygroup %&gt;% saveRDS(&quot;data/R_objects/adult_brain/hmp.kegg.rna.rds&quot;) </code></pre>
+<!-- ## extra plots -->
+<!-- ```{r} -->
+<!-- hmp.fry %>%  -->
+<!--   dplyr::filter(pathway %in% sigpaths) %>%  -->
+<!--   arrange(harmonic_p_FDR) %>%  -->
+<!--   mutate(order = case_when( -->
+<!--     pathway %in% c("KEGG_OXIDATIVE_PHOSPHORYLATION", "KEGG_RIBOSOME") ~ 1, -->
+<!--     pathway == "KEGG_PARKINSONS_DISEASE" ~ 2, -->
+<!--     pathway == "KEGG_LYSOSOME" ~ 3, -->
+<!--     pathway == "KEGG_OTHER_GLYCAN_DEGRADATION" ~ 4, -->
+<!--     pathway == "KEGG_AMINO_SUGAR_AND_NUCLEOTIDE_SUGAR_METABOLISM" ~ 5, -->
+<!--     pathway == "KEGG_GLYCOSAMINOGLYCAN_DEGRADATION" ~ 6, -->
+<!--     TRUE ~7 -->
+<!--            ) -->
+<!--     ) %>%  -->
+<!--   ggplot(aes(x = coef, y = reorder(pathway, -order))) +  -->
+<!--   geom_tile(aes(fill = -log10(harmonic_p),  -->
+<!--                 alpha = sig)) + -->
+<!--   geom_label(aes(label = signif(harmonic_p_FDR, digits = 2)),  -->
+<!--              fill = NA) + -->
+<!--   scale_fill_viridis_c() + -->
+<!--   labs(y = "KEGG gene set",  -->
+<!--        x = "",  -->
+<!--        alpha = "FDR p < 0.05") + -->
+<!--   theme_classic() -->
+<!-- ``` -->
+<!-- # compare with Nhis experiment -->
+<!-- ```{r} -->
+<!-- x.nhi <- readRDS("data/R_objects/adult_brain/dgeNhi.rds") -->
+<!-- logCPM.nhi <- readRDS("data/R_objects/adult_brain/logcpmNhi.rds") -->
+<!-- toptable.cqn.nhi <- readRDS("data/R_objects/adult_brain/toptablescqnNhi.rds") -->
+<!-- hmp.ire.nhi <- readRDS("data/R_objects/adult_brain/hmp_ireNhi.rds") -->
+<!-- fry.go.nhi <- readRDS("data/R_objects/adult_brain/fryGoNhi.rds") -->
+<!-- hmp.kegg.nhi <- readRDS("data/R_objects/adult_brain/hmp_keggNhi.rds") -->
+<!-- ``` -->
+<!-- ```{r} -->
+<!-- toptable.cqn.nhi <- toptable.cqn.nhi$`Q96_K97del/+` %<>%  -->
+<!--   mutate(coef = "EOfAD-like/+ exp 2") -->
+<!-- ``` -->
+<!-- ```{r} -->
+<!-- png("output/plots/oxphos_kegg_adultBrain2.png", width = 7, height = 10, units = "cm", res = 300) -->
+<!-- toptables_cqn %>%  -->
+<!--   bind_rows() %>%  -->
+<!--   bind_rows(toptable.cqn.nhi) %>%  -->
+<!--   dplyr::filter(gene_id %in% KEGG$KEGG_OXIDATIVE_PHOSPHORYLATION) %>%  -->
+<!--   dplyr::select(gene_name, logFC, coef) %>%  -->
+<!--   dplyr::distinct(gene_name, coef, .keep_all = T) %>%  -->
+<!--   spread(key = "coef", value = "logFC") %>%  -->
+<!--   column_to_rownames("gene_name") %>%  -->
+<!--   na.omit %>%  -->
+<!--   pheatmap(color = colorRampPalette(rev(brewer.pal(n = 5, -->
+<!--                                                name = "RdBu")))(100), -->
+<!--            breaks = seq(-0.4,0.4, length.out = 100),  -->
+<!--            #cellheight = 30, cellwidth = 12, -->
+<!--            border_color = NA,  -->
+<!--            angle_col = 45, -->
+<!--            show_rownames = F, -->
+<!--            cluster_rows = T, -->
+<!--            treeheight_row = 0, treeheight_col = 0 -->
+<!--            ) -->
+<!-- dev.off() -->
+<!-- ``` -->
+<!-- ```{r} -->
+<!-- png("output/plots/lyso_kegg_adultBrain2.png", width = 7, height = 10, units = "cm", res = 300) -->
+<!-- toptables_cqn %>%  -->
+<!--   bind_rows() %>%  -->
+<!--   bind_rows(toptable.cqn.nhi) %>%  -->
+<!--   dplyr::filter(gene_id %in% KEGG$KEGG_LYSOSOME) %>%  -->
+<!--   dplyr::select(gene_name, logFC, coef) %>%  -->
+<!--   dplyr::distinct(gene_name, coef, .keep_all = T) %>%  -->
+<!--   spread(key = "coef", value = "logFC") %>%  -->
+<!--   column_to_rownames("gene_name") %>%  -->
+<!--   na.omit %>%  -->
+<!--   pheatmap(color = colorRampPalette(rev(brewer.pal(n = 5, -->
+<!--                                                name = "RdBu")))(100), -->
+<!--            breaks = seq(-0.5,0.5, length.out = 100),  -->
+<!--            #cellheight = 30, cellwidth = 12, -->
+<!--            border_color = NA,  -->
+<!--            angle_col = 45, -->
+<!--            show_rownames = F, -->
+<!--            cluster_rows = T, -->
+<!--            treeheight_row = 0, treeheight_col = 0 -->
+<!--            ) -->
+<!-- dev.off() -->
+<!-- ``` -->
+<!-- ```{r} -->
+<!-- png("output/plots/complement__adultBrain2.png", width = 7, height = 10, units = "cm", res = 300) -->
+<!-- toptables_cqn %>%  -->
+<!--   bind_rows() %>%  -->
+<!--   bind_rows(toptable.cqn.nhi) %>%  -->
+<!--   dplyr::filter(gene_id %in% KEGG$KEGG_COMPLEMENT_AND_COAGULATION_CASCADES) %>%  -->
+<!--   dplyr::select(gene_name, logFC, coef) %>%  -->
+<!--   dplyr::distinct(gene_name, coef, .keep_all = T) %>%  -->
+<!--   spread(key = "coef", value = "logFC") %>%  -->
+<!--   column_to_rownames("gene_name") %>%  -->
+<!--   na.omit %>%  -->
+<!--   pheatmap(color = colorRampPalette(rev(brewer.pal(n = 5, -->
+<!--                                                name = "RdBu")))(100), -->
+<!--            breaks = seq(-0.75,0.75, length.out = 100),  -->
+<!--            #cellheight = 30, cellwidth = 12, -->
+<!--            border_color = NA,  -->
+<!--            angle_col = 45, -->
+<!--            show_rownames = F, -->
+<!--            cluster_rows = T, -->
+<!--            treeheight_row = 0, treeheight_col = 0 -->
+<!--            ) -->
+<!-- dev.off() -->
+<!-- ``` -->
+<!-- ```{r} -->
+<!-- png("output/plots/complement__adultBrain2.png", width = 7, height = 10, units = "cm", res = 300) -->
+<!-- toptables_cqn %>%  -->
+<!--   bind_rows() %>%  -->
+<!--   bind_rows(toptable.cqn.nhi) %>%  -->
+<!--   dplyr::filter(gene_id %in% GO$GO_IRON_ION_BINDING) %>%  -->
+<!--   dplyr::select(gene_name, logFC, coef) %>%  -->
+<!--   dplyr::distinct(gene_name, coef, .keep_all = T) %>%  -->
+<!--   spread(key = "coef", value = "logFC") %>%  -->
+<!--   column_to_rownames("gene_name") %>%  -->
+<!--   na.omit %>%  -->
+<!--   pheatmap(color = colorRampPalette(rev(brewer.pal(n = 5, -->
+<!--                                                name = "RdBu")))(100), -->
+<!--            breaks = seq(-0.75,0.75, length.out = 100),  -->
+<!--            #cellheight = 30, cellwidth = 12, -->
+<!--            border_color = NA,  -->
+<!--            angle_col = 45, -->
+<!--            show_rownames = F, -->
+<!--            cluster_rows = T, -->
+<!--            treeheight_row = 0, treeheight_col = 0 -->
+<!--            ) -->
+<!-- dev.off() -->
+<!-- ``` -->
+<br>
+<p>
+<button type="button" class="btn btn-default btn-workflowr btn-workflowr-sessioninfo" data-toggle="collapse" data-target="#workflowr-sessioninfo" style="display: block;">
+<span class="glyphicon glyphicon-wrench" aria-hidden="true"></span>
+Session information
+</button>
+</p>
+<div id="workflowr-sessioninfo" class="collapse">
+<pre class="r"><code>sessionInfo()</code></pre>
+<pre><code>R version 4.3.2 (2023-10-31)
+Platform: aarch64-apple-darwin20 (64-bit)
+Running under: macOS Sonoma 14.3
+
+Matrix products: default
+BLAS:   /Library/Frameworks/R.framework/Versions/4.3-arm64/Resources/lib/libRblas.0.dylib 
+LAPACK: /Library/Frameworks/R.framework/Versions/4.3-arm64/Resources/lib/libRlapack.dylib;  LAPACK version 3.11.0
+
+locale:
+[1] en_US.UTF-8/en_US.UTF-8/en_US.UTF-8/C/en_US.UTF-8/en_US.UTF-8
+
+time zone: Australia/Adelaide
+tzcode source: internal
+
+attached base packages:
+ [1] stats4    splines   grid      stats     graphics  grDevices utils    
+ [8] datasets  methods   base     
+
+other attached packages:
+ [1] ensembldb_2.26.0        AnnotationFilter_1.26.0 GenomicFeatures_1.54.4 
+ [4] AnnotationDbi_1.64.1    Biobase_2.62.0          GenomicRanges_1.54.1   
+ [7] GenomeInfoDb_1.38.8     IRanges_2.36.0          S4Vectors_0.40.2       
+[10] ssizeRNA_1.3.2          harmonicmeanp_3.0.1     FMStable_0.1-4         
+[13] kableExtra_1.4.0        cqn_1.48.0              quantreg_5.97          
+[16] SparseM_1.81            preprocessCore_1.64.0   nor1mix_1.3-3          
+[19] mclust_6.1              fgsea_1.28.0            goseq_1.54.0           
+[22] geneLenDataBase_1.38.0  BiasedUrn_2.0.11        edgeR_4.0.16           
+[25] limma_3.58.1            UpSetR_1.4.0            circlize_0.4.16        
+[28] tidyHeatmap_1.10.2      ComplexHeatmap_2.18.0   RColorBrewer_1.1-3     
+[31] ggfortify_0.4.16        ggrepel_0.9.5           msigdbr_7.5.1          
+[34] ggpubr_0.6.0            pheatmap_1.0.12         scales_1.3.0           
+[37] pander_0.6.5            AnnotationHub_3.10.1    BiocFileCache_2.10.2   
+[40] dbplyr_2.5.0            ngsReports_2.4.0        patchwork_1.2.0        
+[43] BiocGenerics_0.48.1     readxl_1.4.3            magrittr_2.0.3         
+[46] lubridate_1.9.3         forcats_1.0.0           stringr_1.5.1          
+[49] dplyr_1.1.4             purrr_1.0.2             readr_2.1.5            
+[52] tidyr_1.3.1             tibble_3.2.1            ggplot2_3.5.0          
+[55] tidyverse_2.0.0         workflowr_1.7.1        
+
+loaded via a namespace (and not attached):
+  [1] ProtGenerics_1.34.0           fs_1.6.3                     
+  [3] matrixStats_1.3.0             bitops_1.0-7                 
+  [5] httr_1.4.7                    doParallel_1.0.17            
+  [7] tools_4.3.2                   backports_1.4.1              
+  [9] utf8_1.2.4                    R6_2.5.1                     
+ [11] DT_0.33                       lazyeval_0.2.2               
+ [13] mgcv_1.9-1                    GetoptLong_1.0.5             
+ [15] withr_3.0.0                   prettyunits_1.2.0            
+ [17] gridExtra_2.3                 cli_3.6.2                    
+ [19] Cairo_1.6-2                   labeling_0.4.3               
+ [21] sass_0.4.9                    Rsamtools_2.18.0             
+ [23] systemfonts_1.0.6             svglite_2.1.3                
+ [25] rstudioapi_0.16.0             RSQLite_2.3.6                
+ [27] generics_0.1.3                shape_1.4.6.1                
+ [29] BiocIO_1.12.0                 vroom_1.6.5                  
+ [31] car_3.1-2                     dendextend_1.17.1            
+ [33] GO.db_3.18.0                  Matrix_1.6-5                 
+ [35] fansi_1.0.6                   abind_1.4-5                  
+ [37] lifecycle_1.0.4               whisker_0.4.1                
+ [39] yaml_2.3.8                    carData_3.0-5                
+ [41] SummarizedExperiment_1.32.0   qvalue_2.34.0                
+ [43] SparseArray_1.2.4             blob_1.2.4                   
+ [45] promises_1.3.0                crayon_1.5.2                 
+ [47] lattice_0.22-6                cowplot_1.1.3                
+ [49] KEGGREST_1.42.0               pillar_1.9.0                 
+ [51] knitr_1.45                    rjson_0.2.21                 
+ [53] codetools_0.2-20              ssize.fdr_1.3                
+ [55] fastmatch_1.1-4               glue_1.7.0                   
+ [57] getPass_0.2-4                 data.table_1.15.4            
+ [59] vctrs_0.6.5                   png_0.1-8                    
+ [61] cellranger_1.1.0              gtable_0.3.4                 
+ [63] cachem_1.0.8                  xfun_0.43                    
+ [65] S4Arrays_1.2.1                mime_0.12                    
+ [67] survival_3.5-8                iterators_1.0.14             
+ [69] statmod_1.5.0                 interactiveDisplayBase_1.40.0
+ [71] nlme_3.1-164                  bit64_4.0.5                  
+ [73] progress_1.2.3                filelock_1.0.3               
+ [75] rprojroot_2.0.4               bslib_0.7.0                  
+ [77] colorspace_2.1-0              DBI_1.2.2                    
+ [79] tidyselect_1.2.1              processx_3.8.4               
+ [81] bit_4.0.5                     compiler_4.3.2               
+ [83] curl_5.2.1                    git2r_0.33.0                 
+ [85] xml2_1.3.6                    ggdendro_0.2.0               
+ [87] DelayedArray_0.28.0           plotly_4.10.4                
+ [89] rtracklayer_1.62.0            callr_3.7.6                  
+ [91] rappdirs_0.3.3                digest_0.6.35                
+ [93] rmarkdown_2.26                XVector_0.42.0               
+ [95] htmltools_0.5.8.1             pkgconfig_2.0.3              
+ [97] MatrixGenerics_1.14.0         highr_0.10                   
+ [99] fastmap_1.1.1                 rlang_1.1.3                  
+[101] GlobalOptions_0.1.2           htmlwidgets_1.6.4            
+[103] shiny_1.8.1.1                 farver_2.1.1                 
+[105] jquerylib_0.1.4               zoo_1.8-12                   
+[107] jsonlite_1.8.8                BiocParallel_1.36.0          
+[109] RCurl_1.98-1.14               GenomeInfoDbData_1.2.11      
+[111] munsell_0.5.1                 Rcpp_1.0.12                  
+[113] babelgene_22.9                viridis_0.6.5                
+[115] stringi_1.8.3                 zlibbioc_1.48.2              
+[117] MASS_7.3-60.0.1               plyr_1.8.9                   
+[119] parallel_4.3.2                Biostrings_2.70.3            
+[121] hms_1.1.3                     locfit_1.5-9.9               
+[123] ps_1.7.6                      ggsignif_0.6.4               
+[125] reshape2_1.4.4                biomaRt_2.58.2               
+[127] BiocVersion_3.18.1            XML_3.99-0.16.1              
+[129] evaluate_0.23                 BiocManager_1.30.22          
+[131] tzdb_0.4.0                    foreach_1.5.2                
+[133] httpuv_1.6.15                 MatrixModels_0.5-3           
+[135] clue_0.3-65                   broom_1.0.5                  
+[137] xtable_1.8-4                  restfulr_0.0.15              
+[139] rstatix_0.7.2                 later_1.3.2                  
+[141] viridisLite_0.4.2             memoise_2.0.1                
+[143] GenomicAlignments_1.38.2      cluster_2.1.6                
+[145] timechange_0.3.0             </code></pre>
+</div>
+</div>
+</div>
+
+
+<!-- Adjust MathJax settings so that all math formulae are shown using
+TeX fonts only; see
+https://docs.mathjax.org/en/latest/web/configuration.html. This will make
+the presentation more consistent at the cost of the webpage sometimes
+taking slightly longer to load. Note that this only works because the
+footer is added to webpages before the MathJax javascript. -->
+<script type="text/x-mathjax-config">
+  MathJax.Hub.Config({
+    "HTML-CSS": { availableFonts: ["TeX"] }
+  });
+</script>
+
+
+
+
+</div>
+</div>
+
+</div>
+
+<script>
+
+// add bootstrap table styles to pandoc tables
+function bootstrapStylePandocTables() {
+  $('tr.odd').parent('tbody').parent('table').addClass('table table-condensed');
+}
+$(document).ready(function () {
+  bootstrapStylePandocTables();
+});
+
+
+</script>
+
+<!-- tabsets -->
+
+<script>
+$(document).ready(function () {
+  window.buildTabsets("TOC");
+});
+
+$(document).ready(function () {
+  $('.tabset-dropdown > .nav-tabs > li').click(function () {
+    $(this).parent().toggleClass('nav-tabs-open');
+  });
+});
+</script>
+
+<!-- code folding -->
+<script>
+$(document).ready(function () {
+  window.initializeCodeFolding("hide" === "show");
+});
+</script>
+
+<script>
+$(document).ready(function ()  {
+
+    // temporarily add toc-ignore selector to headers for the consistency with Pandoc
+    $('.unlisted.unnumbered').addClass('toc-ignore')
+
+    // move toc-ignore selectors from section div to header
+    $('div.section.toc-ignore')
+        .removeClass('toc-ignore')
+        .children('h1,h2,h3,h4,h5').addClass('toc-ignore');
+
+    // establish options
+    var options = {
+      selectors: "h1,h2,h3",
+      theme: "bootstrap3",
+      context: '.toc-content',
+      hashGenerator: function (text) {
+        return text.replace(/[.\\/?&!#<>]/g, '').replace(/\s/g, '_');
+      },
+      ignoreSelector: ".toc-ignore",
+      scrollTo: 0
+    };
+    options.showAndHide = true;
+    options.smoothScroll = true;
+
+    // tocify
+    var toc = $("#TOC").tocify(options).data("toc-tocify");
+});
+</script>
+
+<!-- dynamically load mathjax for compatibility with self-contained -->
+<script>
+  (function () {
+    var script = document.createElement("script");
+    script.type = "text/javascript";
+    script.src  = "https://mathjax.rstudio.com/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML";
+    document.getElementsByTagName("head")[0].appendChild(script);
+  })();
+</script>
+
+</body>
+</html>

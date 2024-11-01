@@ -1,0 +1,3452 @@
+<!DOCTYPE html>
+
+<html>
+
+<head>
+
+<meta charset="utf-8" />
+<meta name="generator" content="pandoc" />
+<meta http-equiv="X-UA-Compatible" content="IE=EDGE" />
+
+
+<meta name="author" content="Karissa Barthelson" />
+
+<meta name="date" content="2024-07-29" />
+
+<title>proteomics</title>
+
+<script src="site_libs/header-attrs-2.26/header-attrs.js"></script>
+<script src="site_libs/jquery-3.6.0/jquery-3.6.0.min.js"></script>
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<link href="site_libs/bootstrap-3.3.5/css/cosmo.min.css" rel="stylesheet" />
+<script src="site_libs/bootstrap-3.3.5/js/bootstrap.min.js"></script>
+<script src="site_libs/bootstrap-3.3.5/shim/html5shiv.min.js"></script>
+<script src="site_libs/bootstrap-3.3.5/shim/respond.min.js"></script>
+<style>h1 {font-size: 34px;}
+       h1.title {font-size: 38px;}
+       h2 {font-size: 30px;}
+       h3 {font-size: 24px;}
+       h4 {font-size: 18px;}
+       h5 {font-size: 16px;}
+       h6 {font-size: 12px;}
+       code {color: inherit; background-color: rgba(0, 0, 0, 0.04);}
+       pre:not([class]) { background-color: white }</style>
+<script src="site_libs/jqueryui-1.13.2/jquery-ui.min.js"></script>
+<link href="site_libs/tocify-1.9.1/jquery.tocify.css" rel="stylesheet" />
+<script src="site_libs/tocify-1.9.1/jquery.tocify.js"></script>
+<script src="site_libs/navigation-1.1/tabsets.js"></script>
+<script src="site_libs/navigation-1.1/codefolding.js"></script>
+<link href="site_libs/highlightjs-9.12.0/textmate.css" rel="stylesheet" />
+<script src="site_libs/highlightjs-9.12.0/highlight.js"></script>
+
+<link rel="icon" href="https://github.com/workflowr/workflowr-assets/raw/main/img/reproducible.png">
+<!-- Add a small amount of space between sections. -->
+<style type="text/css">
+div.section {
+  padding-top: 12px;
+}
+</style>
+
+
+
+<style type="text/css">
+  code{white-space: pre-wrap;}
+  span.smallcaps{font-variant: small-caps;}
+  span.underline{text-decoration: underline;}
+  div.column{display: inline-block; vertical-align: top; width: 50%;}
+  div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+  ul.task-list{list-style: none;}
+    </style>
+
+<style type="text/css">code{white-space: pre;}</style>
+<script type="text/javascript">
+if (window.hljs) {
+  hljs.configure({languages: []});
+  hljs.initHighlightingOnLoad();
+  if (document.readyState && document.readyState === "complete") {
+    window.setTimeout(function() { hljs.initHighlighting(); }, 0);
+  }
+}
+</script>
+
+
+
+
+
+
+
+
+
+<style type = "text/css">
+.main-container {
+  max-width: 940px;
+  margin-left: auto;
+  margin-right: auto;
+}
+img {
+  max-width:100%;
+}
+.tabbed-pane {
+  padding-top: 12px;
+}
+.html-widget {
+  margin-bottom: 20px;
+}
+button.code-folding-btn:focus {
+  outline: none;
+}
+summary {
+  display: list-item;
+}
+details > summary > p:only-child {
+  display: inline;
+}
+pre code {
+  padding: 0;
+}
+</style>
+
+
+<style type="text/css">
+.dropdown-submenu {
+  position: relative;
+}
+.dropdown-submenu>.dropdown-menu {
+  top: 0;
+  left: 100%;
+  margin-top: -6px;
+  margin-left: -1px;
+  border-radius: 0 6px 6px 6px;
+}
+.dropdown-submenu:hover>.dropdown-menu {
+  display: block;
+}
+.dropdown-submenu>a:after {
+  display: block;
+  content: " ";
+  float: right;
+  width: 0;
+  height: 0;
+  border-color: transparent;
+  border-style: solid;
+  border-width: 5px 0 5px 5px;
+  border-left-color: #cccccc;
+  margin-top: 5px;
+  margin-right: -10px;
+}
+.dropdown-submenu:hover>a:after {
+  border-left-color: #adb5bd;
+}
+.dropdown-submenu.pull-left {
+  float: none;
+}
+.dropdown-submenu.pull-left>.dropdown-menu {
+  left: -100%;
+  margin-left: 10px;
+  border-radius: 6px 0 6px 6px;
+}
+</style>
+
+<script type="text/javascript">
+// manage active state of menu based on current page
+$(document).ready(function () {
+  // active menu anchor
+  href = window.location.pathname
+  href = href.substr(href.lastIndexOf('/') + 1)
+  if (href === "")
+    href = "index.html";
+  var menuAnchor = $('a[href="' + href + '"]');
+
+  // mark the anchor link active (and if it's in a dropdown, also mark that active)
+  var dropdown = menuAnchor.closest('li.dropdown');
+  if (window.bootstrap) { // Bootstrap 4+
+    menuAnchor.addClass('active');
+    dropdown.find('> .dropdown-toggle').addClass('active');
+  } else { // Bootstrap 3
+    menuAnchor.parent().addClass('active');
+    dropdown.addClass('active');
+  }
+
+  // Navbar adjustments
+  var navHeight = $(".navbar").first().height() + 15;
+  var style = document.createElement('style');
+  var pt = "padding-top: " + navHeight + "px; ";
+  var mt = "margin-top: -" + navHeight + "px; ";
+  var css = "";
+  // offset scroll position for anchor links (for fixed navbar)
+  for (var i = 1; i <= 6; i++) {
+    css += ".section h" + i + "{ " + pt + mt + "}\n";
+  }
+  style.innerHTML = "body {" + pt + "padding-bottom: 40px; }\n" + css;
+  document.head.appendChild(style);
+});
+</script>
+
+<!-- tabsets -->
+
+<style type="text/css">
+.tabset-dropdown > .nav-tabs {
+  display: inline-table;
+  max-height: 500px;
+  min-height: 44px;
+  overflow-y: auto;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+}
+
+.tabset-dropdown > .nav-tabs > li.active:before, .tabset-dropdown > .nav-tabs.nav-tabs-open:before {
+  content: "\e259";
+  font-family: 'Glyphicons Halflings';
+  display: inline-block;
+  padding: 10px;
+  border-right: 1px solid #ddd;
+}
+
+.tabset-dropdown > .nav-tabs.nav-tabs-open > li.active:before {
+  content: "\e258";
+  font-family: 'Glyphicons Halflings';
+  border: none;
+}
+
+.tabset-dropdown > .nav-tabs > li.active {
+  display: block;
+}
+
+.tabset-dropdown > .nav-tabs > li > a,
+.tabset-dropdown > .nav-tabs > li > a:focus,
+.tabset-dropdown > .nav-tabs > li > a:hover {
+  border: none;
+  display: inline-block;
+  border-radius: 4px;
+  background-color: transparent;
+}
+
+.tabset-dropdown > .nav-tabs.nav-tabs-open > li {
+  display: block;
+  float: none;
+}
+
+.tabset-dropdown > .nav-tabs > li {
+  display: none;
+}
+</style>
+
+<!-- code folding -->
+<style type="text/css">
+.code-folding-btn { margin-bottom: 4px; }
+</style>
+
+
+
+<style type="text/css">
+
+#TOC {
+  margin: 25px 0px 20px 0px;
+}
+@media (max-width: 768px) {
+#TOC {
+  position: relative;
+  width: 100%;
+}
+}
+
+@media print {
+.toc-content {
+  /* see https://github.com/w3c/csswg-drafts/issues/4434 */
+  float: right;
+}
+}
+
+.toc-content {
+  padding-left: 30px;
+  padding-right: 40px;
+}
+
+div.main-container {
+  max-width: 1200px;
+}
+
+div.tocify {
+  width: 20%;
+  max-width: 260px;
+  max-height: 85%;
+}
+
+@media (min-width: 768px) and (max-width: 991px) {
+  div.tocify {
+    width: 25%;
+  }
+}
+
+@media (max-width: 767px) {
+  div.tocify {
+    width: 100%;
+    max-width: none;
+  }
+}
+
+.tocify ul, .tocify li {
+  line-height: 20px;
+}
+
+.tocify-subheader .tocify-item {
+  font-size: 0.90em;
+}
+
+.tocify .list-group-item {
+  border-radius: 0px;
+}
+
+
+</style>
+
+
+
+</head>
+
+<body>
+
+
+<div class="container-fluid main-container">
+
+
+<!-- setup 3col/9col grid for toc_float and main content  -->
+<div class="row">
+<div class="col-xs-12 col-sm-4 col-md-3">
+<div id="TOC" class="tocify">
+</div>
+</div>
+
+<div class="toc-content col-xs-12 col-sm-8 col-md-9">
+
+
+
+
+<div class="navbar navbar-default  navbar-fixed-top" role="navigation">
+  <div class="container">
+    <div class="navbar-header">
+      <button type="button" class="navbar-toggle collapsed" data-toggle="collapse" data-bs-toggle="collapse" data-target="#navbar" data-bs-target="#navbar">
+        <span class="icon-bar"></span>
+        <span class="icon-bar"></span>
+        <span class="icon-bar"></span>
+      </button>
+      <a class="navbar-brand" href="index.html">2021_MPSIIIBvQ96-RNAseq-7dpfLarve</a>
+    </div>
+    <div id="navbar" class="navbar-collapse collapse">
+      <ul class="nav navbar-nav">
+        <li>
+  <a href="index.html">Home</a>
+</li>
+<li>
+  <a href="QC.html">QC_larvae</a>
+</li>
+<li>
+  <a href="analysis_larvae.html">analysis_larvae</a>
+</li>
+<li>
+  <a href="QC_adult.html">QC_adult</a>
+</li>
+<li>
+  <a href="analysis_adultbrain.html">analysis_adultbrain</a>
+</li>
+<li>
+  <a href="proteomics.html">proteomics_adult</a>
+</li>
+      </ul>
+      <ul class="nav navbar-nav navbar-right">
+        
+      </ul>
+    </div><!--/.nav-collapse -->
+  </div><!--/.container -->
+</div><!--/.navbar -->
+
+<div id="header">
+
+<div class="btn-group pull-right float-right">
+<button type="button" class="btn btn-default btn-xs btn-secondary btn-sm dropdown-toggle" data-toggle="dropdown" data-bs-toggle="dropdown" aria-haspopup="true" aria-expanded="false"><span>Code</span> <span class="caret"></span></button>
+<ul class="dropdown-menu dropdown-menu-right" style="min-width: 50px;">
+<li><a id="rmd-show-all-code" href="#">Show All Code</a></li>
+<li><a id="rmd-hide-all-code" href="#">Hide All Code</a></li>
+</ul>
+</div>
+
+
+
+<h1 class="title toc-ignore">proteomics</h1>
+<h4 class="author">Karissa Barthelson</h4>
+<h4 class="date">2024-07-29</h4>
+
+</div>
+
+
+<p>
+<button type="button" class="btn btn-default btn-workflowr btn-workflowr-report" data-toggle="collapse" data-target="#workflowr-report">
+<span class="glyphicon glyphicon-list" aria-hidden="true"></span>
+workflowr <span class="glyphicon glyphicon-ok text-success"
+aria-hidden="true"></span>
+</button>
+</p>
+<div id="workflowr-report" class="collapse">
+<ul class="nav nav-tabs">
+<li class="active">
+<a data-toggle="tab" href="#summary">Summary</a>
+</li>
+<li>
+<a data-toggle="tab" href="#checks"> Checks <span
+class="glyphicon glyphicon-ok text-success" aria-hidden="true"></span>
+</a>
+</li>
+<li>
+<a data-toggle="tab" href="#versions">Past versions</a>
+</li>
+</ul>
+<div class="tab-content">
+<div id="summary" class="tab-pane fade in active">
+<p>
+<strong>Last updated:</strong> 2024-11-01
+</p>
+<p>
+<strong>Checks:</strong> <span
+class="glyphicon glyphicon-ok text-success" aria-hidden="true"></span> 7
+<span class="glyphicon glyphicon-exclamation-sign text-danger"
+aria-hidden="true"></span> 0
+</p>
+<p>
+<strong>Knit directory:</strong>
+<code>2021_MPSIIIBvQ96-RNAseq-7dpfLarve/</code> <span
+class="glyphicon glyphicon-question-sign" aria-hidden="true"
+title="This is the local directory in which the code in this file was executed.">
+</span>
+</p>
+<p>
+This reproducible <a href="https://rmarkdown.rstudio.com">R Markdown</a>
+analysis was created with <a
+  href="https://github.com/workflowr/workflowr">workflowr</a> (version
+1.7.1). The <em>Checks</em> tab describes the reproducibility checks
+that were applied when the results were created. The <em>Past
+versions</em> tab lists the development history.
+</p>
+<hr>
+</div>
+<div id="checks" class="tab-pane fade">
+<div id="workflowr-checks" class="panel-group">
+<div class="panel panel-default">
+<div class="panel-heading">
+<p class="panel-title">
+<a data-toggle="collapse" data-parent="#workflowr-checks" href="#strongRMarkdownfilestronguptodate">
+<span class="glyphicon glyphicon-ok text-success"
+aria-hidden="true"></span> <strong>R Markdown file:</strong> up-to-date
+</a>
+</p>
+</div>
+<div id="strongRMarkdownfilestronguptodate"
+class="panel-collapse collapse">
+<div class="panel-body">
+<p>Great! Since the R Markdown file has been committed to the Git
+repository, you know the exact version of the code that produced these
+results.</p>
+</div>
+</div>
+</div>
+<div class="panel panel-default">
+<div class="panel-heading">
+<p class="panel-title">
+<a data-toggle="collapse" data-parent="#workflowr-checks" href="#strongEnvironmentstrongempty">
+<span class="glyphicon glyphicon-ok text-success"
+aria-hidden="true"></span> <strong>Environment:</strong> empty </a>
+</p>
+</div>
+<div id="strongEnvironmentstrongempty" class="panel-collapse collapse">
+<div class="panel-body">
+<p>Great job! The global environment was empty. Objects defined in the
+global environment can affect the analysis in your R Markdown file in
+unknown ways. For reproduciblity it’s best to always run the code in an
+empty environment.</p>
+</div>
+</div>
+</div>
+<div class="panel panel-default">
+<div class="panel-heading">
+<p class="panel-title">
+<a data-toggle="collapse" data-parent="#workflowr-checks" href="#strongSeedstrongcodesetseed20211120code">
+<span class="glyphicon glyphicon-ok text-success"
+aria-hidden="true"></span> <strong>Seed:</strong>
+<code>set.seed(20211120)</code> </a>
+</p>
+</div>
+<div id="strongSeedstrongcodesetseed20211120code"
+class="panel-collapse collapse">
+<div class="panel-body">
+<p>The command <code>set.seed(20211120)</code> was run prior to running
+the code in the R Markdown file. Setting a seed ensures that any results
+that rely on randomness, e.g. subsampling or permutations, are
+reproducible.</p>
+</div>
+</div>
+</div>
+<div class="panel panel-default">
+<div class="panel-heading">
+<p class="panel-title">
+<a data-toggle="collapse" data-parent="#workflowr-checks" href="#strongSessioninformationstrongrecorded">
+<span class="glyphicon glyphicon-ok text-success"
+aria-hidden="true"></span> <strong>Session information:</strong>
+recorded </a>
+</p>
+</div>
+<div id="strongSessioninformationstrongrecorded"
+class="panel-collapse collapse">
+<div class="panel-body">
+<p>Great job! Recording the operating system, R version, and package
+versions is critical for reproducibility.</p>
+</div>
+</div>
+</div>
+<div class="panel panel-default">
+<div class="panel-heading">
+<p class="panel-title">
+<a data-toggle="collapse" data-parent="#workflowr-checks" href="#strongCachestrongnone">
+<span class="glyphicon glyphicon-ok text-success"
+aria-hidden="true"></span> <strong>Cache:</strong> none </a>
+</p>
+</div>
+<div id="strongCachestrongnone" class="panel-collapse collapse">
+<div class="panel-body">
+<p>Nice! There were no cached chunks for this analysis, so you can be
+confident that you successfully produced the results during this
+run.</p>
+</div>
+</div>
+</div>
+<div class="panel panel-default">
+<div class="panel-heading">
+<p class="panel-title">
+<a data-toggle="collapse" data-parent="#workflowr-checks" href="#strongFilepathsstrongrelative">
+<span class="glyphicon glyphicon-ok text-success"
+aria-hidden="true"></span> <strong>File paths:</strong> relative </a>
+</p>
+</div>
+<div id="strongFilepathsstrongrelative" class="panel-collapse collapse">
+<div class="panel-body">
+<p>Great job! Using relative paths to the files within your workflowr
+project makes it easier to run your code on other machines.</p>
+</div>
+</div>
+</div>
+<div class="panel panel-default">
+<div class="panel-heading">
+<p class="panel-title">
+<a data-toggle="collapse" data-parent="#workflowr-checks" href="#strongRepositoryversionstrongahrefhttpsgithubcomkarissab2021MPSIIIBvQ96RNAseq7dpfLarvetree7bb9ce697cf60b5a72b13752e492d75b4a21d5eetargetblank7bb9ce6a">
+<span class="glyphicon glyphicon-ok text-success"
+aria-hidden="true"></span> <strong>Repository version:</strong>
+<a href="https://github.com/karissa-b/2021_MPSIIIBvQ96-RNAseq-7dpfLarve/tree/7bb9ce697cf60b5a72b13752e492d75b4a21d5ee" target="_blank">7bb9ce6</a>
+</a>
+</p>
+</div>
+<div
+id="strongRepositoryversionstrongahrefhttpsgithubcomkarissab2021MPSIIIBvQ96RNAseq7dpfLarvetree7bb9ce697cf60b5a72b13752e492d75b4a21d5eetargetblank7bb9ce6a"
+class="panel-collapse collapse">
+<div class="panel-body">
+<p>
+Great! You are using Git for version control. Tracking code development
+and connecting the code version to the results is critical for
+reproducibility.
+</p>
+<p>
+The results in this page were generated with repository version
+<a href="https://github.com/karissa-b/2021_MPSIIIBvQ96-RNAseq-7dpfLarve/tree/7bb9ce697cf60b5a72b13752e492d75b4a21d5ee" target="_blank">7bb9ce6</a>.
+See the <em>Past versions</em> tab to see a history of the changes made
+to the R Markdown and HTML files.
+</p>
+<p>
+Note that you need to be careful to ensure that all relevant files for
+the analysis have been committed to Git prior to generating the results
+(you can use <code>wflow_publish</code> or
+<code>wflow_git_commit</code>). workflowr only checks the R Markdown
+file, but you know if there are other scripts or data files that it
+depends on. Below is the status of the Git repository when the results
+were generated:
+</p>
+<pre><code>
+Ignored files:
+    Ignored:    .DS_Store
+    Ignored:    .RData
+    Ignored:    .Rapp.history
+    Ignored:    .Rhistory
+    Ignored:    .Rproj.user/
+    Ignored:    analysis/.DS_Store
+    Ignored:    code/.DS_Store
+    Ignored:    code/6mBrain_RNAseq_genoSex.rmd
+    Ignored:    code/6mBrain_fems.rmd
+    Ignored:    code/HS.R
+    Ignored:    code/about.Rmd
+    Ignored:    code/analysis.Rmd
+    Ignored:    code/analysis_final.rmd
+    Ignored:    code/analysis_final_v2.rmd
+    Ignored:    code/checkGenotypes.rmd
+    Ignored:    code/explorationRUV.Rmd
+    Ignored:    code/genotypeCheck.Rmd
+    Ignored:    code/license.Rmd
+    Ignored:    code/nhi6mdata.rmd
+    Ignored:    code/plots4pub2.rmd
+    Ignored:    code/plots4pub_RNAseq_afterreview1.R
+    Ignored:    code/wgcna.rmd
+    Ignored:    data/.DS_Store
+    Ignored:    data/Nhi_data/.DS_Store
+    Ignored:    data/R_objects/.DS_Store
+    Ignored:    data/R_objects/larvae/.DS_Store
+    Ignored:    data/adult_brain/.DS_Store
+    Ignored:    data/adult_brain/05_featureCounts/.DS_Store
+    Ignored:    data/adult_brain/fastqc_raw/.DS_Store
+    Ignored:    data/gene_sets/.DS_Store
+    Ignored:    data/larvae/.DS_Store
+    Ignored:    data/larvae/fastqc_align/.DS_Store
+    Ignored:    data/larvae/fastqc_align_dedup/.DS_Store
+    Ignored:    data/larvae/fastqc_raw/.DS_Store
+    Ignored:    data/larvae/fastqc_trim/.DS_Store
+    Ignored:    data/larvae/featureCounts/.DS_Store
+    Ignored:    data/larvae/meta/.DS_Store
+    Ignored:    data/larvae/starAlignLog/.DS_Store
+    Ignored:    output/.DS_Store
+    Ignored:    output/plots/
+    Ignored:    output/plots4poster/.DS_Store
+    Ignored:    output/plots4pub/
+
+Untracked files:
+    Untracked:  Rplot01.pdf
+    Untracked:  Rplot02.png
+    Untracked:  data/R_objects/adult_brain/HMPKEGG_6m_brain_genosex_CQN.rds
+    Untracked:  data/R_objects/adult_brain/HMP_ire_6m_brain_genosex_CQN.rds
+    Untracked:  data/R_objects/adult_brain/cqn_logCPM_6m_brain.rds
+    Untracked:  data/R_objects/adult_brain/dge_6m_brain_cqn.rds
+    Untracked:  data/R_objects/adult_brain/fry_cell_6m_brain_genosex_CQN.rds
+    Untracked:  data/R_objects/adult_brain/fry_cell_RNAseq.rds
+    Untracked:  data/R_objects/adult_brain/goseqtibbles_6m_brain_genosex_CQN.rds
+    Untracked:  data/R_objects/adult_brain/hmp.kegg.rna.rds
+    Untracked:  data/R_objects/adult_brain/toptablescqn_bysex.rds
+    Untracked:  data/allLLIDs.rds
+    Untracked:  data/ensembl_zebrafish.rds
+    Untracked:  data/proteomics/
+    Untracked:  data/with_go_evidence.rds
+    Untracked:  dre00020.pathview.multi.png
+    Untracked:  dre00020.png
+    Untracked:  dre00020.xml
+    Untracked:  hsa04650.EOfADproteomes.multi.png
+    Untracked:  hsa04650.MPSIIIBproteomes.multi.png
+    Untracked:  hsa04650.png
+    Untracked:  hsa04650.xml
+    Untracked:  hsa04666.EOfADproteomes.multi.png
+    Untracked:  hsa04666.MPSIIIBproteomes.multi.png
+    Untracked:  hsa04666.png
+    Untracked:  hsa04666.xml
+    Untracked:  larvae dre00020.pathview.multi.png
+    Untracked:  output/DE_proteins_for_string/
+    Untracked:  output/GOenrichment_enrichmentTable.csv
+    Untracked:  output/plots4RADposter/
+    Untracked:  output/plots4kim/
+    Untracked:  output/plots4pub2/
+    Untracked:  output/plots4pub3/
+    Untracked:  output/spreadsheets/RNAseqlarvae_celltypeFry.xlsx
+    Untracked:  output/spreadsheets/RNAseqlarvae_hmpoutputs.xlsx
+    Untracked:  output/spreadsheets/geneset_RNAseq_v2.xlsx
+    Untracked:  output/spreadsheets/goseq_RNAseq_v2.xlsx
+    Untracked:  output/spreadsheets/limma_proteomics_6mbrain.xlsx
+    Untracked:  output/spreadsheets/proteomics_6mbrain_hmpoutputs.xlsx
+    Untracked:  output/spreadsheets/toptables_RNAseq_v2.xlsx
+    Untracked:  output/spreadsheets/~$limma_proteomics_6mbrain.xlsx
+    Untracked:  temp.png
+
+Unstaged changes:
+    Modified:   .gitignore
+    Deleted:    analysis/6mBrain_fems.rmd
+    Deleted:    analysis/HS.R
+    Deleted:    analysis/about.Rmd
+    Deleted:    analysis/analysis.Rmd
+    Deleted:    analysis/analysis_adultbrain.knit.md
+    Deleted:    analysis/analysis_final.rmd
+    Deleted:    analysis/checkGenotypes.rmd
+    Deleted:    analysis/explorationRUV.Rmd
+    Deleted:    analysis/genotypeCheck.Rmd
+    Deleted:    analysis/license.Rmd
+    Deleted:    analysis/nhi6mdata.rmd
+    Deleted:    analysis/plots4pub2.rmd
+    Modified:   data/R_objects/adult_brain/dge.rds
+    Modified:   data/R_objects/adult_brain/hmp_ire.rds
+    Modified:   data/R_objects/adult_brain/logcpm.rds
+    Modified:   data/R_objects/larvae/celltype_larvae.rds
+    Modified:   data/R_objects/larvae/dge.rds
+    Modified:   data/R_objects/larvae/hmp_ire.rds
+    Modified:   data/R_objects/larvae/hmp_kegg.rds
+    Modified:   data/R_objects/larvae/logcpm.rds
+    Modified:   data/R_objects/larvae/toptablescqn.rds
+    Modified:   data/adult_brain/karissas_metadata.xlsx
+    Modified:   output/spreadsheets/toptables_cqn.xlsx
+
+</code></pre>
+<p>
+Note that any generated files, e.g. HTML, png, CSS, etc., are not
+included in this status report because it is ok for generated content to
+have uncommitted changes.
+</p>
+</div>
+</div>
+</div>
+</div>
+<hr>
+</div>
+<div id="versions" class="tab-pane fade">
+
+<p>
+These are the previous versions of the repository in which changes were
+made to the R Markdown (<code>analysis/proteomics.rmd</code>) and HTML
+(<code>docs/proteomics.html</code>) files. If you’ve configured a remote
+Git repository (see <code>?wflow_git_remote</code>), click on the
+hyperlinks in the table below to view the files as they were in that
+past version.
+</p>
+<div class="table-responsive">
+<table class="table table-condensed table-hover">
+<thead>
+<tr>
+<th>
+File
+</th>
+<th>
+Version
+</th>
+<th>
+Author
+</th>
+<th>
+Date
+</th>
+<th>
+Message
+</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+Rmd
+</td>
+<td>
+<a href="https://github.com/karissa-b/2021_MPSIIIBvQ96-RNAseq-7dpfLarve/blob/7bb9ce697cf60b5a72b13752e492d75b4a21d5ee/analysis/proteomics.rmd" target="_blank">7bb9ce6</a>
+</td>
+<td>
+Karissa Barthelson
+</td>
+<td>
+2024-11-01
+</td>
+<td>
+wflow_publish("analysis/*")
+</td>
+</tr>
+</tbody>
+</table>
+</div>
+<hr>
+</div>
+</div>
+</div>
+<div id="introduction" class="section level2">
+<h2>Introduction</h2>
+<pre class="r"><code>library(tidyverse)
+library(magrittr)
+library(readxl)
+library(openxlsx) # for exporting sheets
+
+# vis
+library(ggpubr)
+library(scales)
+library(ggfortify)
+library(clusterProfiler)
+library(ComplexHeatmap)
+library(circlize)
+library(tidyHeatmap)
+library(RColorBrewer)
+library(pander)
+library(ggrepel)
+library(ggpol)
+library(UpSetR)
+
+# analysis
+library(limma)
+library(Biobase)
+library(goseq)
+library(fgsea)
+library(harmonicmeanp)
+library(STRINGdb)
+
+# annotation
+library(AnnotationDbi)
+library(UniProt.ws)
+library(AnnotationHub)
+library(biomaRt)
+library(msigdbr)
+
+theme_set(theme_bw() +
+            theme(
+              plot.title = element_text(hjust = 0.5), 
+              plot.subtitle = element_text(hjust = 0.5)
+              ))</code></pre>
+<pre class="r"><code>files &lt;- list.files(&quot;data/proteomics&quot;, full.names = T)
+
+# read in the data from Rachael and Marten 
+data &lt;- read_tsv(&quot;data/proteomics/2024_FU_Kar_Bar_01_no_normalisation_Report.tsv&quot;) 
+
+# read in metadata and tidy up columns
+meta &lt;- 
+  read_excel(
+    path = grep(files, pattern = &quot;proteomics/Q96.+meta.xlsx&quot;, value = TRUE), 
+    sheet = &quot;Proteomics&quot;) %&gt;% 
+  mutate(
+    fish_id = as.character(fish_id), 
+    sex = toupper(sex) %&gt;% as.factor(), 
+    genotype = factor(
+      genotype, 
+      levels = c(&quot;wt&quot;, &quot;EOfAD-like&quot;, &quot;MPS IIIB&quot;)
+    )
+  ) %&gt;% 
+  dplyr::filter(fish_id != 8) %&gt;% 
+  mutate(
+    geno_sex = paste0(genotype, &quot;_&quot;, sex) %&gt;% 
+      factor(
+        levels = c(&quot;wt_M&quot;, &quot;MPS IIIB_M&quot;, &quot;EOfAD-like_M&quot;, 
+                   &quot;wt_F&quot;, &quot;MPS IIIB_F&quot;, &quot;EOfAD-like_F&quot; )
+      )
+  )</code></pre>
+</div>
+<div id="annotations" class="section level1">
+<h1>Annotations</h1>
+<p>I’ve come to learn that protein annotations (IDs etc) are very messy.
+So I’m going to do my best here to join</p>
+<p>This hasnt worked. About half the detected proteins are not annotated
+with an ensembl ID. But I have nice gene name symbols, so will now try
+ensembl biomart.</p>
+<div id="biomart" class="section level2">
+<h2>biomart</h2>
+<pre class="r"><code># connect to biomart
+mart &lt;- useEnsembl(
+  biomart=&quot;ensembl&quot;,
+  dataset = &quot;drerio_gene_ensembl&quot;)
+
+# list all the attributes (e.g. columns) available for DL from biomart
+# listAttributes(mart) %&gt;% as_tibble() %&gt;% view
+
+# define what I want from biomart. 
+# have to break it up as they only let you d/l 3 things at a time. 
+attb2get.part1 = c(&quot;external_gene_name&quot;, &quot;ensembl_gene_id&quot;,  &quot;chromosome_name&quot;)
+attb2get.part2 = c(&quot;ensembl_gene_id&quot;, &quot;description&quot;,  &quot;gene_biotype&quot;)
+attb2get.part3 = c(&quot;ensembl_gene_id&quot;, &quot;uniprotsptrembl&quot;,  &quot;uniprot_gn_id&quot;)
+attb2get.part4 = c(&quot;ensembl_gene_id&quot;, &quot;uniprot_gn_symbol&quot;, &quot;uniprotswissprot&quot;)
+attb2get.part5 = c(&quot;external_gene_name&quot;, &quot;start_position&quot;, &quot;end_position&quot;)
+attb2get.part6 = c(&quot;external_gene_name&quot;,&quot;hsapiens_homolog_associated_gene_name&quot;) # for converting for pathview since some KEGG pways dont have a zf map. 
+    
+
+
+ # filters
+# listFilters(mart) %&gt;% as_tibble() %&gt;% view
+
+bm.anno &lt;- 
+  getBM(
+    attributes = attb2get.part1, 
+    filters = &#39;external_gene_name&#39;, 
+    values = data$PG.Genes %&gt;% unique, 
+    mart = mart) %&gt;% 
+  left_join(
+    getBM(
+      attributes = attb2get.part2, 
+      filters = &#39;external_gene_name&#39;, 
+      values = data$PG.Genes %&gt;% unique, 
+      mart = mart)
+  ) %&gt;% 
+  as_tibble()
+
+bm.anno.3 &lt;- getBM(
+  attributes = attb2get.part3, 
+  filters = &#39;external_gene_name&#39;, 
+  values = data$PG.Genes %&gt;% unique, 
+  mart = mart
+  ) %&gt;% 
+  as_tibble()
+
+bm.anno.4 &lt;- getBM(
+  attributes = attb2get.part4, 
+  filters = &#39;external_gene_name&#39;, 
+  values = data$PG.Genes %&gt;% unique, 
+  mart = mart
+  ) %&gt;% 
+  as_tibble()
+
+bm.anno.start.end &lt;- getBM(
+  attributes = attb2get.part5, 
+  filters = &#39;external_gene_name&#39;, 
+  values = data$PG.Genes %&gt;% unique, 
+  mart = mart
+  ) %&gt;% 
+  as_tibble()
+
+bm.dr2hs&lt;- getBM(
+  attributes = attb2get.part6, 
+  filters = &#39;external_gene_name&#39;, 
+  values = data$PG.Genes %&gt;% unique, 
+  mart = mart
+  ) %&gt;% 
+  as_tibble()</code></pre>
+<div id="all" class="section level3">
+<h3>all</h3>
+<pre class="r"><code>t1 &lt;- tibble(
+    gene_name = data$PG.Genes
+  )
+
+t2 &lt;- bm.anno %&gt;% 
+  dplyr::select(
+    gene_name = external_gene_name, 
+    gene_id = ensembl_gene_id)
+
+t3 &lt;- bm.anno.4 %&gt;% 
+  dplyr::select(
+    gene_name = uniprot_gn_symbol, 
+    gene_id = ensembl_gene_id
+  )
+
+# t4 &lt;- ah %&gt;% 
+#   dplyr::select(
+#     gene_name = SYMBOL, 
+#     gene_id = ENSEMBL
+#   )
+
+# use all availale annotations so far
+anno_all &lt;- list(t1, t2, t3) %&gt;% 
+  purrr::reduce(full_join,.init = t1, by = &quot;gene_name&quot;) %&gt;% 
+  # resolve duplicates 
+  pivot_longer(
+    names_to = &quot;gene_id_temp&quot;, values_to = &quot;gene_id&quot;, 
+    starts_with(&quot;gene_id&quot;)
+  ) %&gt;% 
+  dplyr::select(-gene_id_temp) %&gt;% 
+  na.omit() %&gt;% 
+  unique</code></pre>
+<p>The proteome which was used to annotate the MS peaks were from
+Uniprot: <a href="https://www.uniprot.org/proteomes/UP000000437"
+class="uri">https://www.uniprot.org/proteomes/UP000000437</a></p>
+<p>I found this table: <a
+href="https://www.uniprot.org/uniprotkb?query=(proteome:UP000000437"
+class="uri">https://www.uniprot.org/uniprotkb?query=(proteome:UP000000437</a>),
+where I selected some relevant columns and downloaded the table. This is
+read in below.</p>
+<pre class="r"><code># read in uniprot proteome data file
+uniprot_proteome_annotation &lt;- files %&gt;% 
+  grep(pattern  = &quot;uniprot&quot;, value = TRUE) %&gt;% 
+  read_tsv() %&gt;% 
+  dplyr::rename(&quot;PG.ProteinNames&quot; = `Entry Name` )
+
+# tidy up the coumn names
+uniprot_proteome_annotation %&lt;&gt;% 
+  dplyr::select(
+    gene_name = &quot;Gene Names (primary)&quot;, 
+    uniprot_id = Entry, 
+    length = Length, 
+    entrez = GeneID, 
+    chromosome = Proteomes, 
+    description = `Protein names`, 
+    other_gene_names = `Gene Names`,
+    ensembl_tx_id = Ensembl, 
+    up_organism = PG.ProteinNames 
+  
+  ) %&gt;% 
+  mutate(
+    chromosome = str_remove(chromosome, pattern = &quot;UP000000437: &quot;), 
+    entrez = str_remove(entrez, pattern = &quot;;&quot;), 
+  )
+  
+anno &lt;- 
+  data %&gt;% 
+    dplyr::rename(
+      uniprot_id = PG.ProteinGroups
+    ) %&gt;% 
+  left_join(uniprot_proteome_annotation, 
+            by = &quot;uniprot_id&quot; ) %&gt;% 
+  dplyr::select(gene_name, uniprot_id, 
+                colnames(uniprot_proteome_annotation)
+  ) %&gt;% 
+  column_to_rownames(&quot;uniprot_id&quot;)</code></pre>
+</div>
+</div>
+</div>
+<div id="number-of-fish-per-genotype-and-sex" class="section level1">
+<h1>number of fish per genotype and sex</h1>
+<pre class="r"><code>meta %&gt;% 
+  ggplot(
+    aes(x = genotype, fill = genotype)
+  ) +
+  geom_bar() +
+  facet_wrap(~sex)</code></pre>
+<p><img src="figure/proteomics.rmd/unnamed-chunk-6-1.png" width="100%" height="100%" style="display: block; margin: auto;" /></p>
+<pre class="r"><code>data.long &lt;- data %&gt;% 
+  pivot_longer(
+    names_to = &quot;sample&quot;, 
+    values_to = &quot;intensity&quot;, 
+    starts_with(&quot;[&quot;)
+  ) %&gt;% 
+  # need to create a new column  &quot;fish_id&quot;, which matches with the metadata sheet. 
+  mutate(
+    fish_id = str_extract(
+      sample, pattern = &quot; [:digit:]{1,2}&quot; 
+    ) %&gt;% 
+      str_remove(pattern = &quot; &quot;) 
+    ) %&gt;% 
+  dplyr::select(
+    fish_id, PG.Genes, intensity, everything()
+  ) %&gt;% 
+  left_join(meta) %&gt;% 
+  dplyr::filter(!is.na(genotype))
+
+
+data.long.withQC &lt;- data %&gt;% 
+  pivot_longer(
+    names_to = &quot;sample&quot;, 
+    values_to = &quot;intensity&quot;, 
+    starts_with(&quot;[&quot;)
+  ) %&gt;% 
+  # need to create a new column  &quot;fish_id&quot;, which matches with the metadata sheet. 
+  mutate(
+    fish_id = str_extract(
+      sample, pattern = &quot; [:digit:]{1,2}&quot; 
+    ) %&gt;% 
+      str_remove(pattern = &quot; &quot;) 
+    ) %&gt;% 
+  dplyr::select(
+    fish_id, PG.Genes, intensity, everything()
+  ) %&gt;% 
+  left_join(meta)</code></pre>
+</div>
+<div id="check-missing-values" class="section level1">
+<h1>check missing values</h1>
+<pre class="r"><code># see how many proteins have missing values
+proteins.with.missing.values &lt;- data.long %&gt;% 
+  .[is.na(.$intensity),] %&gt;% 
+  .$PG.ProteinGroups %&gt;% 
+  unique</code></pre>
+<p>There are 1421 proteins with missing values total in this
+dataset.</p>
+<p>This is all of the proteins, I next looked at whether any proteins
+were only present in at least one genotype. These are the protens which
+show this below. None are convincing neough to really be able to set the
+value to 0 in any of the other samples.</p>
+<pre class="r"><code>proteins.missing.perGeno &lt;- 
+  data.long %&gt;% 
+  group_by(PG.ProteinGroups, genotype) %&gt;% 
+  dplyr::filter(all(is.na(intensity))) %&gt;% 
+  .$PG.Genes %&gt;% unique
+  
+  
+data.long %&gt;% 
+  dplyr::filter(PG.Genes %in% proteins.missing.perGeno) %&gt;% 
+  ggplot(
+    aes(x = geno_sex, y = intensity)
+  ) +
+  geom_boxplot(
+    outlier.shape = NA
+  ) +
+  geom_point() +
+  facet_wrap(~PG.Genes, scales = &quot;free_y&quot;)</code></pre>
+<p><img src="figure/proteomics.rmd/unnamed-chunk-9-1.png" width="100%" height="100%" style="display: block; margin: auto;" /></p>
+<p>Proteins which have missing values are omitted for this analysis. Out
+of the 9,942 proteins detected,
+<code>length(proteins.with.missing.values) %&gt;% comma</code> have
+missing values. I think this is OK.</p>
+<pre class="r"><code>data.wide &lt;- 
+  data.long %&gt;% 
+  dplyr::filter(fish_id %in% meta$fish_id) %&gt;%
+   dplyr::filter(!(PG.ProteinGroups %in% proteins.with.missing.values)) %&gt;% 
+  dplyr::select(fish_id, PG.ProteinGroups, intensity) %&gt;% 
+  pivot_wider(
+    names_from = &quot;fish_id&quot;, 
+    values_from = &quot;intensity&quot;
+  ) %&gt;% 
+  column_to_rownames(&quot;PG.ProteinGroups&quot;)
+
+
+
+data.long %&lt;&gt;% 
+  dplyr::filter(fish_id %in% meta$fish_id) %&gt;%
+  dplyr::filter(fish_id != 8) %&gt;% 
+  dplyr::filter(!(PG.ProteinGroups %in% proteins.with.missing.values))</code></pre>
+</div>
+<div id="normalisation-and-transformation" class="section level1">
+<h1>Normalisation and transformation</h1>
+<p>I want to look at how I should normalise the data, a few ways I can
+do this. However, from the plots below, log-transformed and median
+normalised looks best.</p>
+<div id="raw-data" class="section level2">
+<h2>raw data</h2>
+<pre class="r"><code>data.long.withQC %&gt;% 
+  ggplot(
+      aes(x = sample, y = intensity)
+    ) +
+    geom_boxplot(
+      aes(fill = genotype)
+    ) +
+  ggtitle(&quot;raw data&quot;) +
+  theme(
+    axis.text.x = element_text(
+      angle = -45, hjust = 0
+    )
+  )</code></pre>
+<p><img src="figure/proteomics.rmd/unnamed-chunk-11-1.png" width="100%" height="100%" style="display: block; margin: auto;" /></p>
+<pre class="r"><code># raw data
+raw.boxplot &lt;-   data.long %&gt;% 
+    ggplot(
+      aes(x = fish_id, y = intensity)
+    ) +
+    geom_boxplot(
+      aes(fill = genotype)
+    ) +
+  ggtitle(&quot;raw data&quot;)
+
+raw.boxplot</code></pre>
+<p><img src="figure/proteomics.rmd/unnamed-chunk-11-2.png" width="100%" height="100%" style="display: block; margin: auto;" /></p>
+</div>
+<div id="log-transformed" class="section level2">
+<h2>log transformed</h2>
+<pre class="r"><code>ggarrange(raw.boxplot, 
+# log-transformed data
+  data.long %&gt;% 
+  mutate(intensity = log2(intensity)) %&gt;% 
+    ggplot(
+      aes(x = fish_id, y = intensity)
+    ) +
+    geom_boxplot(
+      aes(fill = genotype)
+    ) +
+  labs(
+    title = &quot;log2 transformed&quot;
+  ), 
+common.legend = TRUE, 
+nrow = 2
+)</code></pre>
+<p><img src="figure/proteomics.rmd/unnamed-chunk-12-1.png" width="100%" height="100%" style="display: block; margin: auto;" /></p>
+</div>
+<div id="log-transformed-and-quantile-normalised"
+class="section level2">
+<h2>log-transformed and quantile normalised</h2>
+<pre class="r"><code># quantile normaised and log-transformed
+  data.long %&gt;% 
+    # convert to wide format to be able to quantile normalise.
+    dplyr::select(fish_id, PG.ProteinGroups, intensity) %&gt;% 
+    mutate(intensity = log2(intensity)) %&gt;% 
+    pivot_wider(
+      names_from = &quot;fish_id&quot;, values_from = &quot;intensity&quot;
+    ) %&gt;% 
+    column_to_rownames(&quot;PG.ProteinGroups&quot;) %&gt;% 
+    limma::normalizeBetweenArrays(method = &quot;quantile&quot;) %&gt;%
+    as.data.frame() %&gt;% 
+    rownames_to_column(&quot;protein_id&quot;) %&gt;% 
+    # convert back to long. 
+    pivot_longer(
+      names_to = &quot;fish_id&quot;, values_to = &quot;intensity&quot;, 
+      cols = data.long$fish_id %&gt;% unique()
+    ) %&gt;% 
+    left_join(meta) %&gt;% 
+    ggplot( 
+      aes(x = fish_id, y = intensity)
+    ) +
+    geom_boxplot(
+      aes(fill = genotype)
+    ) +
+  labs(
+    title = &quot;log2-transformed and quantile normalised&quot;
+  )</code></pre>
+<p><img src="figure/proteomics.rmd/unnamed-chunk-13-1.png" width="100%" height="100%" style="display: block; margin: auto;" /></p>
+<pre class="r"><code>data.long.withQC %&gt;% 
+  dplyr::select(sample, PG.ProteinGroups, intensity) %&gt;% 
+  mutate(intensity = log2(intensity)) %&gt;% 
+  pivot_wider(
+    names_from = &quot;sample&quot;, values_from = &quot;intensity&quot;
+  ) %&gt;% 
+  column_to_rownames(&quot;PG.ProteinGroups&quot;) %&gt;% 
+  limma::normalizeBetweenArrays(method = &quot;quantile&quot;) %&gt;% 
+  as.data.frame() %&gt;% 
+  rownames_to_column(&quot;protein_id&quot;) %&gt;% 
+  # convert back to long. 
+  pivot_longer(
+    names_to = &quot;sample&quot;, values_to = &quot;intensity&quot;, 
+    cols = data.long.withQC$sample %&gt;% unique()
+  ) %&gt;% 
+  ggplot( 
+      aes(x = sample, y = intensity)
+    ) +
+    geom_boxplot(
+    ) +
+  labs(
+    title = &quot;log2-transformed and quantile normalised&quot;
+  ) +
+  theme(
+    axis.text.x = element_text(angle = -45, hjust = 0)
+  )</code></pre>
+<p><img src="figure/proteomics.rmd/unnamed-chunk-13-2.png" width="100%" height="100%" style="display: block; margin: auto;" /></p>
+</div>
+<div id="log-transformed-and-median-normalised" class="section level2">
+<h2>log transformed and median normalised</h2>
+<pre class="r"><code># quantile normaised and log-transformed
+  data.long %&gt;% 
+    # convert to wide format to be able to quantile normalise.
+    dplyr::select(fish_id, PG.ProteinGroups, intensity) %&gt;% 
+    mutate(intensity = log2(intensity)) %&gt;% 
+    pivot_wider(
+      names_from = &quot;fish_id&quot;, values_from = &quot;intensity&quot;
+    ) %&gt;% 
+    column_to_rownames(&quot;PG.ProteinGroups&quot;) %&gt;% 
+    limma::normalizeBetweenArrays(method = &quot;scale&quot;) %&gt;%
+    as.data.frame() %&gt;% 
+    rownames_to_column(&quot;protein_id&quot;) %&gt;% 
+    # convert back to long. 
+    pivot_longer(
+      names_to = &quot;fish_id&quot;, values_to = &quot;intensity&quot;, 
+      cols = data.long$fish_id %&gt;% unique()
+    ) %&gt;% 
+    left_join(meta) %&gt;% 
+    ggplot( 
+      aes(x = fish_id, y = intensity)
+    ) +
+    geom_boxplot(
+      aes(fill = genotype)
+    ) +
+  labs(
+    title = &quot;log2-transformed and median normalised&quot;
+  )</code></pre>
+<p><img src="figure/proteomics.rmd/unnamed-chunk-14-1.png" width="100%" height="100%" style="display: block; margin: auto;" /></p>
+<pre class="r"><code>data.long.withQC %&gt;% 
+  dplyr::select(sample, PG.ProteinGroups, intensity) %&gt;% 
+  mutate(intensity = log2(intensity)) %&gt;% 
+  pivot_wider(
+    names_from = &quot;sample&quot;, values_from = &quot;intensity&quot;
+  ) %&gt;% 
+  column_to_rownames(&quot;PG.ProteinGroups&quot;) %&gt;% 
+  limma::normalizeBetweenArrays(method = &quot;scale&quot;) %&gt;% 
+  as.data.frame() %&gt;% 
+  rownames_to_column(&quot;protein_id&quot;) %&gt;% 
+  # convert back to long. 
+  pivot_longer(
+    names_to = &quot;sample&quot;, values_to = &quot;intensity&quot;, 
+    cols = data.long.withQC$sample %&gt;% unique()
+  ) %&gt;% 
+  ggplot( 
+      aes(x = sample, y = intensity)
+    ) +
+    geom_boxplot(
+    ) +
+  labs(
+    title = &quot;log2-transformed and median normalised&quot;
+  ) +
+  theme(
+    axis.text.x = element_text(angle = -45, hjust = 0)
+  )</code></pre>
+<p><img src="figure/proteomics.rmd/unnamed-chunk-14-2.png" width="100%" height="100%" style="display: block; margin: auto;" /></p>
+</div>
+</div>
+<div id="pcas" class="section level1">
+<h1>PCAs</h1>
+<p>I first want to use PCA to first get a feel for the overall
+similarity between samples. I also want to see which normalisation
+technique I should use.</p>
+<p>PCA cant handle missing values, so only the proteins detected in all
+samples are used here.</p>
+<pre class="r"><code>ggarrange(
+  # raw PCA
+  data.wide %&gt;% 
+    t() %&gt;% 
+    prcomp %&gt;% 
+    autoplot(
+      data = tibble(fish_id = rownames(.$x)) %&gt;%
+        left_join(meta),
+      colour = &quot;genotype&quot;,
+      shape = &quot;sex&quot;, 
+      size = 4
+    ) +
+    ggtitle(&quot;raw data&quot;), 
+  
+  # log transformed PCA
+  data.long %&gt;% 
+    # convert to wide format to be able to quantile normalise.
+    dplyr::select(fish_id, PG.ProteinGroups, intensity) %&gt;% 
+    mutate(intensity = log2(intensity)) %&gt;% 
+    pivot_wider(
+      names_from = &quot;fish_id&quot;, values_from = &quot;intensity&quot;
+    ) %&gt;% 
+    column_to_rownames(&quot;PG.ProteinGroups&quot;) %&gt;% 
+    t() %&gt;% 
+    prcomp %&gt;% 
+    autoplot(
+      data = tibble(fish_id = rownames(.$x)) %&gt;%
+        left_join(meta),
+      colour = &quot;genotype&quot;,
+      shape = &quot;sex&quot;, 
+      size = 4
+    ) +
+    ggtitle(&quot;log-transformed data&quot;), 
+  
+  # log-transformed and quantile normalised
+  data.wide %&gt;%
+    limma::normalizeBetweenArrays(method = &quot;quantile&quot;) %&gt;% 
+    t() %&gt;% 
+    prcomp %&gt;% 
+    autoplot(
+      data = tibble(fish_id = rownames(.$x)) %&gt;%
+        left_join(meta),
+      colour = &quot;genotype&quot;,
+      shape = &quot;sex&quot;, 
+      size = 4
+    ) +
+    ggtitle(&quot;log2-transformed, quantile-normalised data&quot;),
+  
+  # log-transformed and median normalised
+  data.wide %&gt;%
+    limma::normalizeBetweenArrays(method = &quot;scale&quot;) %&gt;% 
+    t() %&gt;% 
+    prcomp %&gt;% 
+    autoplot(
+      data = tibble(fish_id = rownames(.$x)) %&gt;%
+        left_join(meta),
+      colour = &quot;genotype&quot;,
+      shape = &quot;sex&quot;, 
+      size = 4
+    ) +
+    ggtitle(&quot;log2-transformed, median-normalised data&quot;), 
+  
+  common.legend = TRUE
+)</code></pre>
+<p><img src="figure/proteomics.rmd/unnamed-chunk-15-1.png" width="100%" height="100%" style="display: block; margin: auto;" /></p>
+<p>Quantile normalization forces the entire empirical distribution of
+each column to be identical. Median normalisaiton forces the sample
+distributions to have the same median. From the PCA plots above,
+quantile normalisation appear to be the best as it gives the best
+seperation between groups. Median normalisation also looks okay.</p>
+<div id="pcas-by-sex" class="section level2">
+<h2>PCAs by sex</h2>
+<p>Since there appears to be pretty clear sex effects, I will next look
+at the PCAs within each sex.</p>
+<pre class="r"><code>fem.fish.ids &lt;- 
+  meta %&gt;% 
+  dplyr::filter(sex == &quot;F&quot;) %&gt;% 
+  .$fish_id
+
+male.fish.ids &lt;- 
+  meta %&gt;% 
+  dplyr::filter(sex == &quot;M&quot;) %&gt;% 
+  .$fish_id</code></pre>
+<pre class="r"><code>ggarrange(
+ 
+   data.wide %&gt;%
+    limma::normalizeBetweenArrays(method = &quot;quantile&quot;) %&gt;% 
+    t() %&gt;% 
+    prcomp %&gt;% 
+    autoplot(
+      data = tibble(fish_id = rownames(.$x)) %&gt;%
+        left_join(meta),
+      colour = &quot;genotype&quot;,
+      shape = &quot;sex&quot;,
+      size = 4
+    ) +
+    labs(title = &quot;All samps&quot;, 
+   #      subtitle = &quot;log2-transformed, median-normalised data&quot;
+   ), 
+  
+   data.wide %&gt;%
+    limma::normalizeBetweenArrays(method = &quot;quantile&quot;) %&gt;% 
+    .[,fem.fish.ids] %&gt;% 
+    t() %&gt;% 
+    prcomp %&gt;% 
+    autoplot(
+      data = tibble(fish_id = rownames(.$x)) %&gt;%
+        left_join(meta),
+      colour = &quot;genotype&quot;,
+      size = 4
+    ) +
+    labs(title = &quot;Females&quot;, 
+         #subtitle = &quot;log2-transformed, median-normalised data&quot;
+         ) , 
+  
+  data.wide %&gt;%
+    limma::normalizeBetweenArrays(method = &quot;quantile&quot;) %&gt;% 
+    .[,male.fish.ids] %&gt;% 
+    t() %&gt;% 
+    prcomp %&gt;% 
+    autoplot(
+      data = tibble(fish_id = rownames(.$x)) %&gt;%
+        left_join(meta),
+      colour = &quot;genotype&quot;,
+      size = 4
+    ) +
+    labs(title = &quot;Males&quot;, 
+         #subtitle = &quot;log2-transformed, median-normalised data&quot;
+         ), 
+  common.legend = T, nrow = 1
+)</code></pre>
+<p><img src="figure/proteomics.rmd/unnamed-chunk-17-1.png" width="100%" height="100%" style="display: block; margin: auto;" /></p>
+<p>There appears to be an outlier in both groups. But will leave it
+in.</p>
+<p>PC1 is explained by MPS IIIB genotype in both sexes. PC1 explains
+about 30% of the total variation in the dataset, so MPS IIIB genotype is
+pretty severe effect on the brain proteoms.</p>
+</div>
+</div>
+<div id="de-protein-analysis-using-limma" class="section level1">
+<h1>DE protein analysis using limma</h1>
+<p>First, I need to put the data in a format usable for
+<code>limma</code>. I will use an expresisonSet object which will map
+the metadata and annotations.</p>
+<pre class="r"><code>meta4eset &lt;- meta %&gt;% 
+  column_to_rownames(&quot;fish_id&quot;)
+
+meta4eset &lt;- new(&quot;AnnotatedDataFrame&quot;,data=meta4eset)
+
+anno %&lt;&gt;% 
+  mutate(uniprot_id = rownames(.)) %&gt;% 
+  dplyr::filter(!(uniprot_id %in% proteins.with.missing.values))
+  
+anno4eset &lt;- new(&quot;AnnotatedDataFrame&quot;, data=anno)</code></pre>
+<pre class="r"><code>eset &lt;- ExpressionSet(
+  assayData = data.wide %&gt;% 
+    log2() %&gt;% 
+    limma::normalizeBetweenArrays(method = &quot;quantile&quot;), 
+  
+  phenoData = meta4eset, 
+  featureData = anno4eset
+)</code></pre>
+<div id="design-and-contrasts-matrix" class="section level2">
+<h2>design and contrasts matrix</h2>
+<p>An intercept free design matrix and contrasts matix were generated so
+that i can performed pair-wise constrats between each mutant and their
+wild type sibs within sexes. A really nice ref explaining the bg
+knowledge about these are found here:</p>
+<p><a
+href="https://bioconductor.org/packages/release/workflows/vignettes/RNAseq123/inst/doc/designmatrices.html"
+class="uri">https://bioconductor.org/packages/release/workflows/vignettes/RNAseq123/inst/doc/designmatrices.html</a></p>
+<pre class="r"><code># design matrix specifiying the groups
+design &lt;- model.matrix(~0 + geno_sex, data = pData(eset)) %&gt;% 
+  set_colnames(gsub(colnames(.), pattern = &quot;geno_sex&quot;, replacement = &quot;&quot;)) %&gt;% 
+  set_colnames(gsub(colnames(.), pattern = &quot; &quot;, replacement = &quot;&quot;)) %&gt;% 
+  set_colnames(gsub(colnames(.), pattern = &quot;-&quot;, replacement = &quot;&quot;))
+
+# contrats matrix specifying the comparisons
+contrasts &lt;- makeContrasts( 
+ 
+  MPSIIIB_M - wt_M , # effect of MPS IIIB in males
+  MPSIIIB_F - wt_F, # effect of MPS IIIB in females
+  
+  EOfADlike_M - wt_M, # effect of EOfAD in males
+  EOfADlike_F - wt_F, # effect of EOfAD in females
+  
+  # wt_M - wt_F, # effect of gender
+  
+  levels = design
+  )</code></pre>
+</div>
+<div id="linear-model-fit-with-emperical-bayes-moderation"
+class="section level2">
+<h2>linear model fit with emperical bayes moderation</h2>
+<p>These functions are used to rank genes in order of evidence for
+differential expression. They use an empirical Bayes method to squeeze
+the protein-wise residual variances towards a common value (or towards a
+global trend) (Smyth, 2004; Phipson et al, 2016). The degrees of freedom
+for the individual variances are increased to reflect the extra
+information gained from the empirical Bayes moderation, resulting in
+increased statistical power to detect differential expression.</p>
+<p>Toptables are called for each contrast, as defined in the design
+matrix.</p>
+<pre class="r"><code>lm.fit &lt;- 
+  lmFit(eset, design) %&gt;% 
+  contrasts.fit(contrasts) %&gt;% 
+  eBayes(robust = TRUE)
+
+toptables &lt;- colnames(contrasts) %&gt;% 
+  sapply(function(x) {
+    topTable(
+      lm.fit, 
+      coef = x,
+      adjust.method = &quot;fdr&quot; , 
+      sort.by = &quot;p&quot;, 
+      Inf
+    ) %&gt;% 
+      rownames_to_column(&quot;accession&quot;) %&gt;% 
+      left_join(
+        anno %&gt;% rownames_to_column(&quot;accession&quot;)
+      ) %&gt;%
+      mutate(
+        DE = adj.P.Val &lt; 0.05, 
+        coef = x
+      ) %&gt;% 
+      dplyr::select(
+        # put columns in a nice order, renaming some on the fly
+        gene_name, logFC, AveExpr, t,
+        pval = P.Value, FDR =  adj.P.Val, DE, coef, B, everything()
+      ) %&gt;%
+      as_tibble
+  }, simplify = F)</code></pre>
+</div>
+<div id="visualisation" class="section level2">
+<h2>Visualisation</h2>
+<div id="num-of-de-genes" class="section level3">
+<h3>num of DE genes</h3>
+<pre class="r"><code>toptables %&gt;% 
+  lapply(
+    function(x) {
+      x %&gt;% 
+        dplyr::filter(DE == T) %&gt;% 
+        nrow
+    }
+  ) %&gt;% 
+  bind_rows() %&gt;% 
+  as.data.frame() %&gt;% 
+  pivot_longer(
+    names_to = &quot;coef&quot;, 
+    values_to = &quot;nDE&quot;, 
+    cols = everything()
+  ) %&gt;% 
+  ggplot(
+    aes(x = nDE, y = reorder(coef, nDE))
+  ) + 
+  geom_col()</code></pre>
+<p><img src="figure/proteomics.rmd/unnamed-chunk-22-1.png" width="100%" height="100%" style="display: block; margin: auto;" /></p>
+</div>
+<div id="volcano-plots" class="section level3">
+<h3>volcano plots</h3>
+<pre class="r"><code>toptables %&gt;% 
+ bind_rows() %&gt;%
+  ggplot(
+    aes(x = logFC, y = -log10(pval))
+    ) +
+  geom_point(
+    aes(colour = DE),
+    alpha = 0.5) +
+  facet_wrap(~coef) +
+  scale_color_manual(values = c(&quot;grey50&quot;, &quot;red&quot;))</code></pre>
+<p><img src="figure/proteomics.rmd/unnamed-chunk-23-1.png" width="100%" height="100%" style="display: block; margin: auto;" /></p>
+</div>
+<div id="md-plots" class="section level3">
+<h3>MD plots</h3>
+<pre class="r"><code>toptables %&gt;% 
+  bind_rows() %&gt;% 
+  ggplot(
+    aes(x = AveExpr, y = logFC)
+    ) +
+  geom_point(
+    aes(colour = DE),
+    alpha = 0.5) +
+  geom_hline(yintercept = 0) +
+  coord_cartesian(ylim = c(-2,2)) +
+  geom_smooth(se = F) +
+  facet_wrap(~coef) +
+  scale_color_manual(values = c(&quot;grey50&quot;, &quot;red&quot;))</code></pre>
+<p><img src="figure/proteomics.rmd/unnamed-chunk-24-1.png" width="100%" height="100%" style="display: block; margin: auto;" /></p>
+</div>
+<div id="length-check" class="section level3">
+<h3>length check</h3>
+<p>In RNA-seq data, there is a known bias for gene length with
+differential expression. Longer genes have more reads aligning to them,
+and so have slightly increased statistical power.</p>
+<p>This could be also true for proteomics data, where longer proteins
+would have more peptides in the pool. So first, I want to check the the
+t-statistic vs the protein length. The blue line of best fit hangs
+around 0, and so not really a bias here.</p>
+<pre class="r"><code>toptables %&gt;% 
+  bind_rows() %&gt;% 
+  mutate(
+    length = as.numeric(length), 
+  ) %&gt;% 
+  ggplot(aes(x = length, y = t)) +
+  geom_point(
+    aes(colour = DE),
+    alpha = 0.5) +
+  geom_hline(yintercept = 0) +
+  geom_smooth(se = F) +
+  coord_cartesian(xlim = c(0,5000)) +
+  facet_wrap(~coef) +
+  scale_color_manual(values = c(&quot;grey50&quot;, &quot;red&quot;))</code></pre>
+<p><img src="figure/proteomics.rmd/unnamed-chunk-25-1.png" width="100%" height="100%" style="display: block; margin: auto;" /></p>
+<p>Marten also says to look at the intensity of the proteins. This is
+reflected by the <code>averageexp</code> column calculated by
+<code>limma</code>.</p>
+<p>Below are the plots of protein length by average expression. The line
+of best fit looks strange as there is a really long protein here.</p>
+<pre class="r"><code>toptables %&gt;% 
+  bind_rows() %&gt;% 
+  mutate(
+    length = as.numeric(length), 
+  ) %&gt;% 
+  ggplot(aes(x = length, y = AveExpr)) +
+  geom_point(
+    aes(colour = DE),
+    alpha = 0.5) +
+  geom_label_repel(
+    aes(label = gene_name), 
+    data = . %&gt;% 
+      dplyr::filter(length &gt; 10000)
+  ) +
+  geom_hline(yintercept = 0) +
+  geom_smooth(se = F) +
+  #coord_cartesian(xlim = c(0,5000)) +
+  facet_wrap(~coef) +
+  scale_color_manual(values = c(&quot;grey50&quot;, &quot;red&quot;))</code></pre>
+<p><img src="figure/proteomics.rmd/unnamed-chunk-26-1.png" width="100%" height="100%" style="display: block; margin: auto;" /></p>
+<p>The same plots are geneated below, although this time only proteins
+less than 5000 AAs are kept. Short proteins appear to be more highly
+expressed.</p>
+<pre class="r"><code>toptables %&gt;% 
+  bind_rows() %&gt;% 
+  dplyr::filter(length &lt; 5000) %&gt;% 
+  mutate(
+    length = as.numeric(length), 
+  ) %&gt;% 
+  ggplot(aes(x = length, y = AveExpr)) +
+  geom_point(
+    aes(colour = DE),
+    alpha = 0.5) +
+  geom_label_repel(
+    aes(label = gene_name), 
+    data = . %&gt;% 
+      dplyr::filter(length &gt; 10000)
+  ) +
+  geom_smooth(se = F) +
+  #coord_cartesian(xlim = c(0,1000)) +
+  facet_wrap(~coef) +
+  scale_color_manual(values = c(&quot;grey50&quot;, &quot;red&quot;))</code></pre>
+<p><img src="figure/proteomics.rmd/unnamed-chunk-27-1.png" width="100%" height="100%" style="display: block; margin: auto;" /></p>
+<p>Also looking at the raw intensity values in the QC samples (which is
+a pool of all my samples, run 3 different times throughout the MS
+run)</p>
+<pre class="r"><code>data.long.withQC %&gt;% 
+  dplyr::filter(
+    grepl(sample, pattern = &quot;QC&quot;), 
+    !is.na(intensity)
+  ) %&gt;% 
+  left_join(anno %&gt;% 
+              dplyr::rename(PG.ProteinGroups = uniprot_id) ) %&gt;% 
+  ggplot(
+    aes(x = length, y = intensity)
+  ) +
+  geom_point() +
+  facet_wrap(~sample)</code></pre>
+<p><img src="figure/proteomics.rmd/unnamed-chunk-28-1.png" width="100%" height="100%" style="display: block; margin: auto;" /></p>
+<p>Within the QC sample,s the shorter proteins have higer intensity
+generally. But there are so many more shorter proteins.</p>
+<pre class="r"><code>data.long.withQC %&gt;% 
+  dplyr::filter(
+    grepl(sample, pattern = &quot;QC&quot;), # only the QC samples
+    !is.na(intensity), # any proteins not detected
+    
+  ) %&gt;% 
+  left_join(anno %&gt;% 
+              dplyr::rename(PG.ProteinGroups = uniprot_id) ) %&gt;% 
+  dplyr::filter(length &lt; 5000) %&gt;% # long proteins
+  ggplot(
+    aes(x = length, y = intensity)
+  ) +
+  geom_point() +
+  geom_smooth() +
+  facet_wrap(~sample)</code></pre>
+<p><img src="figure/proteomics.rmd/unnamed-chunk-29-1.png" width="100%" height="100%" style="display: block; margin: auto;" /></p>
+<p>Hmm.. talk with Marten about this.</p>
+</div>
+</div>
+<div id="shared-deps-beween-the-sexes-in-mps-iii"
+class="section level2">
+<h2>shared DEPs beween the sexes in MPS III</h2>
+<pre class="r"><code>toptables[grep(names(toptables), value = TRUE, pattern = &quot;MPS&quot;)] %&gt;% 
+  lapply(dplyr::filter, FDR &lt; 0.05) %&gt;% 
+  lapply(function(x){
+    x %&gt;%
+      mutate(Direction = case_when(
+        sign(logFC) == &quot;1&quot; ~ &quot;up&quot;,
+        sign(logFC) == &quot;-1&quot; ~ &quot;down&quot;
+      ))
+  }) %&gt;% 
+  bind_rows() %&gt;% 
+  mutate(
+    coef.dir = paste0(coef, Direction), .before = gene_name
+    ) %&gt;% 
+  split(f = .$coef.dir) %&gt;% 
+  lapply(function(x) {
+    x$accession %&gt;% 
+      na.omit
+  }) %&gt;% 
+  fromList() %&gt;% 
+  upset(order.by = &quot;freq&quot;)</code></pre>
+<p><img src="figure/proteomics.rmd/unnamed-chunk-30-1.png" width="100%" height="100%" style="display: block; margin: auto;" /></p>
+</div>
+</div>
+<div id="enrichment-analyses" class="section level1">
+<h1>Enrichment analyses</h1>
+<div id="protein-sets" class="section level2">
+<h2>protein sets</h2>
+<div id="kegg" class="section level3">
+<h3>KEGG</h3>
+<p>KEGG gene sets were obtaoned from <code>MsigDB</code> using
+<code>msigdbr.</code> Only proteins detected (without missing data) in
+this experiment were used as the background. KEGG gene sets were also
+filtered if they contained more than at least 4 proteins, as less than
+that is a bit hard to interpret biologically</p>
+<pre class="r"><code>KEGG &lt;- 
+  msigdbr(&quot;Danio rerio&quot;, category = &quot;C2&quot;, subcategory = &quot;CP:KEGG&quot;) %&gt;% 
+  distinct(gs_name, gene_symbol, .keep_all = TRUE) %&gt;%
+  dplyr::filter(gene_symbol %in% toptables$`MPSIIIB_M - wt_M`$gene_name) %&gt;% 
+  split(f = .$gs_name) %&gt;%
+  lapply(extract2, &quot;gene_symbol&quot;)
+
+# calculate the number of genes per gene set
+sizes.KEGG &lt;- KEGG %&gt;% 
+  lapply(length) %&gt;% 
+  unlist %&gt;% 
+  as.data.frame() %&gt;% 
+  set_colnames( &quot;n_genes&quot;) %&gt;% 
+  rownames_to_column(&quot;gs&quot;)
+
+# retain gene sets with at least 5 genes in it
+KEGG &lt;- KEGG[sizes.KEGG %&gt;% dplyr::filter(n_genes &gt;= 4) %&gt;% .$gs]</code></pre>
+</div>
+<div id="gene-ontologies" class="section level3">
+<h3>Gene ontologies</h3>
+<p>Gene ontologies were also obtained from <code>msigdbr.</code> The
+ontologies were filtered to only contain those more than 3 nodes away
+from the root to reduce redundancy. Like the KEGG gene sets, the GO
+terms were filtered to only contain proteins detected in the
+analysis.</p>
+<pre class="r"><code># GO Terms
+goSummaries &lt;- url(&quot;https://uofabioinformaticshub.github.io/summaries2GO/data/goSummaries.RDS&quot;) %&gt;%
+  readRDS() %&gt;%
+  mutate(
+    Term = Term(id),
+    gs_name = Term %&gt;% str_to_upper() %&gt;% str_replace_all(&quot;[ -]&quot;, &quot;_&quot;),
+    gs_name = paste0(&quot;GO_&quot;, gs_name)
+    )
+
+minPath &lt;- 3
+
+GO &lt;- 
+  msigdbr(&quot;Danio rerio&quot;, category = &quot;C5&quot;) %&gt;%
+  dplyr::filter(grepl(gs_name, pattern = &quot;^GO&quot;)) %&gt;%
+  mutate(
+    gs_fullname = gs_name,
+    gs_name = str_replace(gs_name, pattern = &quot;GOBP_&quot;, replacement = &quot;GO_&quot;),
+    gs_name = str_replace(gs_name, pattern = &quot;GOMF_&quot;, replacement = &quot;GO_&quot;), 
+    gs_name = str_replace(gs_name, pattern = &quot;GOCC_&quot;, replacement = &quot;GO_&quot;)
+  ) %&gt;% 
+  left_join(goSummaries) %&gt;%
+  dplyr::filter(shortest_path &gt;= minPath) %&gt;% 
+  distinct(gs_name, gene_symbol, .keep_all = TRUE) %&gt;%
+  dplyr::select(gs_fullname, gene_symbol) %&gt;% 
+  dplyr::filter(gene_symbol %in% toptables$`MPSIIIB_M - wt_M`$gene_name) %&gt;% 
+  na.omit %&gt;% 
+  split(f = .$gs_fullname) %&gt;%
+  lapply(extract2, &quot;gene_symbol&quot;)
+
+# calculate the number of genes per gene set
+sizes.GO &lt;- GO %&gt;% 
+  lapply(length) %&gt;% 
+  unlist %&gt;% 
+  as.data.frame() %&gt;% 
+  set_colnames( &quot;n_genes&quot;) %&gt;% 
+  rownames_to_column(&quot;gs&quot;)
+
+# retain gene sets with at least 3 genes in it
+GO &lt;- GO[sizes.GO %&gt;% dplyr::filter(n_genes &gt; 3) %&gt;% .$gs]  </code></pre>
+</div>
+<div id="cell-type-markers" class="section level3">
+<h3>cell type markers</h3>
+<p>Cell type marker proteins were obtained from Jiang et at. 2021.</p>
+<pre class="r"><code>cell_type_markers &lt;- 
+  read_xlsx(&quot;data/gene_sets/Suppdata2_jiangetal_2021_fcelldev.xlsx&quot;, sheet = &quot;Brain&quot;) %&gt;% 
+  dplyr::rename(&quot;gene_name&quot; = gene) %&gt;% 
+  dplyr::filter(gene_name %in% toptables$`MPSIIIB_M - wt_M`$gene_name) %&gt;% 
+  split(f = .$`cell type`) %&gt;% 
+  lapply(extract2, &quot;gene_name&quot;)</code></pre>
+</div>
+<div id="chromosome-protein-sets" class="section level3">
+<h3>chromosome protein sets</h3>
+<p>Also want to look at whether there are any chr-specific effects as we
+see in the RNAseq data.</p>
+<pre class="r"><code>chr &lt;- anno %&gt;% 
+  as_tibble() %&gt;% 
+  mutate(
+    chr = str_extract(chromosome, pattern = &quot;\\d{1,2}&quot;), # the first 1 or 2 numbers. 
+  ) %&gt;% 
+  dplyr::select(gene_name, chromosome, chr) %&gt;% 
+  # only retain proteins detected in this exp.
+  dplyr::filter(gene_name %in% toptables$`MPSIIIB_M - wt_M`$gene_name) %&gt;% 
+  split(f = .$chr) %&gt;% 
+  lapply(extract2, &quot;gene_name&quot;)</code></pre>
+</div>
+<div id="ire-gene-sets" class="section level3">
+<h3>IRE gene sets</h3>
+<p>I downloaded the IRE gene csv for zerbrafish described in Hin et
+al. from here <a
+href="https://github.com/nhihin/ire/blob/master/data/ire/zebrafish/zebrafishIreGenes.rds"
+class="uri">https://github.com/nhihin/ire/blob/master/data/ire/zebrafish/zebrafishIreGenes.rds</a></p>
+<p>This is a list of genes which contain IREs in their 5’ or 3’ UTR, and
+whether it is predicted as high quality or ot. The list is in ensembl
+gene ids, so need to convert to gene name.</p>
+<pre class="r"><code>ire_gene &lt;- readRDS(&quot;data/gene_sets/zebrafishIreGenes.rds&quot;) %&gt;% 
+  unlist() %&gt;% 
+  as_tibble() %&gt;% 
+  set_colnames(&quot;ensembl_gene_id&quot;)
+
+bm.ire &lt;- 
+  getBM(
+    attributes = c(&quot;external_gene_name&quot;, &quot;ensembl_gene_id&quot;), 
+    filters = &#39;ensembl_gene_id&#39;, 
+    values = ire_gene$ensembl_gene_id %&gt;% unique, 
+    mart = mart)   
+
+ire &lt;- readRDS(&quot;data/gene_sets/zebrafishIreGenes.rds&quot;) %&gt;% 
+  lapply( function(x) {
+    x %&gt;% 
+      as_tibble  %&gt;%
+      set_colnames(&quot;ensembl_gene_id&quot;) %&gt;% 
+      left_join(bm.ire) %&gt;% 
+      dplyr::filter(external_gene_name != &quot;&quot;) %&gt;% 
+      .$external_gene_name %&gt;% 
+      unique()
+  })</code></pre>
+</div>
+</div>
+<div id="over-representation-analysis-using-goseq"
+class="section level2">
+<h2>Over representation analysis using goseq</h2>
+<p>To test for over-representation of GO terms within the significantly
+DE proteins, I used goseq. For the bias data, I chose protein length, as
+longer proteins would have more peptides associated with them. Despite
+no obvious relationship between protein length and logFC/DE status.</p>
+<pre class="r"><code>pwfs &lt;- toptables %&gt;% 
+  lapply(function(x) {
+    x %&gt;% 
+      dplyr::filter(!is.na(gene_name)) %&gt;% # omit proteins with no gene names
+      dplyr::distinct(gene_name, .keep_all = TRUE) %&gt;% 
+      
+      with(
+        nullp(
+          DEgenes = structure(DE, names = gene_name),
+          bias.data = length,
+        )
+      )
+  })</code></pre>
+<p><img src="figure/proteomics.rmd/unnamed-chunk-36-1.png" width="100%" height="100%" style="display: block; margin: auto;" /><img src="figure/proteomics.rmd/unnamed-chunk-36-2.png" width="100%" height="100%" style="display: block; margin: auto;" /><img src="figure/proteomics.rmd/unnamed-chunk-36-3.png" width="100%" height="100%" style="display: block; margin: auto;" /><img src="figure/proteomics.rmd/unnamed-chunk-36-4.png" width="100%" height="100%" style="display: block; margin: auto;" /></p>
+<pre class="r"><code>goseq &lt;- pwfs %&gt;% 
+  sapply(function(x){
+      goseq(x, gene2cat = GO) %&gt;% 
+      as_tibble() %&gt;%
+      dplyr::filter(numDEInCat &gt; 0) %&gt;%
+      mutate(
+        # a few protein sets show a pval of 0, which is not really right. 
+        # probs a really small value would be suffient.  
+        over_represented_pvalue = case_when(
+          over_represented_pvalue == 0 ~  1e-50, 
+          TRUE ~ over_represented_pvalue
+        ), 
+        FDR = p.adjust(over_represented_pvalue, method = &quot;fdr&quot;)
+        ) %&gt;%
+      dplyr::select(-under_represented_pvalue, 
+                    pvalue = over_represented_pvalue)
+    
+  }, simplify = FALSE)
+
+# add names to goseq tibbles
+goseq %&lt;&gt;% 
+  map2(names(.), ~.x %&gt;% mutate(contrast = .y))
+
+
+# define the interesting gene sets
+goseq.sig.gs &lt;- goseq %&gt;% 
+  bind_rows() %&gt;% 
+  dplyr::filter(grepl(contrast, pattern = &quot;MPS&quot;)) %&gt;% 
+  dplyr::filter(FDR &lt; 0.01) %&gt;% 
+  .$category %&gt;% 
+  unique
+
+# plot the results
+# goseq$`MPSIIIB_M - wt_M` %&gt;% 
+#   bind_rows(goseq$`MPSIIIB_F - wt_F`) %&gt;% 
+#   arrange(pvalue) %&gt;% 
+#   dplyr::filter(category %in% goseq.sig.gs) %&gt;% 
+#    mutate(
+#     sig = FDR &lt; 0.05, 
+#     GO_type = case_when(
+#       grepl(category, pattern = &quot;^GOCC&quot;) ~ &quot;CC&quot;, 
+#       grepl(category, pattern = &quot;^GOBP&quot;) ~ &quot;BP&quot;, 
+#       grepl(category, pattern = &quot;^GOMF&quot;) ~ &quot;MF&quot;
+#     ), 
+#     category = str_remove(category, pattern = &quot;GO\\w{2}_&quot;), 
+#     category = str_replace_all(category, pattern = &quot;_&quot;, replacement = &quot; &quot;),
+#     category = str_wrap(category, width = 46)
+#   ) %&gt;% 
+#   ggplot(
+#     aes(x = contrast, y = reorder(category,
+#                                   X = -log10(pvalue)))
+#   ) +
+#   geom_tile(
+#     aes(fill = -log10(pvalue), 
+#         alpha = FDR &lt; 0.05)
+#   ) +
+#   geom_label(
+#     aes(label = signif(FDR, 2))
+#   ) +
+#   facet_wrap(~GO_type, scales = &quot;free&quot;) +
+#   scale_fill_viridis_c()</code></pre>
+</div>
+<div id="harmonic-mean-p" class="section level2">
+<h2>harmonic mean p</h2>
+<p>Consistency with the transctiptome will be applied here by
+calculating the HMP value of the KEGG gene sets.</p>
+<pre class="r"><code># a function to run the HMP calculation. 
+runHMP = function(
+  geneset, 
+  eset, 
+  toptable, 
+  design, 
+  contrasts
+  
+) {
+  
+  # update the eset to have gene names as the rownames, 
+  #as this is what im mapping to the gene sets
+  fry.input &lt;- exprs(eset) %&gt;% 
+  as.data.frame() %&gt;% 
+  rownames_to_column(&quot;uniprot_id&quot;) %&gt;% 
+  left_join(anno %&gt;% 
+              dplyr::select(gene_name, uniprot_id)) %&gt;% 
+  dplyr::distinct(gene_name, .keep_all = TRUE) %&gt;% 
+  dplyr::filter(!is.na(gene_name)) %&gt;% 
+  column_to_rownames(&quot;gene_name&quot;) %&gt;% 
+  dplyr::select(-uniprot_id)
+ 
+  # run fry
+  fry &lt;- colnames(contrasts) %&gt;% 
+  sapply(function(y) {
+    fry.input %&gt;%
+      limma::fry(
+        index = geneset,
+        design = design,
+        contrast = contrasts[,y],
+        sort = &quot;mixed&quot;
+      ) %&gt;%
+      rownames_to_column(&quot;pathway&quot;) %&gt;%
+      as_tibble() %&gt;% 
+      mutate(coef = y) 
+  }, simplify = FALSE)
+
+  # run camera
+  camera &lt;- colnames(contrasts) %&gt;% 
+  sapply(function(y) {
+    fry.input %&gt;%
+      limma::camera(
+        index = geneset,
+        design = design,
+        contrast = contrasts[,y]
+      ) %&gt;%
+      rownames_to_column(&quot;pathway&quot;) %&gt;%
+      as_tibble() %&gt;% 
+      mutate(coef = y) 
+  }, simplify = FALSE)
+  
+  # create ranks for fgsea
+  ranks &lt;- toptables %&gt;% 
+     sapply(function(y) {
+     y %&gt;%
+       arrange(t) %&gt;%
+       dplyr::select(gene_name, t) %&gt;% #only want the Pvalue with sign
+       with(structure(t, names = gene_name)) %&gt;%
+       rev() # reverse so the start of the list is upregulated genes
+   }, simplify = FALSE)
+  
+  # run fgsea
+  set.seed(1)
+  fgsea &lt;- ranks %&gt;% 
+  sapply(function(x){
+    fgseaMultilevel(stats = x, 
+                    pathways = geneset) %&gt;%
+      as_tibble() %&gt;%
+      dplyr::rename(FDR = padj) %&gt;%
+      mutate(padj = p.adjust(pval, &quot;bonferroni&quot;)) %&gt;%
+      dplyr::select(pathway, pval, FDR, padj, everything()) %&gt;%
+      arrange(pval) 
+  }, simplify = F)
+  
+  fgsea %&lt;&gt;% 
+    map2(names(.), ~.x %&gt;% mutate(coef = .y))  
+  
+  # calculate HMP
+  hmp &lt;- fry %&gt;%
+  bind_rows() %&gt;%
+  dplyr::select(pathway, PValue.Mixed, coef) %&gt;%
+  dplyr::rename(fry_p = PValue.Mixed) %&gt;%
+  left_join(camera %&gt;%
+              bind_rows() %&gt;%
+              dplyr::select(pathway, PValue, coef),
+            by = c(&quot;pathway&quot;, &quot;coef&quot;)) %&gt;%
+  dplyr::rename(camera_p = PValue) %&gt;%
+  left_join(fgsea %&gt;%
+              bind_rows() %&gt;%
+              dplyr::select(pathway, pval, coef),
+            by = c(&quot;pathway&quot;, &quot;coef&quot;)) %&gt;%
+  dplyr::rename(fgsea_p = pval) %&gt;%
+  bind_rows() %&gt;%
+  nest(p = one_of(c(&quot;fry_p&quot;, &quot;camera_p&quot;, &quot;fgsea_p&quot;))) %&gt;%
+ mutate(harmonic_p = vapply(p, function(x){
+        x &lt;- unlist(x)
+        x &lt;- x[!is.na(x)]
+        p.hmp(x, L = 4)
+      }, numeric(1))
+ ) %&gt;%
+  unnest() %&gt;%
+  mutate(harmonic_p_FDR = p.adjust(harmonic_p, &quot;fdr&quot;),
+         sig = harmonic_p_FDR &lt; 0.05) %&gt;%
+  arrange(harmonic_p)
+
+return(list(hmp = hmp, 
+            fgsea = fgsea))    
+}</code></pre>
+</div>
+<div id="kegg-gene-sets" class="section level2">
+<h2>KEGG gene sets</h2>
+<pre class="r"><code>hmp.kegg &lt;- runHMP(
+  geneset = KEGG, 
+  eset = eset, 
+  toptable = toptables, 
+  design = design, 
+  contrasts = contrasts
+  )
+
+# define sig paths
+hmp.KEGG.sig.paths &lt;- hmp.kegg$hmp %&gt;% 
+  dplyr::filter(coef != &quot;wt_M - wt_F&quot;) %&gt;% 
+  dplyr::filter(harmonic_p_FDR &lt; 0.03) %&gt;% 
+  .$pathway %&gt;% 
+  unique
+
+hmp.kegg$hmp %&gt;% 
+  dplyr::filter(coef != &quot;wt_M - wt_F&quot;) %&gt;% 
+  dplyr::filter(pathway %in% hmp.KEGG.sig.paths) %&gt;% 
+  mutate(
+    sex = case_when(
+      grepl(coef, pattern = &quot;_F&quot;) ~ &quot;female&quot;, 
+      grepl(coef, pattern = &quot;_M&quot;) ~ &quot;male&quot;
+    )
+  ) %&gt;% 
+  ggplot(
+    aes(x = coef, y = reorder(pathway,
+                                  X = -log10(harmonic_p)))
+  ) +
+  geom_tile(
+    aes(fill = -log10(harmonic_p), alpha = sig)
+  ) +
+  geom_label(
+    aes(label = signif(harmonic_p_FDR, 2))
+  ) +
+  scale_fill_viridis_c() +
+  facet_wrap(~sex, scales = &quot;free_x&quot;)</code></pre>
+<p><img src="figure/proteomics.rmd/unnamed-chunk-38-1.png" width="100%" height="100%" style="display: block; margin: auto;" /></p>
+<pre class="r"><code># define gs that are sig in at least 2 coefs
+n.kegg.sig.hmp &lt;- hmp.kegg$hmp %&gt;% 
+  dplyr::filter(coef != &quot;wt_M - wt_F&quot;) %&gt;% 
+  dplyr::filter(harmonic_p_FDR &lt; 0.05) %&gt;% 
+  group_by(pathway) %&gt;% 
+  summarise(n = n()) %&gt;% 
+  ungroup %&gt;% 
+  dplyr::filter(n &gt; 1)
+
+
+hmp.kegg$hmp %&gt;% 
+  #dplyr::filter(coef != &quot;wt_M - wt_F&quot;) %&gt;% 
+  dplyr::filter(pathway %in% n.kegg.sig.hmp$pathway) %&gt;% 
+  mutate(
+    sex = case_when(
+      grepl(coef, pattern = &quot;_F&quot;) ~ &quot;female&quot;, 
+      grepl(coef, pattern = &quot;_M&quot;) ~ &quot;male&quot;
+    ), 
+    
+    pathway = str_replace_all(pathway, pattern = &quot;_&quot;, replacement = &quot; &quot;), 
+    pathway = str_remove(pathway, pattern = &quot;KEGG &quot;), 
+    pathway = str_wrap(pathway, width = 30), 
+    coef = str_remove(coef, pattern = &quot;- wt.+&quot;)
+  ) %&gt;% 
+  ggplot(
+    aes(x = coef, y = reorder(pathway,
+                                  X = -log10(harmonic_p)))
+  ) +
+  geom_tile(
+    aes(fill = -log10(harmonic_p), 
+        #alpha = harmonic_p_FDR &lt; 0.05
+        ),
+  ) +
+  geom_label(
+    aes(label = signif(harmonic_p_FDR, 2)), 
+    data = . %&gt;% 
+      dplyr::filter(harmonic_p_FDR &lt; 0.1)
+  ) +
+  scale_fill_viridis_c(
+    option = &quot;viridis&quot;
+  ) +
+  facet_share(~sex, scales = &quot;free_x&quot;) +
+  labs(
+    x = NA, 
+    y = &quot;KEGG pathway&quot;, 
+    fill = &quot;-log10(pvalue)&quot;, 
+    alpha = &quot;FDR &lt; 0.05&quot;
+  ) +
+  theme(
+    axis.text.y = element_text(face = &quot;bold&quot;),
+    axis.text.x = element_text(face = &quot;bold&quot;), 
+    strip.text = element_text(face = &quot;bold&quot;)
+  )</code></pre>
+<p><img src="figure/proteomics.rmd/unnamed-chunk-38-2.png" width="100%" height="100%" style="display: block; margin: auto;" /></p>
+<pre class="r"><code>hmp.kegg$hmp %&gt;% 
+  dplyr::filter(pathway %in% c(
+    hmp.KEGG.sig.paths[1:10], 
+     &quot;KEGG_RIBOSOME&quot;, 
+    &quot;KEGG_COMPLEMENT_AND_COAGULATION_CASCADES&quot;
+  )) %&gt;% 
+  mutate(
+    sex = case_when(
+      grepl(coef, pattern = &quot;_F&quot;) ~ &quot;female&quot;, 
+      grepl(coef, pattern = &quot;_M&quot;) ~ &quot;male&quot;
+    )
+  ) %&gt;% 
+  ggplot(
+    aes(x = coef, y = reorder(pathway,
+                                  X = -log10(harmonic_p)))
+  ) +
+  geom_tile(
+    aes(fill = -log10(harmonic_p), alpha = sig)
+  ) +
+  geom_label(
+    aes(label = signif(harmonic_p_FDR, 2))
+  ) +
+  scale_fill_viridis_c() +
+  facet_wrap(~sex, scales = &quot;free_x&quot;) </code></pre>
+<p><img src="figure/proteomics.rmd/unnamed-chunk-39-1.png" width="100%" height="100%" style="display: block; margin: auto;" /></p>
+<pre class="r"><code> # ggsave(&quot;output/plots4kim/proteomes6mo.png&quot;, 
+ #         width = 18, height = 10, units = &quot;cm&quot;, dpi = 600, scale = 2)</code></pre>
+<div id="ribosome" class="section level4">
+<h4>ribosome</h4>
+<pre class="r"><code>ribo.adult &lt;- 
+  toptables %&gt;% 
+  bind_rows() %&gt;% 
+  dplyr::filter(gene_name %in% KEGG$KEGG_RIBOSOME) %&gt;% 
+  dplyr::filter(coef != &quot;wt_M - wt_F&quot;) %&gt;% 
+  dplyr::select(gene_name, logFC, coef) %&gt;% 
+  dplyr::distinct(gene_name, coef, .keep_all = T) %&gt;% 
+  spread(key = &quot;coef&quot;, value = &quot;logFC&quot;) %&gt;% 
+  column_to_rownames(&quot;gene_name&quot;) %&gt;% 
+  t
+
+ribo.hm &lt;- draw(
+  ComplexHeatmap::Heatmap(
+    
+    # df for input 
+    ribo.adult,
+    
+    
+    show_column_names = TRUE, 
+    column_names_rot = 45, 
+    
+    column_title = &quot;RIBOSOME&quot;,
+    col = colorRamp2(
+      breaks = seq(-0.3, 0.3, length.out = 100),
+      colors = colorRampPalette(rev(brewer.pal(n = 7, name = &quot;RdBu&quot;)))(100)
+    ),
+    name = &quot;logFC&quot;, # name the legend
+    
+    cluster_rows = TRUE,  
+    heatmap_legend_param = list(
+      direction = &quot;horizontal&quot;, 
+      title_position = &quot;topcenter&quot;), 
+    
+    heatmap_width = unit(35, &quot;cm&quot;), 
+    heatmap_height = unit(10, &quot;cm&quot;), 
+  ),
+  
+  heatmap_legend_side = &quot;top&quot;
+
+)</code></pre>
+<p><img src="figure/proteomics.rmd/unnamed-chunk-40-1.png" width="100%" height="100%" style="display: block; margin: auto;" /></p>
+</div>
+<div id="oxphos" class="section level4">
+<h4>oxphos</h4>
+<pre class="r"><code>oxphos.adult &lt;- 
+  toptables %&gt;% 
+  bind_rows() %&gt;% 
+  dplyr::filter(gene_name %in% KEGG$KEGG_OXIDATIVE_PHOSPHORYLATION) %&gt;% 
+  dplyr::filter(coef != &quot;wt_M - wt_F&quot;) %&gt;% 
+  dplyr::select(gene_name, logFC, coef) %&gt;% 
+  dplyr::distinct(gene_name, coef, .keep_all = T) %&gt;% 
+  spread(key = &quot;coef&quot;, value = &quot;logFC&quot;) %&gt;% 
+  column_to_rownames(&quot;gene_name&quot;) %&gt;% 
+  t
+
+oxphos.hm &lt;- draw(
+  ComplexHeatmap::Heatmap(
+    
+    # df for input 
+    oxphos.adult,
+    
+    
+    show_column_names = TRUE, 
+    column_names_rot = 45, 
+    
+    column_title = &quot;oxphos.adult&quot;,
+    col = colorRamp2(
+      breaks = seq(-0.3, 0.3, length.out = 100),
+      colors = colorRampPalette(rev(brewer.pal(n = 7, name = &quot;RdBu&quot;)))(100)
+    ),
+    name = &quot;logFC&quot;, # name the legend
+    
+    cluster_rows = TRUE,  
+    heatmap_legend_param = list(
+      direction = &quot;horizontal&quot;, 
+      title_position = &quot;topcenter&quot;), 
+    
+    heatmap_width = unit(30, &quot;cm&quot;), 
+    heatmap_height = unit(10, &quot;cm&quot;), 
+  ),
+  
+  heatmap_legend_side = &quot;top&quot;
+
+)</code></pre>
+<p><img src="figure/proteomics.rmd/unnamed-chunk-41-1.png" width="100%" height="100%" style="display: block; margin: auto;" /></p>
+</div>
+<div id="lysosome" class="section level4">
+<h4>lysosome</h4>
+<pre class="r"><code>lyso.adult &lt;- 
+  toptables %&gt;% 
+  bind_rows() %&gt;% 
+  dplyr::filter(gene_name %in% KEGG$KEGG_LYSOSOME) %&gt;% 
+  dplyr::filter(coef != &quot;wt_M - wt_F&quot;) %&gt;% 
+  dplyr::select(gene_name, logFC, coef) %&gt;% 
+  dplyr::distinct(gene_name, coef, .keep_all = T) %&gt;% 
+  spread(key = &quot;coef&quot;, value = &quot;logFC&quot;) %&gt;% 
+  column_to_rownames(&quot;gene_name&quot;) 
+
+ribo.hm &lt;- draw(
+  ComplexHeatmap::Heatmap(
+    
+    # df for input 
+    lyso.adult,
+    
+    
+    show_column_names = TRUE, 
+    column_names_rot = 45, 
+    
+    column_title = &quot;LYSOSOME&quot;,
+    col = colorRamp2(
+      breaks = seq(-01, 01, length.out = 100),
+      colors = colorRampPalette(rev(brewer.pal(n = 7, name = &quot;RdBu&quot;)))(100)
+    ),
+    name = &quot;logFC&quot;, # name the legend
+    
+    cluster_rows = TRUE,  
+    
+    heatmap_legend_param = list(
+      direction = &quot;vertical&quot;, 
+      title_position = &quot;topleft&quot;, 
+       legend_height = unit(4, &quot;cm&quot;)
+      ), 
+    
+    heatmap_width = unit(10, &quot;cm&quot;), 
+    heatmap_height = unit(20, &quot;cm&quot;), 
+  ),
+  
+  heatmap_legend_side = &quot;right&quot;
+
+)</code></pre>
+<p><img src="figure/proteomics.rmd/unnamed-chunk-42-1.png" width="100%" height="100%" style="display: block; margin: auto;" /></p>
+</div>
+<div id="kegg_fc_gamma_r_mediated_phagocytosis" class="section level4">
+<h4>KEGG_FC_GAMMA_R_MEDIATED_PHAGOCYTOSIS</h4>
+<pre class="r"><code>phago.adult &lt;- 
+  toptables %&gt;% 
+  bind_rows() %&gt;% 
+  dplyr::filter(gene_name %in% KEGG$KEGG_FC_GAMMA_R_MEDIATED_PHAGOCYTOSIS) %&gt;% 
+  dplyr::filter(coef != &quot;wt_M - wt_F&quot;) %&gt;% 
+  dplyr::select(gene_name, logFC, coef) %&gt;% 
+  dplyr::distinct(gene_name, coef, .keep_all = T) %&gt;% 
+  spread(key = &quot;coef&quot;, value = &quot;logFC&quot;) %&gt;% 
+  column_to_rownames(&quot;gene_name&quot;) 
+
+phago.hm &lt;- draw(
+  ComplexHeatmap::Heatmap(
+    
+    # df for input 
+    phago.adult,
+    
+    
+    show_column_names = TRUE, 
+    column_names_rot = 45, 
+    
+    column_title = &quot;KEGG_FC_GAMMA_R_MEDIATED_PHAGOCYTOSIS&quot;,
+    col = colorRamp2(
+      breaks = seq(-0.5, 0.5, length.out = 100),
+      colors = colorRampPalette(rev(brewer.pal(n = 7, name = &quot;RdBu&quot;)))(100)
+    ),
+    name = &quot;logFC&quot;, # name the legend
+    
+    cluster_rows = TRUE,  
+    
+    heatmap_legend_param = list(
+      direction = &quot;vertical&quot;, 
+      title_position = &quot;topleft&quot;, 
+       legend_height = unit(4, &quot;cm&quot;)
+      ), 
+    
+    heatmap_width = unit(10, &quot;cm&quot;), 
+    heatmap_height = unit(25, &quot;cm&quot;), 
+  ),
+  
+  heatmap_legend_side = &quot;right&quot;
+
+)</code></pre>
+<p><img src="figure/proteomics.rmd/unnamed-chunk-43-1.png" width="100%" height="100%" style="display: block; margin: auto;" /></p>
+</div>
+</div>
+<div id="cell-type-marker-gene-sets" class="section level2">
+<h2>cell type marker gene sets</h2>
+<pre class="r"><code>fry.input &lt;- exprs(eset) %&gt;% 
+  as.data.frame() %&gt;% 
+  rownames_to_column(&quot;uniprot_id&quot;) %&gt;% 
+  left_join(anno %&gt;% 
+              dplyr::select(gene_name, uniprot_id)) %&gt;% 
+  dplyr::distinct(gene_name, .keep_all = TRUE) %&gt;% 
+  dplyr::filter(!is.na(gene_name)) %&gt;% 
+  column_to_rownames(&quot;gene_name&quot;) %&gt;% 
+  dplyr::select(-uniprot_id)
+
+fry.cell &lt;- colnames(contrasts) %&gt;%  
+  sapply(function(y) { 
+    fry.input %&gt;% 
+      limma::fry( 
+        index = cell_type_markers, 
+        design = design, 
+        contrast = contrasts[,y], 
+        sort = &quot;directional&quot; 
+      ) %&gt;% 
+      rownames_to_column(&quot;pathway&quot;) %&gt;% 
+      as_tibble() %&gt;%  
+      mutate(coef = y)  
+  }, simplify = FALSE) 
+
+# keep this to get theleadingEdege genes
+hmp.cell &lt;- runHMP(
+  geneset = cell_type_markers,
+  eset = eset,
+  toptable = toptables,
+  design = design,
+  contrasts = contrasts
+  )
+
+fry.cell %&gt;% 
+  bind_rows() %&gt;% 
+  dplyr::filter(coef != &quot;wt_M - wt_F&quot;) %&gt;% 
+  ggplot(
+    aes(x = coef, y = reorder(pathway,
+                              X = -log10(PValue)))
+  ) +
+  geom_tile(
+    aes(fill = -log10(PValue), alpha = FDR &lt; 0.05)
+  ) +
+  geom_label(
+    aes(label = signif(FDR, 2))
+  ) +
+  scale_fill_viridis_c()</code></pre>
+<p><img src="figure/proteomics.rmd/unnamed-chunk-44-1.png" width="100%" height="100%" style="display: block; margin: auto;" /></p>
+<pre class="r"><code>  facet_wrap(~sex, scales = &quot;free_x&quot;)</code></pre>
+<pre><code>&lt;ggproto object: Class FacetWrap, Facet, gg&gt;
+    compute_layout: function
+    draw_back: function
+    draw_front: function
+    draw_labels: function
+    draw_panels: function
+    finish_data: function
+    init_scales: function
+    map_data: function
+    params: list
+    setup_data: function
+    setup_params: function
+    shrink: TRUE
+    train_scales: function
+    vars: function
+    super:  &lt;ggproto object: Class FacetWrap, Facet, gg&gt;</code></pre>
+<div id="leadingedge-gene-overlaps." class="section level4">
+<h4>leadingEdge gene overlaps.</h4>
+<pre class="r"><code># svg(&quot;output/plots4pub3/celltype_protein_fems_LeadingEdgeUpSet.svg&quot;, 
+#     width = 5, height = 5)
+# females
+hmp.cell$fgsea %&gt;%
+  bind_rows() %&gt;% 
+  dplyr::filter(coef %in% grep(coef, pattern = &quot;MPS&quot;, value = TRUE)) %&gt;% 
+  dplyr::filter(pathway %in% 
+                  c(&quot;Oligodendrocyte&quot;, &quot;Oligodendrocyte_sla high&quot;, 
+                    &quot;Microglia_apoc1 high&quot;, &quot;Neural stem cell&quot;)) %&gt;% 
+  mutate(
+    coef = str_remove(coef, pattern = &quot; - wt.+&quot;),
+    coef_cell = paste0(coef, &quot;_&quot;, pathway)
+  ) %&gt;% 
+  dplyr::select(coef_cell, leadingEdge) %&gt;% 
+  dplyr::filter(
+    coef_cell == grep(coef_cell, pattern = &quot;_F_&quot;, value = TRUE)
+  ) %&gt;% 
+  split(f = .$coef_cell) %&gt;% 
+  lapply(function(x) {x$leadingEdge}[[1]]) %&gt;% 
+  fromList() %&gt;% 
+  upset(order.by = &quot;freq&quot;,nsets = 4)</code></pre>
+<p><img src="figure/proteomics.rmd/unnamed-chunk-45-1.png" width="100%" height="100%" style="display: block; margin: auto;" /></p>
+<pre class="r"><code># dev.off()</code></pre>
+<pre class="r"><code># svg(&quot;output/plots4pub3/celltype_protein_males_LeadingEdgeUpSet.svg&quot;, 
+#     width = 7, height = 5)
+# males
+hmp.cell$fgsea %&gt;%
+  bind_rows() %&gt;% 
+  dplyr::filter(coef %in% grep(coef, pattern = &quot;MPS&quot;, value = TRUE)) %&gt;% 
+  dplyr::filter(pathway %in% 
+                  c(&quot;Oligodendrocyte&quot;, &quot;Oligodendrocyte_sla high&quot;, 
+                    &quot;Microglia_apoc1 high&quot;, &quot;Neural stem cell&quot;, 
+                    &quot;Macrophage_grn1 high&quot;, &quot;Neuroblast&quot;, 
+                    &quot;Meningeal mural lymphatic endothelial cell&quot;
+                    )) %&gt;% 
+  mutate(
+    coef = str_remove(coef, pattern = &quot; - wt.+&quot;),
+    coef_cell = paste0(coef, &quot;_&quot;, pathway)
+  ) %&gt;% 
+  dplyr::select(coef_cell, leadingEdge) %&gt;% 
+  dplyr::filter(
+    coef_cell == grep(coef_cell, pattern = &quot;_M_&quot;, value = TRUE)
+  ) %&gt;% 
+  split(f = .$coef_cell) %&gt;% 
+  lapply(function(x) {x$leadingEdge}[[1]]) %&gt;% 
+  fromList() %&gt;% 
+  upset(order.by = &quot;freq&quot;)</code></pre>
+<p><img src="figure/proteomics.rmd/unnamed-chunk-46-1.png" width="100%" height="100%" style="display: block; margin: auto;" /></p>
+<pre class="r"><code># dev.off()</code></pre>
+<pre class="r"><code>cell.leadingEdge.protein &lt;- hmp.cell$fgsea %&gt;% 
+  bind_rows() %&gt;% 
+  dplyr::filter(
+    coef %in% grep(coef, pattern = &quot;MPS&quot;, value = TRUE), 
+    pathway %in% c(
+      &quot;Oligodendrocyte&quot;, &quot;Oligodendrocyte_sla high&quot;, 
+      &quot;Microglia_apoc1 high&quot;, &quot;Neural stem cell&quot;, 
+      &quot;Macrophage_grn1 high&quot;, &quot;Meningeal mural lymphatic endothelial cell&quot;, 
+      &quot;Neuroblast&quot;
+    )) %&gt;% 
+  mutate(
+    coef = str_remove(coef, pattern = &quot; - wt.+&quot;),
+    coef_cell = paste0(coef, &quot;_&quot;, pathway)
+  ) %&gt;% 
+  split(f = .$coef_cell) %&gt;% 
+  lapply(function(x) {
+    x$leadingEdge[[1]]
+  })
+
+
+  
+leadingEdge.F.proteins &lt;- intersect(
+  cell.leadingEdge.protein$`MPSIIIB_F_Microglia_apoc1 high`, 
+  cell.leadingEdge.protein$MPSIIIB_F_Oligodendrocyte) %&gt;% 
+  intersect(
+  cell.leadingEdge.protein$`MPSIIIB_F_Neural stem cell`) %&gt;% 
+  intersect(cell.leadingEdge.protein$`MPSIIIB_F_Oligodendrocyte_sla high`)
+
+leadingEdge.F.proteins &lt;- c(
+  leadingEdge.F.proteins, 
+  
+  intersect(
+    cell.leadingEdge.protein$`MPSIIIB_F_Microglia_apoc1 high`, 
+    cell.leadingEdge.protein$MPSIIIB_F_Oligodendrocyte) %&gt;% 
+    intersect(cell.leadingEdge.protein$`MPSIIIB_F_Oligodendrocyte_sla high`), 
+  
+    intersect(
+    cell.leadingEdge.protein$`MPSIIIB_F_Microglia_apoc1 high`, 
+    cell.leadingEdge.protein$MPSIIIB_F_Oligodendrocyte) %&gt;% 
+    intersect(cell.leadingEdge.protein$`MPSIIIB_F_Neural stem cell`)
+  ) %&gt;%  
+  unique()
+
+
+
+
+
+leadingEdge.M.proteins &lt;- intersect(
+  cell.leadingEdge.protein$`MPSIIIB_M_Microglia_apoc1 high`, 
+  cell.leadingEdge.protein$MPSIIIB_M_Oligodendrocyte) %&gt;% 
+  intersect(
+    cell.leadingEdge.protein$`MPSIIIB_M_Neural stem cell`) %&gt;% 
+  intersect(
+    cell.leadingEdge.protein$`MPSIIIB_F_Oligodendrocyte_sla high`) 
+
+leadingEdge.M.proteins %&lt;&gt;% 
+  c(
+    intersect(
+      cell.leadingEdge.protein$`MPSIIIB_M_Oligodendrocyte_sla high`, 
+      cell.leadingEdge.protein$`MPSIIIB_M_Microglia_apoc1 high`) %&gt;% 
+      intersect(
+      cell.leadingEdge.protein$MPSIIIB_M_Oligodendrocyte
+    )
+    
+    
+    
+  ) %&gt;% unique()
+
+# svg(&quot;output/plots4pub3/sharedleadingEdge_F.svg&quot;)
+toptables %&gt;% 
+  bind_rows() %&gt;% 
+  dplyr::filter(gene_name %in% leadingEdge.F.proteins) %&gt;% 
+  tidyHeatmap::heatmap(
+    .row = coef, 
+    .column = gene_name, 
+    .value = logFC, 
+    
+    # colours
+    palette_value = circlize::colorRamp2(
+      seq(-1, 1, length.out = 11),
+      rev(RColorBrewer::brewer.pal(11, &quot;RdBu&quot;))),
+    rect_gp = grid::gpar(col = &quot;#161616&quot;, lwd = 0.5),
+    
+    # sizes
+    row_names_gp = gpar(fontsize = 14),
+    column_names_gp = gpar(fontsize = 14),
+    heatmap_width = unit(15, &quot;cm&quot;),
+    heatmap_height = unit(10, &quot;cm&quot;),
+  )</code></pre>
+<p><img src="figure/proteomics.rmd/unnamed-chunk-47-1.png" width="100%" height="100%" style="display: block; margin: auto;" /></p>
+<pre class="r"><code># dev.off()  
+
+# svg(&quot;output/plots4pub3/sharedleadingEdge_M.svg&quot;)
+toptables %&gt;% 
+  bind_rows() %&gt;% 
+  dplyr::filter(gene_name %in% leadingEdge.M.proteins) %&gt;% 
+  tidyHeatmap::heatmap(
+    .row = coef, 
+    .column = gene_name, 
+    .value = logFC, 
+    
+    # colours
+    palette_value = circlize::colorRamp2(
+      seq(-1, 1, length.out = 11),
+      rev(RColorBrewer::brewer.pal(11, &quot;RdBu&quot;))),
+    rect_gp = grid::gpar(col = &quot;#161616&quot;, lwd = 0.5),
+    
+    # sizes
+    row_names_gp = gpar(fontsize = 14),
+    column_names_gp = gpar(fontsize = 14),
+    heatmap_width = unit(15, &quot;cm&quot;),
+    heatmap_height = unit(10, &quot;cm&quot;),
+  )</code></pre>
+<p><img src="figure/proteomics.rmd/unnamed-chunk-47-2.png" width="100%" height="100%" style="display: block; margin: auto;" /></p>
+<pre class="r"><code># dev.off()  </code></pre>
+</div>
+</div>
+<div id="ire-gene-sets-1" class="section level2">
+<h2>IRE gene sets</h2>
+<pre class="r"><code>ire.hmp &lt;- runHMP(
+  geneset = ire, 
+  eset = eset, 
+  toptable = toptables, 
+  design = design, 
+  contrasts = contrasts)
+
+ire.hmp$hmp %&gt;% 
+  bind_rows() %&gt;% 
+  mutate(
+    sex = case_when(
+      grepl(coef, pattern = &quot;_F&quot;) ~ &quot;female&quot;,
+      grepl(coef, pattern = &quot;_M&quot;) ~ &quot;male&quot;
+    )
+  ) %&gt;%
+  ggplot(
+    aes(x = coef, y = reorder(pathway,
+                                  X = -log10(harmonic_p)))
+  ) +
+  geom_tile(
+    aes(fill = -log10(harmonic_p), alpha = sig)
+  ) +
+  geom_label(
+    aes(label = signif(harmonic_p_FDR, 2))
+  ) +
+  scale_fill_viridis_c() +
+  facet_wrap(~sex, scales = &quot;free_x&quot;)</code></pre>
+<p><img src="figure/proteomics.rmd/unnamed-chunk-48-1.png" width="100%" height="100%" style="display: block; margin: auto;" /></p>
+</div>
+<div id="chromosome-gene-sets." class="section level2">
+<h2>chromosome gene sets.</h2>
+<pre class="r"><code>fry.chr &lt;- colnames(contrasts) %&gt;%  
+  sapply(function(y) { 
+    fry.input %&gt;% 
+      limma::fry( 
+        index = chr, 
+        design = design, 
+        contrast = contrasts[,y], 
+        sort = &quot;directional&quot; 
+      ) %&gt;% 
+      rownames_to_column(&quot;pathway&quot;) %&gt;% 
+      as_tibble() %&gt;%  
+      mutate(coef = y)  
+  }, simplify = FALSE) 
+
+fry.chr %&gt;% 
+  bind_rows() %&gt;% 
+  mutate(
+   pathway = factor(pathway, levels = c(1:26, &quot;mt&quot;)), 
+   chr = as.numeric(pathway)
+  ) %&gt;%
+  ggplot(
+    aes(x = coef, y = reorder(pathway, -chr))
+  ) +
+  geom_tile(
+    aes(fill = -log10(PValue), alpha = FDR &lt; 0.05)
+  ) +
+  geom_label(
+    aes(label = signif(FDR, 2))
+  ) +
+  scale_fill_viridis_c() +
+  labs(
+    title = &quot;fry - directional&quot;
+  )</code></pre>
+<p><img src="figure/proteomics.rmd/unnamed-chunk-49-1.png" width="100%" height="100%" style="display: block; margin: auto;" /></p>
+<pre class="r"><code>fry.chr %&gt;% 
+  bind_rows() %&gt;% 
+  mutate(
+   pathway = factor(pathway, levels = c(1:26, &quot;mt&quot;)), 
+   chr = as.numeric(pathway)
+  ) %&gt;%
+  ggplot(
+    aes(x = coef, y = reorder(pathway, -chr))
+  ) +
+  geom_tile(
+    aes(fill = -log10(PValue.Mixed), alpha = FDR.Mixed &lt; 0.05)
+  ) +
+  geom_label(
+    aes(label = signif(FDR.Mixed, 2))
+  ) +
+  scale_fill_viridis_c() +
+  labs(
+    title = &quot;fry - mixed&quot;
+  )</code></pre>
+<p><img src="figure/proteomics.rmd/unnamed-chunk-49-2.png" width="100%" height="100%" style="display: block; margin: auto;" /></p>
+<p>Directional and mixed, significant changes to the expression of genes
+are observed</p>
+<p>Have a look at Manhattan plots to see if there are peaks along these
+chromosomes</p>
+<div id="manhattan-plots" class="section level3">
+<h3>manhattan plots</h3>
+<div id="mps-iiib-males" class="section level4">
+<h4>MPS IIIB males</h4>
+<pre class="r"><code>manhat.input.naglu.males &lt;- 
+  toptables$`MPSIIIB_M - wt_M` %&gt;% 
+  mutate(
+    chr = str_extract(chromosome, pattern = &quot;\\d{1,2}&quot;), 
+    .after = chromosome
+  ) %&gt;% 
+  left_join(
+    bm.anno.start.end %&gt;% 
+      dplyr::rename(gene_name = external_gene_name) %&gt;% 
+      dplyr::distinct(gene_name, .keep_all = TRUE)
+  ) %&gt;% 
+  dplyr::filter(chr %in% 1:25) %&gt;% 
+  mutate(
+    chr = factor(chr, levels = 1:25)
+  ) %&gt;% 
+  # select rows of interest in order
+  dplyr::select(
+    gene_name, logFC, pval, DE, chr, start = start_position, end = end_position, 
+    everything()
+  ) %&gt;% 
+  # calculate the midpoint of each gene 
+  group_by(gene_name) %&gt;% 
+  mutate(
+    mid = mean(c(start, end)), .after = end
+    ) %&gt;% 
+  ungroup %&gt;% 
+  # get rid of any genes which do not have a mid point
+  dplyr::filter(
+    !is.na(mid)
+  ) %&gt;% 
+  # calculate the cumulative sum per chromosomes
+  group_by(chr)  %&gt;% 
+  arrange(chr, mid) %&gt;% 
+  mutate(
+    chrLen = max(mid), 
+    chr.mid.cum = min(start) + mid,
+    .after = mid
+    ) %&gt;% 
+  # calculate the cumulative length overall. 
+  dplyr::arrange(chr, mid) %&gt;% 
+  ungroup() %&gt;% 
+  mutate(
+    midCum = lag(cumsum(chr.mid.cum)), .after = chr.mid.cum
+    )
+  
+axis.nagmales &lt;- 
+  manhat.input.naglu.males %&gt;%
+  group_by(chr) %&gt;%
+  dplyr::arrange(chr) %&gt;% 
+  summarize(center = (max(midCum) + min(midCum)) / 2) %&gt;% 
+  mutate(
+    seqnames = as.numeric(chr),
+    colour = rep(c(&quot;grey40&quot;, &quot;black&quot;), length.out = 25)
+  )
+
+sig.chrs.naglu.males &lt;- fry.chr$`MPSIIIB_M - wt_M` %&gt;% 
+  dplyr::filter(FDR &lt; 0.05) %&gt;% 
+  .$pathway
+
+ggplot(manhat.input.naglu.males, 
+       aes(x = midCum, y = -log10(pval))
+       ) +
+  
+  geom_point(
+    aes(color = chr, size = DE), 
+    alpha = 0.5, size = 1) +
+  
+  geom_point(
+    alpha = 0.5, size = 1, colour = &quot;red&quot;, 
+    data = . %&gt;% 
+      dplyr::filter(chr == 24)
+  ) +
+  
+  geom_point(
+    alpha = 0.5, size = 1, colour = &quot;green&quot;, 
+    data = . %&gt;% 
+      dplyr::filter(chr == sig.chrs.naglu.males[1])
+  ) +
+  
+  geom_point(
+    alpha = 0.5, size = 1, colour = &quot;green2&quot;, 
+    data = . %&gt;% 
+      dplyr::filter(chr == sig.chrs.naglu.males[2])
+  ) +
+  
+  scale_color_manual(values = axis.nagmales$colour) +
+  scale_x_continuous(label = axis.nagmales$chr, 
+                     breaks = axis.nagmales$center) +
+  # scale_y_continuous(limits =c(0, 10)) + # zoom in
+  facet_wrap(~coef, ncol = 1) +
+  labs(x = &quot;Chromosome&quot;, y = expression(paste(-log[10], &quot;(p)&quot;))) +
+  theme( 
+    legend.position=&quot;none&quot;,
+    panel.border = element_blank(),
+    panel.grid.major.x = element_blank(),
+    panel.grid.minor.x = element_blank()
+  ) </code></pre>
+<p><img src="figure/proteomics.rmd/unnamed-chunk-50-1.png" width="100%" height="100%" style="display: block; margin: auto;" /></p>
+</div>
+<div id="mps-iiib-females" class="section level4">
+<h4>MPS IIIB females</h4>
+<pre class="r"><code>manhat.input.naglu.females &lt;- 
+  toptables$`MPSIIIB_F - wt_F` %&gt;% 
+  mutate(
+    chr = str_extract(chromosome, pattern = &quot;\\d{1,2}&quot;), 
+    .after = chromosome
+  ) %&gt;% 
+  left_join(
+    bm.anno.start.end %&gt;% 
+      dplyr::rename(gene_name = external_gene_name) %&gt;% 
+      dplyr::distinct(gene_name, .keep_all = TRUE)
+  ) %&gt;% 
+  dplyr::filter(chr %in% 1:25) %&gt;% 
+  mutate(
+    chr = factor(chr, levels = 1:25)
+  ) %&gt;% 
+  # select rows of interest in order
+  dplyr::select(
+    gene_name, logFC, pval, DE, chr, start = start_position, end = end_position, 
+    everything()
+  ) %&gt;% 
+  # calculate the midpoint of each gene 
+  group_by(gene_name) %&gt;% 
+  mutate(
+    mid = mean(c(start, end)), .after = end
+    ) %&gt;% 
+  ungroup %&gt;% 
+  # get rid of any genes which do not have a mid point
+  dplyr::filter(
+    !is.na(mid)
+  ) %&gt;% 
+  # calculate the cumulative sum per chromosomes
+  group_by(chr)  %&gt;% 
+  arrange(chr, mid) %&gt;% 
+  mutate(
+    chrLen = max(mid), 
+    chr.mid.cum = min(start) + mid,
+    .after = mid
+    ) %&gt;% 
+  # calculate the cumulative length overall. 
+  dplyr::arrange(chr, mid) %&gt;% 
+  ungroup() %&gt;% 
+  mutate(
+    midCum = lag(cumsum(chr.mid.cum)), .after = chr.mid.cum
+    )
+  
+axis.nafegmales &lt;- 
+  manhat.input.naglu.females %&gt;%
+  group_by(chr) %&gt;%
+  dplyr::arrange(chr) %&gt;% 
+  summarize(center = (max(midCum) + min(midCum)) / 2) %&gt;% 
+  mutate(
+    seqnames = as.numeric(chr),
+    colour = rep(c(&quot;grey40&quot;, &quot;black&quot;), length.out = 25)
+  )
+
+fry.chr$`MPSIIIB_F - wt_F`</code></pre>
+<pre><code># A tibble: 25 × 8
+   pathway NGenes Direction   PValue    FDR PValue.Mixed FDR.Mixed coef         
+   &lt;chr&gt;    &lt;int&gt; &lt;chr&gt;        &lt;dbl&gt;  &lt;dbl&gt;        &lt;dbl&gt;     &lt;dbl&gt; &lt;chr&gt;        
+ 1 15         280 Down      0.000428 0.0107    0.0000456  0.000285 MPSIIIB_F - …
+ 2 13         325 Up        0.00569  0.0711    0.0000151  0.000126 MPSIIIB_F - …
+ 3 5          495 Up        0.00896  0.0747    0.0000613  0.000306 MPSIIIB_F - …
+ 4 1          364 Up        0.0199   0.124     0.000884   0.00276  MPSIIIB_F - …
+ 5 17         289 Up        0.0354   0.163     0.170      0.177    MPSIIIB_F - …
+ 6 25         246 Up        0.0392   0.163     0.0709     0.0844   MPSIIIB_F - …
+ 7 16         371 Up        0.0636   0.227     0.000460   0.00164  MPSIIIB_F - …
+ 8 2          400 Up        0.142    0.388     0.000180   0.000751 MPSIIIB_F - …
+ 9 7          414 Up        0.143    0.388     0.0472     0.0635   MPSIIIB_F - …
+10 21         312 Up        0.155    0.388     0.00452    0.0125   MPSIIIB_F - …
+# ℹ 15 more rows</code></pre>
+<pre class="r"><code>ggplot(manhat.input.naglu.females, 
+       aes(x = midCum, y = -log10(pval))
+       ) +
+  geom_point(
+    aes(color=chr), 
+    alpha = 0.5, size = 1) +
+  
+  geom_point(
+    alpha = 0.5, size = 1, colour = &quot;red&quot;, 
+    data = . %&gt;% 
+      dplyr::filter(chr == 24)
+  ) +
+  
+  geom_point(
+    alpha = 0.5, size = 1, colour = &quot;green2&quot;, 
+    data = . %&gt;% 
+      dplyr::filter(chr == sig.chrs.naglu.males[2])
+  ) +
+  scale_color_manual(values = axis.nafegmales$colour) +
+  scale_x_continuous(label = axis.nafegmales$chr, 
+                     breaks = axis.nafegmales$center) +
+  facet_wrap(~coef, ncol = 1) +
+  labs(x = &quot;Chromosome&quot;, y = expression(paste(-log[10], &quot;(p)&quot;))) +
+  theme( 
+    legend.position=&quot;none&quot;,
+    panel.border = element_blank(),
+    panel.grid.major.x = element_blank(),
+    panel.grid.minor.x = element_blank()
+  ) </code></pre>
+<p><img src="figure/proteomics.rmd/unnamed-chunk-51-1.png" width="100%" height="100%" style="display: block; margin: auto;" /></p>
+</div>
+<div id="eofad-like-males" class="section level4">
+<h4>EOfAD-like males</h4>
+<pre class="r"><code>manhat.input.psen1.males &lt;- 
+  toptables$`EOfADlike_M - wt_M` %&gt;% 
+  mutate(
+    chr = str_extract(chromosome, pattern = &quot;\\d{1,2}&quot;), 
+    .after = chromosome
+  ) %&gt;% 
+  left_join(
+    bm.anno.start.end %&gt;% 
+      dplyr::rename(gene_name = external_gene_name) %&gt;% 
+      dplyr::distinct(gene_name, .keep_all = TRUE)
+  ) %&gt;% 
+  dplyr::filter(chr %in% 1:25) %&gt;% 
+  mutate(
+    chr = factor(chr, levels = 1:25)
+  ) %&gt;% 
+  # select rows of interest in order
+  dplyr::select(
+    gene_name, logFC, pval, DE, chr, start = start_position, end = end_position, 
+    everything()
+  ) %&gt;% 
+  # calculate the midpoint of each gene 
+  group_by(gene_name) %&gt;% 
+  mutate(
+    mid = mean(c(start, end)), .after = end
+    ) %&gt;% 
+  ungroup %&gt;% 
+  # get rid of any genes which do not have a mid point
+  dplyr::filter(
+    !is.na(mid)
+  ) %&gt;% 
+  # calculate the cumulative sum per chromosomes
+  group_by(chr)  %&gt;% 
+  arrange(chr, mid) %&gt;% 
+  mutate(
+    chrLen = max(mid), 
+    chr.mid.cum = min(start) + mid,
+    .after = mid
+    ) %&gt;% 
+  # calculate the cumulative length overall. 
+  dplyr::arrange(chr, mid) %&gt;% 
+  ungroup() %&gt;% 
+  mutate(
+    midCum = lag(cumsum(chr.mid.cum)), .after = chr.mid.cum
+    )
+  
+axis.psenmales &lt;- 
+  manhat.input.psen1.males %&gt;%
+  group_by(chr) %&gt;%
+  dplyr::arrange(chr) %&gt;% 
+  summarize(center = (max(midCum) + min(midCum)) / 2) %&gt;% 
+  mutate(
+    seqnames = as.numeric(chr),
+    colour = rep(c(&quot;grey40&quot;, &quot;black&quot;), length.out = 25)
+  )
+
+ggplot(manhat.input.psen1.males, 
+       aes(x = midCum, y = -log10(pval))
+       ) +
+  geom_point(
+    aes(color=chr), 
+    alpha = 0.5, size = 1) +
+  geom_point(
+    alpha = 0.5, size = 1, colour = &quot;red&quot;, 
+    data = . %&gt;% 
+      dplyr::filter(chr == 17)
+  ) +
+  scale_color_manual(values = axis.psenmales$colour) +
+  scale_x_continuous(label = axis.psenmales$chr, 
+                     breaks = axis.psenmales$center) +
+  # scale_y_continuous(limits =c(0, 10)) + # zoom in
+  facet_wrap(~coef, ncol = 1) +
+  labs(x = &quot;Chromosome&quot;, y = expression(paste(-log[10], &quot;(p)&quot;))) +
+  theme( 
+    legend.position=&quot;none&quot;,
+    panel.border = element_blank(),
+    panel.grid.major.x = element_blank(),
+    panel.grid.minor.x = element_blank()
+  ) </code></pre>
+<p><img src="figure/proteomics.rmd/unnamed-chunk-52-1.png" width="100%" height="100%" style="display: block; margin: auto;" /></p>
+</div>
+<div id="eofad-like-females" class="section level4">
+<h4>EOfAD-like females</h4>
+<pre class="r"><code>manhat.input.psen1.females &lt;- 
+  toptables$`EOfADlike_F - wt_F` %&gt;% 
+  mutate(
+    chr = str_extract(chromosome, pattern = &quot;\\d{1,2}&quot;), 
+    .after = chromosome
+  ) %&gt;% 
+  left_join(
+    bm.anno.start.end %&gt;% 
+      dplyr::rename(gene_name = external_gene_name) %&gt;% 
+      dplyr::distinct(gene_name, .keep_all = TRUE)
+  ) %&gt;% 
+  dplyr::filter(chr %in% 1:25) %&gt;% 
+  mutate(
+    chr = factor(chr, levels = 1:25)
+  ) %&gt;% 
+  # select rows of interest in order
+  dplyr::select(
+    gene_name, logFC, pval, DE, chr, start = start_position, end = end_position, 
+    everything()
+  ) %&gt;% 
+  # calculate the midpoint of each gene 
+  group_by(gene_name) %&gt;% 
+  mutate(
+    mid = mean(c(start, end)), .after = end
+    ) %&gt;% 
+  ungroup %&gt;% 
+  # get rid of any genes which do not have a mid point
+  dplyr::filter(
+    !is.na(mid)
+  ) %&gt;% 
+  # calculate the cumulative sum per chromosomes
+  group_by(chr)  %&gt;% 
+  arrange(chr, mid) %&gt;% 
+  mutate(
+    chrLen = max(mid), 
+    chr.mid.cum = min(start) + mid,
+    .after = mid
+    ) %&gt;% 
+  # calculate the cumulative length overall. 
+  dplyr::arrange(chr, mid) %&gt;% 
+  ungroup() %&gt;% 
+  mutate(
+    midCum = lag(cumsum(chr.mid.cum)), .after = chr.mid.cum
+    )
+  
+axis.psenfemales &lt;- 
+  manhat.input.psen1.females %&gt;%
+  group_by(chr) %&gt;%
+  dplyr::arrange(chr) %&gt;% 
+  summarize(center = (max(midCum) + min(midCum)) / 2) %&gt;% 
+  mutate(
+    seqnames = as.numeric(chr),
+    colour = rep(c(&quot;grey40&quot;, &quot;black&quot;), length.out = 25)
+  )
+
+ggplot(manhat.input.psen1.females, 
+       aes(x = midCum, y = -log10(pval))
+       ) +
+  geom_point(
+    aes(color=chr), 
+    alpha = 0.5, size = 1) +
+  geom_point(
+    alpha = 0.5, size = 1, colour = &quot;red&quot;, 
+    data = . %&gt;% 
+      dplyr::filter(chr == 17)
+  ) +
+  scale_color_manual(values = axis.psenfemales$colour) +
+  scale_x_continuous(label = axis.psenfemales$chr, 
+                     breaks = axis.psenfemales$center) +
+  # scale_y_continuous(limits =c(0, 10)) + # zoom in
+  facet_wrap(~coef, ncol = 1) +
+  labs(x = &quot;Chromosome&quot;, y = expression(paste(-log[10], &quot;(p)&quot;))) +
+  theme( 
+    legend.position=&quot;none&quot;,
+    panel.border = element_blank(),
+    panel.grid.major.x = element_blank(),
+    panel.grid.minor.x = element_blank()
+  ) </code></pre>
+<p><img src="figure/proteomics.rmd/unnamed-chunk-53-1.png" width="100%" height="100%" style="display: block; margin: auto;" /></p>
+</div>
+</div>
+</div>
+</div>
+<div id="compare-protein-and-mrna" class="section level1">
+<h1>compare protein and mRNA</h1>
+<div id="read-in-the-gene-expr-and-toptables" class="section level2">
+<h2>read in the gene expr and toptables</h2>
+<pre class="r"><code>dge &lt;- readRDS(&quot;data/R_objects/adult_brain/dge.rds&quot;)
+
+toptables.mRNA.adult &lt;- readRDS(&quot;data/R_objects/adult_brain/toptablescqn.rds&quot;)</code></pre>
+</div>
+<div id="compare-fold-changle-values-for-same-comparison"
+class="section level2">
+<h2>Compare fold changle values for same comparison</h2>
+<pre class="r"><code>plotmRNAvProtein = function(toptable.protein, toptable.mRNA) {
+  
+  toptable.protein %&gt;% 
+  dplyr::select(
+    gene_name, logFC.protein = logFC
+  ) %&gt;% 
+    left_join(toptable.mRNA %&gt;% 
+                dplyr::select(gene_name, logFC.mRNA = logFC)
+              ) %&gt;% 
+    na.omit() %&gt;% 
+  ggplot(
+    aes(x = logFC.mRNA, y = logFC.protein)
+  ) +
+  geom_point(
+    alpha = 0.5
+  ) +
+  geom_abline(
+    slope = 1, 
+    lty = 2, 
+    colour = &quot;red&quot;, 
+    alpha = 0.5
+    ) +
+  coord_cartesian(
+    xlim = c(-1,1), 
+    ylim = c(-1,1)
+  )
+}</code></pre>
+<pre class="r"><code>plotmRNAvProtein(
+  toptable.protein = toptables$`MPSIIIB_M - wt_M`, 
+  toptable.mRNA = toptables.mRNA.adult$`MPS-III`
+  ) +
+  labs(
+    title = &quot;MPS IIIB Males&quot;
+  )</code></pre>
+<p><img src="figure/proteomics.rmd/unnamed-chunk-56-1.png" width="100%" height="100%" style="display: block; margin: auto;" /></p>
+<pre class="r"><code>plotmRNAvProtein(
+  toptable.protein = toptables$`MPSIIIB_F - wt_F`, 
+  toptable.mRNA = toptables.mRNA.adult$`MPS-III`
+  ) +
+  labs(
+    title = &quot;MPS IIIB females&quot;
+  )</code></pre>
+<p><img src="figure/proteomics.rmd/unnamed-chunk-56-2.png" width="100%" height="100%" style="display: block; margin: auto;" /></p>
+<pre class="r"><code>plotmRNAvProtein(
+  toptable.protein = toptables$`EOfADlike_M - wt_M`, 
+  toptable.mRNA = toptables.mRNA.adult$EOfAD
+  ) +
+  labs(
+    title = &quot;EOfAD-like Males&quot;
+  )</code></pre>
+<p><img src="figure/proteomics.rmd/unnamed-chunk-56-3.png" width="100%" height="100%" style="display: block; margin: auto;" /></p>
+<pre class="r"><code>plotmRNAvProtein(
+  toptable.protein = toptables$`EOfADlike_M - wt_M`, 
+  toptable.mRNA = toptables.mRNA.adult$EOfAD
+  ) +
+  labs(
+    title = &quot;EOfAD-like females&quot;
+  )</code></pre>
+<p><img src="figure/proteomics.rmd/unnamed-chunk-56-4.png" width="100%" height="100%" style="display: block; margin: auto;" /></p>
+<!-- # String analysis of MPS IIIB DE proteins -->
+<!-- ```{r} -->
+<!-- # set up string analysis -->
+<!-- string_db <- STRINGdb$new( -->
+<!--   version="12.0", # default -->
+<!--   species=7955, # zebrafish -->
+<!--   score_threshold=200,  -->
+<!--   network_type="full" # full network vs physical interaction -->
+<!-- ) -->
+<!-- ``` -->
+<!-- ```{r} -->
+<!-- # setup MPS III toptables for just the DEGs -->
+<!-- string_toptables <- toptables[grep(names(toptables), pattern = "MPS", value = TRUE)] %>%  -->
+<!--   lapply(function(x) { -->
+<!--     x %>%  -->
+<!--       dplyr::select(gene = gene_name, logFC, FDR) %>%  -->
+<!--       as.data.frame() # string cant handle tibbles -->
+<!--   }) -->
+<!-- # As a first step, we map the gene names to the STRING database identiiers using the "map" method. -->
+<!-- string_mapped_males <- string_db$map( -->
+<!--   string_toptables$`MPSIIIB_M - wt_M`,  -->
+<!--   "gene",  -->
+<!--   takeFirst = TRUE, -->
+<!--   removeUnmappedRows = TRUE  -->
+<!--   ) -->
+<!-- string_mapped_females <- string_db$map( -->
+<!--   string_toptables$`MPSIIIB_F - wt_F`,  -->
+<!--   "gene",  -->
+<!--   takeFirst = TRUE, -->
+<!--   removeUnmappedRows = TRUE  -->
+<!--   ) -->
+<!-- ``` -->
+<!-- ```{r} -->
+<!-- # define the DEGs.  -->
+<!-- string.num.DEGs <- string_toptables %>%  -->
+<!--   lapply(function(x) { -->
+<!--     x %>%  -->
+<!--       dplyr::filter(FDR < 0.05) %>%  -->
+<!--       .$gene %>%  -->
+<!--       length -->
+<!--   }) -->
+<!-- hits.males <- string_mapped_males$STRING_id[1:string.num.DEGs$`MPSIIIB_M - wt_M`] -->
+<!-- hits.fems <- string_mapped_females$STRING_id[1:string.num.DEGs$`MPSIIIB_F - wt_F`] -->
+<!-- # the plot network function is shit. export to the web server for better visualsaition  -->
+<!-- string_db$get_link( hits.fems ) -->
+<!-- string_db$get_link( hits.males ) -->
+<!-- ``` -->
+<!-- ```{r} -->
+<!-- # add logFC info -->
+<!-- string_mapped_males.logFC <-  -->
+<!--   string_db$add_diff_exp_color( -->
+<!--     subset(string_mapped_males, FDR < 0.05),  -->
+<!--     logFcColStr="logFC"  -->
+<!--     ) -->
+<!-- # add logFC info -->
+<!-- string_mapped_females.logFC <-  -->
+<!--   string_db$add_diff_exp_color( -->
+<!--     subset(string_mapped_females, FDR < 0.05),  -->
+<!--     logFcColStr="logFC"  -->
+<!--     ) -->
+<!-- # change the colours to be con -->
+<!-- string_mapped_males.logFC$color <- col_numeric( -->
+<!--   palette = "RdBu", # Customize the palette as needed -->
+<!--   reverse = TRUE, -->
+<!--   domain = range(string_mapped_males.logFC$logFC) -->
+<!-- )(string_mapped_males.logFC$logFC) -->
+<!-- string_mapped_females.logFC$color <- col_numeric( -->
+<!--   palette = "RdBu", # Customize the palette as needed -->
+<!--   reverse = TRUE, -->
+<!--   domain = range(string_mapped_females.logFC$logFC) -->
+<!-- )(string_mapped_females.logFC$logFC) -->
+<!-- # post payload (logFC) information to the STRING server -->
+<!-- payload.males <-  -->
+<!--   string_db$post_payload( -->
+<!--     string_mapped_males.logFC$STRING_id, -->
+<!--     colors=string_mapped_males.logFC$color) -->
+<!-- payload.females <-  -->
+<!--   string_db$post_payload( -->
+<!--     string_mapped_females.logFC$STRING_id, -->
+<!--     colors=string_mapped_females.logFC$color) -->
+<!-- ``` -->
+<!-- ```{r} -->
+<!-- # display a STRING network png with the "halo" -->
+<!-- string_db$get_link(string_mapped_females.logFC, payload_id=payload.females ) -->
+<!-- string_db$plot_network(string_mapped_males.logFC, payload_id=payload.males ) -->
+<!-- # perform the enrichment analysis -->
+<!-- enrichment.males <- string_db$get_enrichment( string_mapped_males ) -->
+<!-- background.males <- toptables$`MPSIIIB_M - wt_M`$gene_name # as an example, we use the first 2000 genes -->
+<!-- string_db$set_background(background.males) -->
+<!-- ``` -->
+</div>
+</div>
+<div id="export-data" class="section level1">
+<h1>export data</h1>
+<pre class="r"><code>toptables %&gt;% 
+  set_names(names(.) %&gt;% str_remove_all(&quot; - wt.+&quot;)) %&gt;% 
+  set_names(names(.) %&gt;% paste0(&quot;protein_6mbrain_&quot;, .)) %&gt;% 
+  write.xlsx(&quot;output/spreadsheets/limma_proteomics_6mbrain.xlsx&quot;)
+
+hmp.proteomics.kegg.output &lt;- hmp.kegg$hmp %&gt;% 
+  left_join(hmp.kegg$fgsea %&gt;% 
+              bind_rows() %&gt;% 
+              dplyr::select(pathway, coef, leadingEdge),
+              by = c(&#39;pathway&#39;, &#39;coef&#39;)
+            ) %&gt;% 
+  split(f = .$coef) %&gt;% 
+  lapply(dplyr::select, -coef)
+
+names(hmp.proteomics.kegg.output) %&lt;&gt;% 
+  str_remove(&quot; - wt.+&quot;) %&gt;% 
+  paste0(&quot;protein_KEGG_6mbr_&quot;, .)
+
+hmp.proteomics.celltype.output &lt;- hmp.cell$hmp %&gt;% 
+  left_join(hmp.cell$fgsea %&gt;% 
+              bind_rows() %&gt;% 
+              dplyr::select(pathway, coef, leadingEdge),
+              by = c(&#39;pathway&#39;, &#39;coef&#39;)
+            ) %&gt;% 
+  split(f = .$coef) %&gt;% 
+  lapply(dplyr::select, -coef)
+
+names(hmp.proteomics.celltype.output) %&lt;&gt;% 
+  str_remove(&quot; - wt.+&quot;) %&gt;% 
+  paste0(&quot;protein_cell_6mbr_&quot;, .)
+
+hmp.proteomics.ire.output &lt;- ire.hmp$hmp %&gt;% 
+  left_join(ire.hmp$fgsea %&gt;% 
+              bind_rows() %&gt;% 
+              dplyr::select(pathway, coef, leadingEdge),
+              by = c(&#39;pathway&#39;, &#39;coef&#39;)
+            ) %&gt;% 
+  split(f = .$coef) %&gt;% 
+  lapply(dplyr::select, -coef)
+
+names(hmp.proteomics.ire.output) %&lt;&gt;% 
+  str_remove(&quot; - wt.+&quot;) %&gt;% 
+  paste0(&quot;protein_ire_6mbrain_&quot;, .)
+
+c(hmp.proteomics.celltype.output, hmp.proteomics.kegg.output, hmp.proteomics.ire.output) %&gt;% 
+  write.xlsx(&quot;output/spreadsheets/proteomics_6mbrain_hmpoutputs.xlsx&quot;)</code></pre>
+<br>
+<p>
+<button type="button" class="btn btn-default btn-workflowr btn-workflowr-sessioninfo" data-toggle="collapse" data-target="#workflowr-sessioninfo" style="display: block;">
+<span class="glyphicon glyphicon-wrench" aria-hidden="true"></span>
+Session information
+</button>
+</p>
+<div id="workflowr-sessioninfo" class="collapse">
+<pre class="r"><code>sessionInfo()</code></pre>
+<pre><code>R version 4.3.2 (2023-10-31)
+Platform: aarch64-apple-darwin20 (64-bit)
+Running under: macOS Sonoma 14.3
+
+Matrix products: default
+BLAS:   /Library/Frameworks/R.framework/Versions/4.3-arm64/Resources/lib/libRblas.0.dylib 
+LAPACK: /Library/Frameworks/R.framework/Versions/4.3-arm64/Resources/lib/libRlapack.dylib;  LAPACK version 3.11.0
+
+locale:
+[1] en_US.UTF-8/en_US.UTF-8/en_US.UTF-8/C/en_US.UTF-8/en_US.UTF-8
+
+time zone: Australia/Adelaide
+tzcode source: internal
+
+attached base packages:
+[1] stats4    grid      stats     graphics  grDevices utils     datasets 
+[8] methods   base     
+
+other attached packages:
+ [1] msigdbr_7.5.1          biomaRt_2.58.2         AnnotationHub_3.10.1  
+ [4] BiocFileCache_2.10.2   dbplyr_2.5.0           UniProt.ws_2.42.0     
+ [7] RSQLite_2.3.6          AnnotationDbi_1.64.1   IRanges_2.36.0        
+[10] S4Vectors_0.40.2       STRINGdb_2.14.3        harmonicmeanp_3.0.1   
+[13] FMStable_0.1-4         fgsea_1.28.0           goseq_1.54.0          
+[16] geneLenDataBase_1.38.0 BiasedUrn_2.0.11       Biobase_2.62.0        
+[19] BiocGenerics_0.48.1    limma_3.58.1           UpSetR_1.4.0          
+[22] ggpol_0.0.7            ggrepel_0.9.5          pander_0.6.5          
+[25] RColorBrewer_1.1-3     tidyHeatmap_1.10.2     circlize_0.4.16       
+[28] ComplexHeatmap_2.18.0  clusterProfiler_4.10.1 ggfortify_0.4.16      
+[31] scales_1.3.0           ggpubr_0.6.0           openxlsx_4.2.6.1      
+[34] readxl_1.4.3           magrittr_2.0.3         lubridate_1.9.3       
+[37] forcats_1.0.0          stringr_1.5.1          dplyr_1.1.4           
+[40] purrr_1.0.2            readr_2.1.5            tidyr_1.3.1           
+[43] tibble_3.2.1           ggplot2_3.5.0          tidyverse_2.0.0       
+[46] workflowr_1.7.1       
+
+loaded via a namespace (and not attached):
+  [1] fs_1.6.3                      matrixStats_1.3.0            
+  [3] bitops_1.0-7                  enrichplot_1.22.0            
+  [5] HDO.db_0.99.1                 httr_1.4.7                   
+  [7] doParallel_1.0.17             tools_4.3.2                  
+  [9] backports_1.4.1               utf8_1.2.4                   
+ [11] R6_2.5.1                      mgcv_1.9-1                   
+ [13] lazyeval_0.2.2                GetoptLong_1.0.5             
+ [15] withr_3.0.0                   prettyunits_1.2.0            
+ [17] gridExtra_2.3                 cli_3.6.2                    
+ [19] Cairo_1.6-2                   scatterpie_0.2.2             
+ [21] labeling_0.4.3                sass_0.4.9                   
+ [23] Rsamtools_2.18.0              yulab.utils_0.1.4            
+ [25] gson_0.1.0                    DOSE_3.28.2                  
+ [27] plotrix_3.8-4                 rstudioapi_0.16.0            
+ [29] generics_0.1.3                gridGraphics_0.5-1           
+ [31] shape_1.4.6.1                 BiocIO_1.12.0                
+ [33] vroom_1.6.5                   gtools_3.9.5                 
+ [35] car_3.1-2                     zip_2.3.1                    
+ [37] dendextend_1.17.1             GO.db_3.18.0                 
+ [39] Matrix_1.6-5                  fansi_1.0.6                  
+ [41] abind_1.4-5                   lifecycle_1.0.4              
+ [43] whisker_0.4.1                 yaml_2.3.8                   
+ [45] carData_3.0-5                 SummarizedExperiment_1.32.0  
+ [47] gplots_3.1.3.1                qvalue_2.34.0                
+ [49] SparseArray_1.2.4             blob_1.2.4                   
+ [51] promises_1.3.0                crayon_1.5.2                 
+ [53] lattice_0.22-6                cowplot_1.1.3                
+ [55] GenomicFeatures_1.54.4        KEGGREST_1.42.0              
+ [57] pillar_1.9.0                  knitr_1.45                   
+ [59] GenomicRanges_1.54.1          rjson_0.2.21                 
+ [61] codetools_0.2-20              fastmatch_1.1-4              
+ [63] glue_1.7.0                    getPass_0.2-4                
+ [65] ggfun_0.1.4                   data.table_1.15.4            
+ [67] vctrs_0.6.5                   png_0.1-8                    
+ [69] treeio_1.26.0                 cellranger_1.1.0             
+ [71] gtable_0.3.4                  gsubfn_0.7                   
+ [73] cachem_1.0.8                  xfun_0.43                    
+ [75] mime_0.12                     S4Arrays_1.2.1               
+ [77] tidygraph_1.3.1               iterators_1.0.14             
+ [79] statmod_1.5.0                 interactiveDisplayBase_1.40.0
+ [81] nlme_3.1-164                  ggtree_3.10.1                
+ [83] bit64_4.0.5                   progress_1.2.3               
+ [85] filelock_1.0.3                GenomeInfoDb_1.38.8          
+ [87] rprojroot_2.0.4               bslib_0.7.0                  
+ [89] KernSmooth_2.23-22            colorspace_2.1-0             
+ [91] DBI_1.2.2                     tidyselect_1.2.1             
+ [93] processx_3.8.4                chron_2.3-61                 
+ [95] bit_4.0.5                     compiler_4.3.2               
+ [97] curl_5.2.1                    git2r_0.33.0                 
+ [99] rjsoncons_1.3.1               xml2_1.3.6                   
+[101] DelayedArray_0.28.0           shadowtext_0.1.3             
+[103] rtracklayer_1.62.0            caTools_1.18.2               
+[105] callr_3.7.6                   rappdirs_0.3.3               
+[107] digest_0.6.35                 rmarkdown_2.26               
+[109] XVector_0.42.0                htmltools_0.5.8.1            
+[111] pkgconfig_2.0.3               MatrixGenerics_1.14.0        
+[113] highr_0.10                    fastmap_1.1.1                
+[115] rlang_1.1.3                   GlobalOptions_0.1.2          
+[117] shiny_1.8.1.1                 farver_2.1.1                 
+[119] jquerylib_0.1.4               jsonlite_1.8.8               
+[121] BiocParallel_1.36.0           GOSemSim_2.28.1              
+[123] RCurl_1.98-1.14               GenomeInfoDbData_1.2.11      
+[125] ggplotify_0.1.2               patchwork_1.2.0              
+[127] munsell_0.5.1                 Rcpp_1.0.12                  
+[129] babelgene_22.9                proto_1.0.0                  
+[131] ape_5.8                       viridis_0.6.5                
+[133] sqldf_0.4-11                  stringi_1.8.3                
+[135] ggraph_2.2.1                  zlibbioc_1.48.2              
+[137] MASS_7.3-60.0.1               plyr_1.8.9                   
+[139] parallel_4.3.2                Biostrings_2.70.3            
+[141] graphlayouts_1.1.1            splines_4.3.2                
+[143] hash_2.2.6.3                  hms_1.1.3                    
+[145] ps_1.7.6                      igraph_2.0.3                 
+[147] ggsignif_0.6.4                reshape2_1.4.4               
+[149] BiocVersion_3.18.1            XML_3.99-0.16.1              
+[151] evaluate_0.23                 BiocManager_1.30.22          
+[153] tzdb_0.4.0                    foreach_1.5.2                
+[155] tweenr_2.0.3                  httpuv_1.6.15                
+[157] polyclip_1.10-6               clue_0.3-65                  
+[159] BiocBaseUtils_1.4.0           ggforce_0.4.2                
+[161] xtable_1.8-4                  broom_1.0.5                  
+[163] restfulr_0.0.15               tidytree_0.4.6               
+[165] rstatix_0.7.2                 later_1.3.2                  
+[167] viridisLite_0.4.2             aplot_0.2.2                  
+[169] memoise_2.0.1                 GenomicAlignments_1.38.2     
+[171] cluster_2.1.6                 timechange_0.3.0             </code></pre>
+</div>
+</div>
+
+
+<!-- Adjust MathJax settings so that all math formulae are shown using
+TeX fonts only; see
+https://docs.mathjax.org/en/latest/web/configuration.html. This will make
+the presentation more consistent at the cost of the webpage sometimes
+taking slightly longer to load. Note that this only works because the
+footer is added to webpages before the MathJax javascript. -->
+<script type="text/x-mathjax-config">
+  MathJax.Hub.Config({
+    "HTML-CSS": { availableFonts: ["TeX"] }
+  });
+</script>
+
+
+
+
+</div>
+</div>
+
+</div>
+
+<script>
+
+// add bootstrap table styles to pandoc tables
+function bootstrapStylePandocTables() {
+  $('tr.odd').parent('tbody').parent('table').addClass('table table-condensed');
+}
+$(document).ready(function () {
+  bootstrapStylePandocTables();
+});
+
+
+</script>
+
+<!-- tabsets -->
+
+<script>
+$(document).ready(function () {
+  window.buildTabsets("TOC");
+});
+
+$(document).ready(function () {
+  $('.tabset-dropdown > .nav-tabs > li').click(function () {
+    $(this).parent().toggleClass('nav-tabs-open');
+  });
+});
+</script>
+
+<!-- code folding -->
+<script>
+$(document).ready(function () {
+  window.initializeCodeFolding("hide" === "show");
+});
+</script>
+
+<script>
+$(document).ready(function ()  {
+
+    // temporarily add toc-ignore selector to headers for the consistency with Pandoc
+    $('.unlisted.unnumbered').addClass('toc-ignore')
+
+    // move toc-ignore selectors from section div to header
+    $('div.section.toc-ignore')
+        .removeClass('toc-ignore')
+        .children('h1,h2,h3,h4,h5').addClass('toc-ignore');
+
+    // establish options
+    var options = {
+      selectors: "h1,h2,h3",
+      theme: "bootstrap3",
+      context: '.toc-content',
+      hashGenerator: function (text) {
+        return text.replace(/[.\\/?&!#<>]/g, '').replace(/\s/g, '_');
+      },
+      ignoreSelector: ".toc-ignore",
+      scrollTo: 0
+    };
+    options.showAndHide = true;
+    options.smoothScroll = true;
+
+    // tocify
+    var toc = $("#TOC").tocify(options).data("toc-tocify");
+});
+</script>
+
+<!-- dynamically load mathjax for compatibility with self-contained -->
+<script>
+  (function () {
+    var script = document.createElement("script");
+    script.type = "text/javascript";
+    script.src  = "https://mathjax.rstudio.com/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML";
+    document.getElementsByTagName("head")[0].appendChild(script);
+  })();
+</script>
+
+</body>
+</html>

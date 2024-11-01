@@ -1,0 +1,2362 @@
+<!DOCTYPE html>
+
+<html>
+
+<head>
+
+<meta charset="utf-8" />
+<meta name="generator" content="pandoc" />
+<meta http-equiv="X-UA-Compatible" content="IE=EDGE" />
+
+
+<meta name="author" content="Karissa Barthelson" />
+
+<meta name="date" content="2021-11-27" />
+
+<title>analysis</title>
+
+<script src="site_libs/header-attrs-2.26/header-attrs.js"></script>
+<script src="site_libs/jquery-3.6.0/jquery-3.6.0.min.js"></script>
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<link href="site_libs/bootstrap-3.3.5/css/cosmo.min.css" rel="stylesheet" />
+<script src="site_libs/bootstrap-3.3.5/js/bootstrap.min.js"></script>
+<script src="site_libs/bootstrap-3.3.5/shim/html5shiv.min.js"></script>
+<script src="site_libs/bootstrap-3.3.5/shim/respond.min.js"></script>
+<style>h1 {font-size: 34px;}
+       h1.title {font-size: 38px;}
+       h2 {font-size: 30px;}
+       h3 {font-size: 24px;}
+       h4 {font-size: 18px;}
+       h5 {font-size: 16px;}
+       h6 {font-size: 12px;}
+       code {color: inherit; background-color: rgba(0, 0, 0, 0.04);}
+       pre:not([class]) { background-color: white }</style>
+<script src="site_libs/jqueryui-1.13.2/jquery-ui.min.js"></script>
+<link href="site_libs/tocify-1.9.1/jquery.tocify.css" rel="stylesheet" />
+<script src="site_libs/tocify-1.9.1/jquery.tocify.js"></script>
+<script src="site_libs/navigation-1.1/tabsets.js"></script>
+<script src="site_libs/navigation-1.1/codefolding.js"></script>
+<link href="site_libs/highlightjs-9.12.0/textmate.css" rel="stylesheet" />
+<script src="site_libs/highlightjs-9.12.0/highlight.js"></script>
+
+<link rel="icon" href="https://github.com/workflowr/workflowr-assets/raw/main/img/reproducible.png">
+<!-- Add a small amount of space between sections. -->
+<style type="text/css">
+div.section {
+  padding-top: 12px;
+}
+</style>
+
+
+
+<style type="text/css">
+  code{white-space: pre-wrap;}
+  span.smallcaps{font-variant: small-caps;}
+  span.underline{text-decoration: underline;}
+  div.column{display: inline-block; vertical-align: top; width: 50%;}
+  div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+  ul.task-list{list-style: none;}
+    </style>
+
+<style type="text/css">code{white-space: pre;}</style>
+<script type="text/javascript">
+if (window.hljs) {
+  hljs.configure({languages: []});
+  hljs.initHighlightingOnLoad();
+  if (document.readyState && document.readyState === "complete") {
+    window.setTimeout(function() { hljs.initHighlighting(); }, 0);
+  }
+}
+</script>
+
+
+
+
+
+
+
+
+
+<style type = "text/css">
+.main-container {
+  max-width: 940px;
+  margin-left: auto;
+  margin-right: auto;
+}
+img {
+  max-width:100%;
+}
+.tabbed-pane {
+  padding-top: 12px;
+}
+.html-widget {
+  margin-bottom: 20px;
+}
+button.code-folding-btn:focus {
+  outline: none;
+}
+summary {
+  display: list-item;
+}
+details > summary > p:only-child {
+  display: inline;
+}
+pre code {
+  padding: 0;
+}
+</style>
+
+
+<style type="text/css">
+.dropdown-submenu {
+  position: relative;
+}
+.dropdown-submenu>.dropdown-menu {
+  top: 0;
+  left: 100%;
+  margin-top: -6px;
+  margin-left: -1px;
+  border-radius: 0 6px 6px 6px;
+}
+.dropdown-submenu:hover>.dropdown-menu {
+  display: block;
+}
+.dropdown-submenu>a:after {
+  display: block;
+  content: " ";
+  float: right;
+  width: 0;
+  height: 0;
+  border-color: transparent;
+  border-style: solid;
+  border-width: 5px 0 5px 5px;
+  border-left-color: #cccccc;
+  margin-top: 5px;
+  margin-right: -10px;
+}
+.dropdown-submenu:hover>a:after {
+  border-left-color: #adb5bd;
+}
+.dropdown-submenu.pull-left {
+  float: none;
+}
+.dropdown-submenu.pull-left>.dropdown-menu {
+  left: -100%;
+  margin-left: 10px;
+  border-radius: 6px 0 6px 6px;
+}
+</style>
+
+<script type="text/javascript">
+// manage active state of menu based on current page
+$(document).ready(function () {
+  // active menu anchor
+  href = window.location.pathname
+  href = href.substr(href.lastIndexOf('/') + 1)
+  if (href === "")
+    href = "index.html";
+  var menuAnchor = $('a[href="' + href + '"]');
+
+  // mark the anchor link active (and if it's in a dropdown, also mark that active)
+  var dropdown = menuAnchor.closest('li.dropdown');
+  if (window.bootstrap) { // Bootstrap 4+
+    menuAnchor.addClass('active');
+    dropdown.find('> .dropdown-toggle').addClass('active');
+  } else { // Bootstrap 3
+    menuAnchor.parent().addClass('active');
+    dropdown.addClass('active');
+  }
+
+  // Navbar adjustments
+  var navHeight = $(".navbar").first().height() + 15;
+  var style = document.createElement('style');
+  var pt = "padding-top: " + navHeight + "px; ";
+  var mt = "margin-top: -" + navHeight + "px; ";
+  var css = "";
+  // offset scroll position for anchor links (for fixed navbar)
+  for (var i = 1; i <= 6; i++) {
+    css += ".section h" + i + "{ " + pt + mt + "}\n";
+  }
+  style.innerHTML = "body {" + pt + "padding-bottom: 40px; }\n" + css;
+  document.head.appendChild(style);
+});
+</script>
+
+<!-- tabsets -->
+
+<style type="text/css">
+.tabset-dropdown > .nav-tabs {
+  display: inline-table;
+  max-height: 500px;
+  min-height: 44px;
+  overflow-y: auto;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+}
+
+.tabset-dropdown > .nav-tabs > li.active:before, .tabset-dropdown > .nav-tabs.nav-tabs-open:before {
+  content: "\e259";
+  font-family: 'Glyphicons Halflings';
+  display: inline-block;
+  padding: 10px;
+  border-right: 1px solid #ddd;
+}
+
+.tabset-dropdown > .nav-tabs.nav-tabs-open > li.active:before {
+  content: "\e258";
+  font-family: 'Glyphicons Halflings';
+  border: none;
+}
+
+.tabset-dropdown > .nav-tabs > li.active {
+  display: block;
+}
+
+.tabset-dropdown > .nav-tabs > li > a,
+.tabset-dropdown > .nav-tabs > li > a:focus,
+.tabset-dropdown > .nav-tabs > li > a:hover {
+  border: none;
+  display: inline-block;
+  border-radius: 4px;
+  background-color: transparent;
+}
+
+.tabset-dropdown > .nav-tabs.nav-tabs-open > li {
+  display: block;
+  float: none;
+}
+
+.tabset-dropdown > .nav-tabs > li {
+  display: none;
+}
+</style>
+
+<!-- code folding -->
+<style type="text/css">
+.code-folding-btn { margin-bottom: 4px; }
+</style>
+
+
+
+<style type="text/css">
+
+#TOC {
+  margin: 25px 0px 20px 0px;
+}
+@media (max-width: 768px) {
+#TOC {
+  position: relative;
+  width: 100%;
+}
+}
+
+@media print {
+.toc-content {
+  /* see https://github.com/w3c/csswg-drafts/issues/4434 */
+  float: right;
+}
+}
+
+.toc-content {
+  padding-left: 30px;
+  padding-right: 40px;
+}
+
+div.main-container {
+  max-width: 1200px;
+}
+
+div.tocify {
+  width: 20%;
+  max-width: 260px;
+  max-height: 85%;
+}
+
+@media (min-width: 768px) and (max-width: 991px) {
+  div.tocify {
+    width: 25%;
+  }
+}
+
+@media (max-width: 767px) {
+  div.tocify {
+    width: 100%;
+    max-width: none;
+  }
+}
+
+.tocify ul, .tocify li {
+  line-height: 20px;
+}
+
+.tocify-subheader .tocify-item {
+  font-size: 0.90em;
+}
+
+.tocify .list-group-item {
+  border-radius: 0px;
+}
+
+
+</style>
+
+
+
+</head>
+
+<body>
+
+
+<div class="container-fluid main-container">
+
+
+<!-- setup 3col/9col grid for toc_float and main content  -->
+<div class="row">
+<div class="col-xs-12 col-sm-4 col-md-3">
+<div id="TOC" class="tocify">
+</div>
+</div>
+
+<div class="toc-content col-xs-12 col-sm-8 col-md-9">
+
+
+
+
+<div class="navbar navbar-default  navbar-fixed-top" role="navigation">
+  <div class="container">
+    <div class="navbar-header">
+      <button type="button" class="navbar-toggle collapsed" data-toggle="collapse" data-bs-toggle="collapse" data-target="#navbar" data-bs-target="#navbar">
+        <span class="icon-bar"></span>
+        <span class="icon-bar"></span>
+        <span class="icon-bar"></span>
+      </button>
+      <a class="navbar-brand" href="index.html">2021_MPSIIIBvQ96-RNAseq-7dpfLarve</a>
+    </div>
+    <div id="navbar" class="navbar-collapse collapse">
+      <ul class="nav navbar-nav">
+        <li>
+  <a href="index.html">Home</a>
+</li>
+<li>
+  <a href="QC.html">QC_larvae</a>
+</li>
+<li>
+  <a href="analysis_larvae.html">analysis_larvae</a>
+</li>
+<li>
+  <a href="QC_adult.html">QC_adult</a>
+</li>
+<li>
+  <a href="analysis_adultbrain.html">analysis_adultbrain</a>
+</li>
+<li>
+  <a href="proteomics.html">proteomics_adult</a>
+</li>
+      </ul>
+      <ul class="nav navbar-nav navbar-right">
+        
+      </ul>
+    </div><!--/.nav-collapse -->
+  </div><!--/.container -->
+</div><!--/.navbar -->
+
+<div id="header">
+
+<div class="btn-group pull-right float-right">
+<button type="button" class="btn btn-default btn-xs btn-secondary btn-sm dropdown-toggle" data-toggle="dropdown" data-bs-toggle="dropdown" aria-haspopup="true" aria-expanded="false"><span>Code</span> <span class="caret"></span></button>
+<ul class="dropdown-menu dropdown-menu-right" style="min-width: 50px;">
+<li><a id="rmd-show-all-code" href="#">Show All Code</a></li>
+<li><a id="rmd-hide-all-code" href="#">Hide All Code</a></li>
+</ul>
+</div>
+
+
+
+<h1 class="title toc-ignore">analysis</h1>
+<h4 class="author">Karissa Barthelson</h4>
+<h4 class="date">2021-11-27</h4>
+
+</div>
+
+
+<p>
+<button type="button" class="btn btn-default btn-workflowr btn-workflowr-report" data-toggle="collapse" data-target="#workflowr-report">
+<span class="glyphicon glyphicon-list" aria-hidden="true"></span>
+workflowr <span class="glyphicon glyphicon-ok text-success"
+aria-hidden="true"></span>
+</button>
+</p>
+<div id="workflowr-report" class="collapse">
+<ul class="nav nav-tabs">
+<li class="active">
+<a data-toggle="tab" href="#summary">Summary</a>
+</li>
+<li>
+<a data-toggle="tab" href="#checks"> Checks <span
+class="glyphicon glyphicon-ok text-success" aria-hidden="true"></span>
+</a>
+</li>
+<li>
+<a data-toggle="tab" href="#versions">Past versions</a>
+</li>
+</ul>
+<div class="tab-content">
+<div id="summary" class="tab-pane fade in active">
+<p>
+<strong>Last updated:</strong> 2024-11-01
+</p>
+<p>
+<strong>Checks:</strong> <span
+class="glyphicon glyphicon-ok text-success" aria-hidden="true"></span> 7
+<span class="glyphicon glyphicon-exclamation-sign text-danger"
+aria-hidden="true"></span> 0
+</p>
+<p>
+<strong>Knit directory:</strong>
+<code>2021_MPSIIIBvQ96-RNAseq-7dpfLarve/</code> <span
+class="glyphicon glyphicon-question-sign" aria-hidden="true"
+title="This is the local directory in which the code in this file was executed.">
+</span>
+</p>
+<p>
+This reproducible <a href="https://rmarkdown.rstudio.com">R Markdown</a>
+analysis was created with <a
+  href="https://github.com/workflowr/workflowr">workflowr</a> (version
+1.7.1). The <em>Checks</em> tab describes the reproducibility checks
+that were applied when the results were created. The <em>Past
+versions</em> tab lists the development history.
+</p>
+<hr>
+</div>
+<div id="checks" class="tab-pane fade">
+<div id="workflowr-checks" class="panel-group">
+<div class="panel panel-default">
+<div class="panel-heading">
+<p class="panel-title">
+<a data-toggle="collapse" data-parent="#workflowr-checks" href="#strongRMarkdownfilestronguptodate">
+<span class="glyphicon glyphicon-ok text-success"
+aria-hidden="true"></span> <strong>R Markdown file:</strong> up-to-date
+</a>
+</p>
+</div>
+<div id="strongRMarkdownfilestronguptodate"
+class="panel-collapse collapse">
+<div class="panel-body">
+<p>Great! Since the R Markdown file has been committed to the Git
+repository, you know the exact version of the code that produced these
+results.</p>
+</div>
+</div>
+</div>
+<div class="panel panel-default">
+<div class="panel-heading">
+<p class="panel-title">
+<a data-toggle="collapse" data-parent="#workflowr-checks" href="#strongEnvironmentstrongempty">
+<span class="glyphicon glyphicon-ok text-success"
+aria-hidden="true"></span> <strong>Environment:</strong> empty </a>
+</p>
+</div>
+<div id="strongEnvironmentstrongempty" class="panel-collapse collapse">
+<div class="panel-body">
+<p>Great job! The global environment was empty. Objects defined in the
+global environment can affect the analysis in your R Markdown file in
+unknown ways. For reproduciblity it’s best to always run the code in an
+empty environment.</p>
+</div>
+</div>
+</div>
+<div class="panel panel-default">
+<div class="panel-heading">
+<p class="panel-title">
+<a data-toggle="collapse" data-parent="#workflowr-checks" href="#strongSeedstrongcodesetseed20211120code">
+<span class="glyphicon glyphicon-ok text-success"
+aria-hidden="true"></span> <strong>Seed:</strong>
+<code>set.seed(20211120)</code> </a>
+</p>
+</div>
+<div id="strongSeedstrongcodesetseed20211120code"
+class="panel-collapse collapse">
+<div class="panel-body">
+<p>The command <code>set.seed(20211120)</code> was run prior to running
+the code in the R Markdown file. Setting a seed ensures that any results
+that rely on randomness, e.g. subsampling or permutations, are
+reproducible.</p>
+</div>
+</div>
+</div>
+<div class="panel panel-default">
+<div class="panel-heading">
+<p class="panel-title">
+<a data-toggle="collapse" data-parent="#workflowr-checks" href="#strongSessioninformationstrongrecorded">
+<span class="glyphicon glyphicon-ok text-success"
+aria-hidden="true"></span> <strong>Session information:</strong>
+recorded </a>
+</p>
+</div>
+<div id="strongSessioninformationstrongrecorded"
+class="panel-collapse collapse">
+<div class="panel-body">
+<p>Great job! Recording the operating system, R version, and package
+versions is critical for reproducibility.</p>
+</div>
+</div>
+</div>
+<div class="panel panel-default">
+<div class="panel-heading">
+<p class="panel-title">
+<a data-toggle="collapse" data-parent="#workflowr-checks" href="#strongCachestrongnone">
+<span class="glyphicon glyphicon-ok text-success"
+aria-hidden="true"></span> <strong>Cache:</strong> none </a>
+</p>
+</div>
+<div id="strongCachestrongnone" class="panel-collapse collapse">
+<div class="panel-body">
+<p>Nice! There were no cached chunks for this analysis, so you can be
+confident that you successfully produced the results during this
+run.</p>
+</div>
+</div>
+</div>
+<div class="panel panel-default">
+<div class="panel-heading">
+<p class="panel-title">
+<a data-toggle="collapse" data-parent="#workflowr-checks" href="#strongFilepathsstrongrelative">
+<span class="glyphicon glyphicon-ok text-success"
+aria-hidden="true"></span> <strong>File paths:</strong> relative </a>
+</p>
+</div>
+<div id="strongFilepathsstrongrelative" class="panel-collapse collapse">
+<div class="panel-body">
+<p>Great job! Using relative paths to the files within your workflowr
+project makes it easier to run your code on other machines.</p>
+</div>
+</div>
+</div>
+<div class="panel panel-default">
+<div class="panel-heading">
+<p class="panel-title">
+<a data-toggle="collapse" data-parent="#workflowr-checks" href="#strongRepositoryversionstrongahrefhttpsgithubcomkarissab2021MPSIIIBvQ96RNAseq7dpfLarvetree7bb9ce697cf60b5a72b13752e492d75b4a21d5eetargetblank7bb9ce6a">
+<span class="glyphicon glyphicon-ok text-success"
+aria-hidden="true"></span> <strong>Repository version:</strong>
+<a href="https://github.com/karissa-b/2021_MPSIIIBvQ96-RNAseq-7dpfLarve/tree/7bb9ce697cf60b5a72b13752e492d75b4a21d5ee" target="_blank">7bb9ce6</a>
+</a>
+</p>
+</div>
+<div
+id="strongRepositoryversionstrongahrefhttpsgithubcomkarissab2021MPSIIIBvQ96RNAseq7dpfLarvetree7bb9ce697cf60b5a72b13752e492d75b4a21d5eetargetblank7bb9ce6a"
+class="panel-collapse collapse">
+<div class="panel-body">
+<p>
+Great! You are using Git for version control. Tracking code development
+and connecting the code version to the results is critical for
+reproducibility.
+</p>
+<p>
+The results in this page were generated with repository version
+<a href="https://github.com/karissa-b/2021_MPSIIIBvQ96-RNAseq-7dpfLarve/tree/7bb9ce697cf60b5a72b13752e492d75b4a21d5ee" target="_blank">7bb9ce6</a>.
+See the <em>Past versions</em> tab to see a history of the changes made
+to the R Markdown and HTML files.
+</p>
+<p>
+Note that you need to be careful to ensure that all relevant files for
+the analysis have been committed to Git prior to generating the results
+(you can use <code>wflow_publish</code> or
+<code>wflow_git_commit</code>). workflowr only checks the R Markdown
+file, but you know if there are other scripts or data files that it
+depends on. Below is the status of the Git repository when the results
+were generated:
+</p>
+<pre><code>
+Ignored files:
+    Ignored:    .DS_Store
+    Ignored:    .RData
+    Ignored:    .Rapp.history
+    Ignored:    .Rhistory
+    Ignored:    .Rproj.user/
+    Ignored:    analysis/.DS_Store
+    Ignored:    code/.DS_Store
+    Ignored:    code/6mBrain_RNAseq_genoSex.rmd
+    Ignored:    code/6mBrain_fems.rmd
+    Ignored:    code/HS.R
+    Ignored:    code/about.Rmd
+    Ignored:    code/analysis.Rmd
+    Ignored:    code/analysis_final.rmd
+    Ignored:    code/analysis_final_v2.rmd
+    Ignored:    code/checkGenotypes.rmd
+    Ignored:    code/explorationRUV.Rmd
+    Ignored:    code/genotypeCheck.Rmd
+    Ignored:    code/license.Rmd
+    Ignored:    code/nhi6mdata.rmd
+    Ignored:    code/plots4pub2.rmd
+    Ignored:    code/plots4pub_RNAseq_afterreview1.R
+    Ignored:    code/wgcna.rmd
+    Ignored:    data/.DS_Store
+    Ignored:    data/Nhi_data/.DS_Store
+    Ignored:    data/R_objects/.DS_Store
+    Ignored:    data/R_objects/larvae/.DS_Store
+    Ignored:    data/adult_brain/.DS_Store
+    Ignored:    data/adult_brain/05_featureCounts/.DS_Store
+    Ignored:    data/adult_brain/fastqc_raw/.DS_Store
+    Ignored:    data/gene_sets/.DS_Store
+    Ignored:    data/larvae/.DS_Store
+    Ignored:    data/larvae/fastqc_align/.DS_Store
+    Ignored:    data/larvae/fastqc_align_dedup/.DS_Store
+    Ignored:    data/larvae/fastqc_raw/.DS_Store
+    Ignored:    data/larvae/fastqc_trim/.DS_Store
+    Ignored:    data/larvae/featureCounts/.DS_Store
+    Ignored:    data/larvae/meta/.DS_Store
+    Ignored:    data/larvae/starAlignLog/.DS_Store
+    Ignored:    output/.DS_Store
+    Ignored:    output/plots/
+    Ignored:    output/plots4poster/.DS_Store
+    Ignored:    output/plots4pub/
+
+Untracked files:
+    Untracked:  Rplot01.pdf
+    Untracked:  Rplot02.png
+    Untracked:  data/R_objects/adult_brain/HMPKEGG_6m_brain_genosex_CQN.rds
+    Untracked:  data/R_objects/adult_brain/HMP_ire_6m_brain_genosex_CQN.rds
+    Untracked:  data/R_objects/adult_brain/cqn_logCPM_6m_brain.rds
+    Untracked:  data/R_objects/adult_brain/dge_6m_brain_cqn.rds
+    Untracked:  data/R_objects/adult_brain/fry_cell_6m_brain_genosex_CQN.rds
+    Untracked:  data/R_objects/adult_brain/fry_cell_RNAseq.rds
+    Untracked:  data/R_objects/adult_brain/goseqtibbles_6m_brain_genosex_CQN.rds
+    Untracked:  data/R_objects/adult_brain/hmp.kegg.rna.rds
+    Untracked:  data/R_objects/adult_brain/toptablescqn_bysex.rds
+    Untracked:  data/allLLIDs.rds
+    Untracked:  data/ensembl_zebrafish.rds
+    Untracked:  data/proteomics/
+    Untracked:  data/with_go_evidence.rds
+    Untracked:  dre00020.pathview.multi.png
+    Untracked:  dre00020.png
+    Untracked:  dre00020.xml
+    Untracked:  hsa04650.EOfADproteomes.multi.png
+    Untracked:  hsa04650.MPSIIIBproteomes.multi.png
+    Untracked:  hsa04650.png
+    Untracked:  hsa04650.xml
+    Untracked:  hsa04666.EOfADproteomes.multi.png
+    Untracked:  hsa04666.MPSIIIBproteomes.multi.png
+    Untracked:  hsa04666.png
+    Untracked:  hsa04666.xml
+    Untracked:  larvae dre00020.pathview.multi.png
+    Untracked:  output/DE_proteins_for_string/
+    Untracked:  output/GOenrichment_enrichmentTable.csv
+    Untracked:  output/plots4RADposter/
+    Untracked:  output/plots4kim/
+    Untracked:  output/plots4pub2/
+    Untracked:  output/plots4pub3/
+    Untracked:  output/spreadsheets/RNAseqlarvae_celltypeFry.xlsx
+    Untracked:  output/spreadsheets/RNAseqlarvae_hmpoutputs.xlsx
+    Untracked:  output/spreadsheets/geneset_RNAseq_v2.xlsx
+    Untracked:  output/spreadsheets/goseq_RNAseq_v2.xlsx
+    Untracked:  output/spreadsheets/limma_proteomics_6mbrain.xlsx
+    Untracked:  output/spreadsheets/proteomics_6mbrain_hmpoutputs.xlsx
+    Untracked:  output/spreadsheets/toptables_RNAseq_v2.xlsx
+    Untracked:  output/spreadsheets/~$toptables_RNAseq_v2.xlsx
+    Untracked:  temp.png
+
+Unstaged changes:
+    Modified:   .gitignore
+    Deleted:    analysis/6mBrain_fems.rmd
+    Deleted:    analysis/HS.R
+    Deleted:    analysis/about.Rmd
+    Deleted:    analysis/analysis.Rmd
+    Deleted:    analysis/analysis_adultbrain.knit.md
+    Deleted:    analysis/analysis_final.rmd
+    Deleted:    analysis/checkGenotypes.rmd
+    Deleted:    analysis/explorationRUV.Rmd
+    Deleted:    analysis/genotypeCheck.Rmd
+    Deleted:    analysis/license.Rmd
+    Deleted:    analysis/nhi6mdata.rmd
+    Deleted:    analysis/plots4pub2.rmd
+    Modified:   data/R_objects/adult_brain/dge.rds
+    Modified:   data/R_objects/adult_brain/hmp_ire.rds
+    Modified:   data/R_objects/adult_brain/logcpm.rds
+    Modified:   data/R_objects/larvae/celltype_larvae.rds
+    Modified:   data/R_objects/larvae/dge.rds
+    Modified:   data/R_objects/larvae/hmp_ire.rds
+    Modified:   data/R_objects/larvae/hmp_kegg.rds
+    Modified:   data/R_objects/larvae/logcpm.rds
+    Modified:   data/R_objects/larvae/toptablescqn.rds
+    Modified:   data/adult_brain/karissas_metadata.xlsx
+    Modified:   output/spreadsheets/toptables_cqn.xlsx
+
+</code></pre>
+<p>
+Note that any generated files, e.g. HTML, png, CSS, etc., are not
+included in this status report because it is ok for generated content to
+have uncommitted changes.
+</p>
+</div>
+</div>
+</div>
+</div>
+<hr>
+</div>
+<div id="versions" class="tab-pane fade">
+
+<p>
+These are the previous versions of the repository in which changes were
+made to the R Markdown (<code>analysis/analysis_larvae.Rmd</code>) and
+HTML (<code>docs/analysis_larvae.html</code>) files. If you’ve
+configured a remote Git repository (see <code>?wflow_git_remote</code>),
+click on the hyperlinks in the table below to view the files as they
+were in that past version.
+</p>
+<div class="table-responsive">
+<table class="table table-condensed table-hover">
+<thead>
+<tr>
+<th>
+File
+</th>
+<th>
+Version
+</th>
+<th>
+Author
+</th>
+<th>
+Date
+</th>
+<th>
+Message
+</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+Rmd
+</td>
+<td>
+<a href="https://github.com/karissa-b/2021_MPSIIIBvQ96-RNAseq-7dpfLarve/blob/7bb9ce697cf60b5a72b13752e492d75b4a21d5ee/analysis/analysis_larvae.Rmd" target="_blank">7bb9ce6</a>
+</td>
+<td>
+Karissa Barthelson
+</td>
+<td>
+2024-11-01
+</td>
+<td>
+wflow_publish("analysis/*")
+</td>
+</tr>
+</tbody>
+</table>
+</div>
+<hr>
+</div>
+</div>
+</div>
+<div id="introduction" class="section level2">
+<h2>Introduction</h2>
+<pre class="r"><code>library(tidyverse)
+library(magrittr)
+library(readxl)
+library(ngsReports)
+library(AnnotationHub)
+library(msigdbr)
+library(pander)
+library(scales)
+library(pheatmap)
+library(ggpubr)
+library(ggrepel)
+library(ggfortify)
+library(ggforce)
+library(RColorBrewer)
+library(colorspace)
+library(UpSetR)
+library(edgeR)
+library(goseq)
+library(fgsea)
+
+library(cqn)
+library(harmonicmeanp)
+library(ssizeRNA)
+library(variancePartition)
+
+theme_set(theme_bw())</code></pre>
+<pre class="r"><code>ah &lt;- AnnotationHub() %&gt;%
+    subset(species == &quot;Danio rerio&quot;) %&gt;%
+    subset(rdataclass == &quot;EnsDb&quot;)
+
+ensDb &lt;- ah[[&quot;AH83189&quot;]] # for release 101, latest version in Ah
+grTrans &lt;- transcripts(ensDb)
+trLengths &lt;- exonsBy(ensDb, &quot;tx&quot;) %&gt;%
+    width() %&gt;%
+    vapply(sum, integer(1))
+mcols(grTrans)$length &lt;- trLengths[names(grTrans)]
+gcGene &lt;- grTrans %&gt;%
+  mcols() %&gt;%
+  as.data.frame() %&gt;%
+  dplyr::select(gene_id, tx_id, gc_content, length) %&gt;%
+  as_tibble() %&gt;%
+  group_by(gene_id) %&gt;%
+  summarise(
+    gc_content = sum(gc_content*length) / sum(length),
+    length = ceiling(median(length))
+  )
+grGenes &lt;- genes(ensDb)
+mcols(grGenes) %&lt;&gt;%
+  as.data.frame() %&gt;%
+  left_join(gcGene) %&gt;%
+  as.data.frame() %&gt;%
+  DataFrame()</code></pre>
+<pre class="r"><code># read in metadata and cleanup column names and types. 
+meta &lt;- read_excel(&quot;data/larvae/meta/naglu_v_Q96_larvae_metadata.xlsx&quot;, sheet = 3) %&gt;% 
+  na.omit() %&gt;% 
+  left_join(read_excel(&quot;data/larvae/meta/naglu_v_Q96_larvae_metadata.xlsx&quot;, sheet = 5) %&gt;% 
+              mutate(temp1 = str_split(temp, pattern = &quot; &quot;)) %&gt;% 
+              mutate(ULN = lapply(temp1, function(x){
+                x %&gt;% 
+                  .[1]
+              }), 
+              sample_name =  lapply(temp1, function(x){
+                x %&gt;% 
+                  .[2]
+              }), 
+              RIN = lapply(temp1, function(x){
+                x %&gt;% 
+                  .[4]
+              })
+              ) %&gt;% 
+              unnest() %&gt;% 
+              dplyr::select(ULN, sample_name, RIN) %&gt;% 
+              na.omit() %&gt;% 
+              unique
+  ) %&gt;% 
+  mutate(Genotype = case_when(
+    `naglu genotype` == &quot;wt&quot; &amp; `psen1 genotype` == &quot;wt&quot; ~ &quot;wt&quot;,
+    `naglu genotype` == &quot;A603fs/A603fs&quot; &amp; `psen1 genotype` == &quot;wt&quot; ~ &quot;MPSIIIB&quot;,
+    `naglu genotype` == &quot;wt&quot; &amp; `psen1 genotype` == &quot;Q96_K97del/+&quot; ~ &quot;EOfADlike&quot;,
+  ) %&gt;% 
+    factor(levels = c(&quot;wt&quot;, &quot;MPSIIIB&quot;, &quot;EOfADlike&quot;)), 
+  sample = paste0(Genotype, &quot;_&quot;, ULN), 
+  RIN = as.numeric(RIN)) 
+
+# read in the output of featurecounts. 
+featureCounts &lt;- 
+  read_delim(&quot;data/larvae/featureCounts/counts.out&quot;, delim = &quot;\t&quot;, skip = 1) %&gt;%
+  set_names(basename(names(.))) %&gt;% 
+  set_names(names(.) %&gt;% str_remove(pattern = &quot;_S1_merged.Aligned.sortedByCoord.dedup.out.bam&quot;)) %&gt;% 
+  as_tibble() %&gt;% 
+  dplyr::select(-c(Chr, Start, End, Length, Strand)) %&gt;% 
+  gather(key = &quot;ULN&quot;, value = &quot;counts&quot;, starts_with(&quot;21&quot;)) %&gt;% 
+  left_join(meta) %&gt;% 
+  dplyr::select(Geneid, counts, sample) %&gt;% 
+  spread(key = &quot;sample&quot;, value = &quot;counts&quot;) %&gt;% 
+  column_to_rownames(&quot;Geneid&quot;)
+
+# write out the cleaned up output for uploading to GEO
+#write_csv(rownames_to_column(featureCounts, &quot;gene_id&quot;), &quot;output/GEOcounts.out&quot;)</code></pre>
+</div>
+<div id="filter-lowly-expressed-genes" class="section level2">
+<h2>filter lowly expressed genes</h2>
+<p>Genes which are lowly expressed are considered uninformative for de
+analysis. Here, we set the threshold to be a min CPM of 0.5 (following
+the 10/min lib size rule proposed by gordon smyth). The effect of
+filtering is found below</p>
+<pre class="r"><code>a &lt;- featureCounts %&gt;% 
+    cpm(log = TRUE) %&gt;%
+    as.data.frame() %&gt;% 
+  pivot_longer(
+    cols = everything(),
+    names_to = &quot;sample&quot;,
+    values_to = &quot;logCPM&quot;
+  ) %&gt;%
+  split(f = .$sample) %&gt;%
+  lapply(function(x){
+    d &lt;- density(x$logCPM)
+    tibble(
+      sample = unique(x$sample),
+      x = d$x,
+      y = d$y
+    )
+  }) %&gt;%
+  bind_rows() %&gt;%
+  left_join(meta) %&gt;% 
+  ggplot(aes(x, y, colour = Genotype, group = sample)) +
+  geom_line() +
+  labs(
+    x = &quot;logCPM&quot;,
+    y = &quot;Density&quot;,
+    colour = &quot;Genotype&quot;
+  )+
+  ggtitle(&quot;Before filtering&quot;) +
+  theme_bw()
+
+
+b &lt;- featureCounts %&gt;% 
+  .[rowSums(cpm(.) &gt;= 0.5) &gt;= 8,] %&gt;% 
+    cpm(log = TRUE) %&gt;%
+    as.data.frame() %&gt;% 
+  pivot_longer(
+    cols = everything(),
+    names_to = &quot;sample&quot;,
+    values_to = &quot;logCPM&quot;
+  ) %&gt;%
+  split(f = .$sample) %&gt;%
+  lapply(function(x){
+    d &lt;- density(x$logCPM)
+    tibble(
+      sample = unique(x$sample),
+      x = d$x,
+      y = d$y
+    )
+  }) %&gt;%
+  bind_rows() %&gt;%
+  left_join(meta) %&gt;% 
+  ggplot(aes(x, y, colour = Genotype, group = sample)) +
+  geom_line() +
+  labs(
+    x = &quot;logCPM&quot;,
+    y = &quot;Density&quot;,
+    colour = &quot;Genotype&quot;
+  )+
+  ggtitle(&quot;After filtering&quot;)
+
+ggarrange(a, b, common.legend = TRUE)</code></pre>
+<p><img src="figure/analysis_larvae.Rmd/filt-1.png" width="75%" height="75%" style="display: block; margin: auto;" /></p>
+<pre class="r"><code>x &lt;- featureCounts %&gt;% 
+  as.matrix() %&gt;% 
+  .[rowSums(cpm(.) &gt;= 0.5) &gt;= 8,] %&gt;%
+  DGEList(
+    samples = tibble(sample = colnames(.)) %&gt;%
+      left_join(meta),
+    genes = grGenes[rownames(.)] %&gt;%
+      as.data.frame() %&gt;%
+      dplyr::select(
+        chromosome = seqnames, start, end, 
+        gene_id, gene_name, gene_biotype, description, entrezid
+      ) %&gt;% 
+      left_join(gcGene) %&gt;% 
+      as_tibble()
+  ) %&gt;%
+  calcNormFactors()</code></pre>
+</div>
+<div id="pca" class="section level2">
+<h2>PCA</h2>
+<p>I fors want to explore the overall similarity between samples by PCA.
+No distinct clusters of samples are observed by genotype</p>
+<pre class="r"><code>x$counts %&gt;% 
+  cpm(log=TRUE) %&gt;% 
+  t() %&gt;% 
+  prcomp() %&gt;% 
+  autoplot(data = tibble(sample = rownames(.$x)) %&gt;%
+      left_join(x$samples),
+    colour = &quot;Genotype&quot;, 
+    size = 6
+  ) +
+  theme_bw() + 
+  theme(aspect.ratio = 1) +
+  scale_color_discrete_qualitative(palette = &quot;Dark 3&quot;)</code></pre>
+<p><img src="figure/analysis_larvae.Rmd/unnamed-chunk-1-1.png" width="75%" height="75%" style="display: block; margin: auto;" /></p>
+<pre class="r"><code>#  ggsave(&quot;output/plots/PCAblue.png&quot;, width = 10, height = 10, units = &quot;cm&quot;, dpi = 300, scale = 1.25)</code></pre>
+<pre class="r"><code>x$counts %&gt;% 
+  cpm(log=TRUE) %&gt;% 
+  t() %&gt;% 
+  prcomp() %&gt;% 
+  autoplot(data = tibble(sample = rownames(.$x)) %&gt;%
+      left_join(x$samples),
+    colour = &quot;RIN&quot;, 
+    size = 6
+  ) +
+  theme_bw() + 
+  theme(aspect.ratio = 1) +
+  labs(colour = &quot;RIN&quot;) +
+  scale_color_viridis_c(end = 0.9)</code></pre>
+<p><img src="figure/analysis_larvae.Rmd/unnamed-chunk-2-1.png" width="75%" height="75%" style="display: block; margin: auto;" /></p>
+</div>
+<div id="check-genotypes" class="section level1">
+<h1>Check genotypes</h1>
+<p>This is in the <code>checkGenotypes.rmd</code> file. All fish carry
+the genotypes indicated from the PCR genotyping.</p>
+<div id="gc-and-length-check" class="section level2">
+<h2>%GC and Length check</h2>
+<pre class="r"><code>design &lt;- model.matrix(~Genotype, data = x$samples) %&gt;% 
+  set_colnames(gsub(colnames(.), pattern = &quot;Genotype&quot;, replacement = &quot;&quot;))
+
+fit_1 &lt;- x %&gt;% 
+  estimateDisp(design) %&gt;% 
+  glmFit(design)</code></pre>
+<pre class="r"><code># Call the toptable
+toptable_1 &lt;- design %&gt;% colnames() %&gt;% .[2:3] %&gt;% 
+  sapply(function(x){
+    glmLRT(fit_1, coef = x) %&gt;%
+      topTags(n = Inf) %&gt;%
+      .[[&quot;table&quot;]] %&gt;%
+      as_tibble() %&gt;%
+      arrange(PValue) %&gt;%
+       mutate(
+        coef = x,
+        DE = FDR &lt; 0.05
+      ) %&gt;% 
+      dplyr::select(
+        gene_name, logFC, logCPM, PValue, FDR, DE, everything()  
+      )
+      
+  }, simplify = FALSE)</code></pre>
+</div>
+</div>
+<div id="vis" class="section level1">
+<h1>Vis</h1>
+<p>These plots are zoomed in between -10 and 10 on the y-axisfor vis
+purposes. the blue lines of best fit are a bit wonky, meaning there are
+some biases here for %GC and Length. Therefore, conditional quantile
+normailsation is required.</p>
+<pre class="r"><code>ggarrange(
+toptable_1 %&gt;% 
+  bind_rows() %&gt;% 
+  mutate(rankstat = sign(logFC)*-log10(PValue)) %&gt;% 
+  ggplot(aes(x = length, y = rankstat)) +
+  geom_point(
+    aes(colour = DE),
+    alpha = 0.5
+  ) +
+  geom_smooth(se = FALSE, method = &quot;gam&quot;) +
+  facet_grid(rows = vars(coef)) +
+  theme_bw() +
+  theme(legend.position = &quot;none&quot;) +
+  scale_color_manual(values = c(&quot;grey50&quot;, &quot;red&quot;)) +
+  scale_x_log10()+
+  labs(x = &quot;Average transcript length per gene&quot;,
+       colour = &quot;Differentially expressed?&quot;,
+       y = &quot;sign(logFC)*-log10(PValue)&quot;) +
+  coord_cartesian(ylim = c(-5, 5)),
+
+toptable_1 %&gt;% 
+  bind_rows() %&gt;% 
+  mutate(rankstat = sign(logFC)*-log10(PValue)) %&gt;% 
+  ggplot(aes(x = gc_content, y = rankstat)) +
+  geom_point(
+    aes(colour = DE),
+    alpha = 0.5
+  ) +
+  geom_smooth(se = FALSE, method = &quot;gam&quot;) +
+  facet_grid(rows = vars(coef)) +
+  theme_bw() +
+  theme(legend.position = &quot;none&quot;) +
+  scale_color_manual(values = c(&quot;grey50&quot;, &quot;red&quot;)) +
+  coord_cartesian(ylim = c(-5,5)) + 
+  labs(x = &quot;Weighted average GC content (%) per gene&quot;, 
+       colour = &quot;Differentially expressed?&quot;, 
+       y = &quot;sign(logFC)*-log10(PValue)&quot;),
+common.legend = TRUE, 
+labels = &quot;AUTO&quot;
+) </code></pre>
+<p><img src="figure/analysis_larvae.Rmd/unnamed-chunk-5-1.png" width="75%" height="75%" style="display: block; margin: auto;" />
+# CQN</p>
+<p>A little bit of bias is obsevred for %GC content and gene length, so
+will apply the <code>cqn</code> correction to adjust for this.</p>
+<pre class="r"><code>cqn &lt;-   
+x %&gt;% 
+  with(
+    cqn(
+      counts = counts,
+      x = genes$gc_content,
+      lengths = genes$length,
+      sizeFactors = samples$lib.size
+    )
+  )
+logCPM &lt;- cqn$y + cqn$offset</code></pre>
+<div id="plot-out-the-model-fits" class="section level3">
+<h3>plot out the model fits</h3>
+<pre class="r"><code>par(mfrow = c(1, 2))
+cqnplot(cqn, n = 1, xlab = &quot;GC Content&quot;)
+cqnplot(cqn, n = 2, xlab = &quot;Length&quot;)</code></pre>
+<div class="figure" style="text-align: center">
+<img src="figure/analysis_larvae.Rmd/unnamed-chunk-7-1.png" alt="*Model fits for GC content and gene length under the CQN model. Variability is clearly visible at either end*" width="75%" height="75%" />
+<p class="caption">
+<em>Model fits for GC content and gene length under the CQN model.
+Variability is clearly visible at either end</em>
+</p>
+</div>
+<pre class="r"><code>par(mfrow = c(1, 1))</code></pre>
+</div>
+</div>
+<div id="pca-after-cqn" class="section level1">
+<h1>PCA after cqn</h1>
+<p>PCA analysis was repeated. No significant improvement of cliustering
+of samples by genotype is observed</p>
+<pre class="r"><code>ggarrange(
+  cpm(x, log = T) %&gt;%
+    t() %&gt;%
+    prcomp() %&gt;% 
+    autoplot(data = tibble(sample = rownames(.$x)) %&gt;%
+               left_join(x$samples),
+             colour = &quot;Genotype&quot;, 
+             
+             size = 4
+    ) +
+    scale_color_discrete_qualitative(palette = &quot;Dark 3&quot;) +
+    theme(aspect.ratio = 1) +
+    ggtitle(&quot;Before CQN&quot;),
+  
+  logCPM %&gt;% 
+    t() %&gt;% 
+    prcomp() %&gt;%
+    autoplot(data = tibble(sample = rownames(.$x)) %&gt;%
+               left_join(x$samples),
+             colour = &quot;Genotype&quot;, 
+             size = 4
+    ) +
+    scale_color_discrete_qualitative(palette = &quot;Dark 3&quot;) +
+    theme(aspect.ratio = 1) +
+    ggtitle(&quot;After CQN&quot;),
+  common.legend = T, 
+  labels = &quot;AUTO&quot;
+)</code></pre>
+<p><img src="figure/analysis_larvae.Rmd/unnamed-chunk-8-1.png" width="75%" height="75%" style="display: block; margin: auto;" /></p>
+<div id="de-with-cqn" class="section level2">
+<h2>DE with cqn</h2>
+<p>The DE analysis was then repeated, this time including the offset
+generated by <code>cqn</code> in the model.</p>
+<pre class="r"><code># Add the offset to the dge object 
+x$offset &lt;- cqn$glm.offset
+
+# fit the glm
+fit_cqn &lt;- x %&gt;% 
+  estimateDisp(design) %&gt;% 
+  glmFit(design)
+
+toptables_cqn &lt;- design %&gt;% colnames() %&gt;% .[2:3] %&gt;% 
+  sapply(function(x){
+    glmLRT(fit_cqn, coef = x) %&gt;%
+      topTags(n = Inf) %&gt;%
+      .[[&quot;table&quot;]] %&gt;%
+      as_tibble() %&gt;%
+      arrange(PValue) %&gt;%
+       mutate(
+        coef = x,
+        DE = FDR &lt; 0.05
+      ) %&gt;% 
+      dplyr::select(
+        gene_name, logFC, logCPM, PValue, FDR, DE, everything()  
+      )
+      
+  }, simplify = FALSE)</code></pre>
+<div id="vis-1" class="section level3">
+<h3>Vis</h3>
+<div id="rech-check-the-rank-stat" class="section level4">
+<h4>rech-check the rank-stat</h4>
+<pre class="r"><code>ggarrange(
+toptables_cqn %&gt;% 
+  bind_rows() %&gt;% 
+  mutate(rankstat = sign(logFC)*-log10(PValue)) %&gt;% 
+  ggplot(aes(x = length, y = rankstat)) +
+  geom_point(
+    aes(colour = DE),
+    alpha = 0.5
+  ) +
+  geom_smooth(se = FALSE, method = &quot;gam&quot;) +
+  facet_grid(rows = vars(coef)) +
+  theme_bw() +
+  theme(legend.position = &quot;none&quot;) +
+  scale_color_manual(values = c(&quot;grey50&quot;, &quot;red&quot;)) +
+  scale_x_log10()+
+  labs(x = &quot;Average transcript length per gene&quot;,
+       colour = &quot;Differentially expressed?&quot;,
+       y = &quot;sign(logFC)*-log10(PValue)&quot;) +
+  coord_cartesian(ylim = c(-5, 5)),
+
+toptables_cqn %&gt;% 
+  bind_rows() %&gt;% 
+  mutate(rankstat = sign(logFC)*-log10(PValue)) %&gt;% 
+  ggplot(aes(x = gc_content, y = rankstat)) +
+  geom_point(
+    aes(colour = DE),
+    alpha = 0.5
+  ) +
+  geom_smooth(se = FALSE, method = &quot;gam&quot;) +
+  facet_grid(rows = vars(coef)) +
+  theme_bw() +
+  theme(legend.position = &quot;none&quot;) +
+  scale_color_manual(values = c(&quot;grey50&quot;, &quot;red&quot;)) +
+  coord_cartesian(ylim = c(-5,5)) + 
+  labs(x = &quot;Weighted average GC content (%) per gene&quot;, 
+       colour = &quot;Differentially expressed?&quot;, 
+       y = &quot;sign(logFC)*-log10(PValue)&quot;),
+common.legend = TRUE, 
+labels = &quot;AUTO&quot;
+) </code></pre>
+<p><img src="figure/analysis_larvae.Rmd/unnamed-chunk-10-1.png" width="75%" height="75%" style="display: block; margin: auto;" /></p>
+</div>
+</div>
+</div>
+<div id="gene-set-enrichment-analysis" class="section level2">
+<h2>Gene set enrichment analysis</h2>
+<p>I now will perform some gene set enrichment analyses on MSIGDB gene
+sets.</p>
+<div id="gene-sets" class="section level3">
+<h3>Gene sets</h3>
+<pre class="r"><code>KEGG &lt;- msigdbr(&quot;Danio rerio&quot;, category = &quot;C2&quot;, subcategory = &quot;CP:KEGG&quot;) %&gt;% 
+  left_join(x$genes, by = c(&quot;gene_symbol&quot; = &quot;gene_name&quot;)) %&gt;% 
+  dplyr::filter(gene_id %in% rownames(x)) %&gt;% 
+  distinct(gs_name, gene_id, .keep_all = TRUE) %&gt;% 
+  split(f = .$gs_name) %&gt;%
+  lapply(extract2, &quot;gene_id&quot;)
+
+
+
+# GO Terms
+goSummaries &lt;- url(&quot;https://uofabioinformaticshub.github.io/summaries2GO/data/goSummaries.RDS&quot;) %&gt;%
+  readRDS() %&gt;%
+  mutate(
+    Term = Term(id),
+    gs_name = Term %&gt;% str_to_upper() %&gt;% str_replace_all(&quot;[ -]&quot;, &quot;_&quot;),
+    gs_name = paste0(&quot;GO_&quot;, gs_name)
+    )
+
+minPath &lt;- 3
+
+GO &lt;-
+  msigdbr(&quot;Danio rerio&quot;, category = &quot;C5&quot;) %&gt;%
+  dplyr::filter(grepl(gs_name, pattern = &quot;^GO&quot;)) %&gt;%
+  left_join(x$genes, by = c(&quot;gene_symbol&quot; = &quot;gene_name&quot;)) %&gt;%
+  dplyr::filter(gene_id %in% rownames(x)) %&gt;%
+  mutate(gs_name = str_replace(gs_name, pattern = &quot;GOBP_&quot;, replacement = &quot;GO_&quot;)) %&gt;%
+  mutate(gs_name = str_replace(gs_name, pattern = &quot;GOMF_&quot;, replacement = &quot;GO_&quot;)) %&gt;%
+  mutate(gs_name = str_replace(gs_name, pattern = &quot;GOCC_&quot;, replacement = &quot;GO_&quot;)) %&gt;%
+  left_join(goSummaries) %&gt;%
+  dplyr::filter(shortest_path &gt;= minPath) %&gt;%
+  distinct(gs_name, gene_id, .keep_all = TRUE) %&gt;%
+  split(f = .$gs_name) %&gt;%
+  lapply(extract2, &quot;gene_id&quot;)
+ 
+sizes_GO &lt;- GO %&gt;%
+  lapply(length) %&gt;%
+  unlist %&gt;%
+  as.data.frame() %&gt;%
+  set_colnames( &quot;n_genes&quot;) %&gt;%
+  rownames_to_column(&quot;gs&quot;)
+
+
+# retain gene sets with at least 3 genes in it
+GO &lt;- GO[sizes_GO %&gt;% dplyr::filter(n_genes &gt; 3) %&gt;% .$gs]
+
+ireGenes &lt;- readRDS(&quot;data/gene_sets/zebrafishireGenes.rds&quot;) %&gt;% 
+  unlist() %&gt;% 
+  as.data.frame() %&gt;% 
+  rownames_to_column(&quot;ire&quot;) %&gt;% 
+  as_tibble() %&gt;% 
+  mutate(ire = str_extract(ire, pattern = &quot;ire[:digit:]_[:alpha:]+&quot;)) %&gt;% 
+  set_colnames(c(&quot;ire&quot;, &quot;gene_id&quot;)) %&gt;% 
+  dplyr::filter(gene_id %in% rownames(x)) %&gt;% 
+  split(f = .$ire) %&gt;% 
+  lapply(magrittr::extract2,&quot;gene_id&quot;) 
+
+chr &lt;- x$genes %&gt;% 
+  dplyr::select(gene_id, chromosome) %&gt;% 
+  split(f = .$chromosome) %&gt;%
+  lapply(extract2, &quot;gene_id&quot;) %&gt;% 
+  .[c(&quot;MT&quot;, seq(1:25))] # omit the ALT chromosmes and scaffolds
+
+# Cell type markers for zerbafish 
+cell_type_markers &lt;- read_excel(&quot;data/gene_sets/1-s2.0-S0012160619304919-mmc7.xlsx&quot;) %&gt;% 
+  dplyr::filter(grepl(`Day of Origin`, pattern = 5 )) %&gt;%  # restrict to only 5dpf
+  dplyr::select(Tissue, 9:24) %&gt;% 
+  split(f = .$Tissue) %&gt;% 
+  lapply(function(y) {
+    y %&gt;% 
+      dplyr::select(-Tissue) %&gt;% 
+      gather %&gt;% 
+      dplyr::select(value) %&gt;% 
+      set_colnames(&quot;gene_name&quot;) %&gt;% 
+      left_join(x$genes) %&gt;% 
+      na.omit %&gt;% 
+      .$gene_id
+  }) 
+
+# get length of gene sets
+sizes &lt;- cell_type_markers %&gt;% 
+  lapply(length) %&gt;% 
+  unlist %&gt;% 
+  as.data.frame() %&gt;% 
+  set_colnames( &quot;n_genes&quot;) %&gt;% 
+  rownames_to_column(&quot;gs&quot;)
+
+# retain gene sets with at least 10 genes in it
+cell_type_markers &lt;- cell_type_markers[sizes %&gt;% dplyr::filter(n_genes &gt; 5) %&gt;% .$gs]</code></pre>
+</div>
+</div>
+<div id="goseq" class="section level2">
+<h2>GOSEQ</h2>
+<p>First, I will test for over-representation of GO terms within the DE
+genes. I will do this using goseq as it allows you to include a
+co-variate which is nice. Since there seems to still be a little bit of
+bias remaining for %GC content even after cqn, this is what I will
+speify as the covariate.</p>
+<p>There were no DEGs in the EOfAD like mutatns, so no GO testing will
+be performed for this comparison.</p>
+<p>The top 10 GO terms over-represented in the DEGs in MPS-IIIB are
+plotted below.</p>
+<pre class="r"><code>pwf &lt;- toptables_cqn$MPSIIIB %&gt;%
+      with(
+        nullp(
+          DEgenes = structure(DE, names = gene_id), 
+          bias.data = gc_content
+        )
+      )</code></pre>
+<p><img src="figure/analysis_larvae.Rmd/unnamed-chunk-12-1.png" width="75%" height="75%" style="display: block; margin: auto;" /></p>
+<pre class="r"><code>goseq_mpsiiib &lt;- goseq(pwf, gene2cat = GO) %&gt;% 
+  as_tibble() %&gt;% 
+  dplyr::filter(numDEInCat &gt; 0) %&gt;% 
+  mutate(FDR = p.adjust(over_represented_pvalue, method = &quot;fdr&quot;)) %&gt;% 
+  dplyr::select(-under_represented_pvalue) 
+
+goseq_mpsiiib %&gt;%
+  dplyr::slice(1:10) %&gt;%
+  mutate(propDE = numDEInCat/numInCat) %&gt;%
+  ggplot(aes(x = -log10(over_represented_pvalue), y = reorder(category, -over_represented_pvalue))) +
+  geom_col(aes(fill = propDE, alpha = FDR &lt; 0.05)) +
+  scale_fill_viridis_c() +
+  scale_alpha_manual(values = c(0.4, 1)) +
+  labs(y = &quot;GO Term&quot;,
+       fill = &quot;Proportion of \nDE genes in \nGO term&quot;)</code></pre>
+<p><img src="figure/analysis_larvae.Rmd/unnamed-chunk-12-2.png" width="75%" height="75%" style="display: block; margin: auto;" /></p>
+</div>
+<div id="ranked-list-with-fry" class="section level2">
+<h2>Ranked list with fry</h2>
+<p>Overrepresenation analysis using goseq relies on a hard threshold for
+gene to be called DE. This can lose information as there are genes which
+are almost DE (i.e. FDRp = 0.06), but are not interpreted in this
+way.</p>
+<p>Another method to test for enrichment of gene sets is to use ROAST.
+Roast uses a rotation-based approach to generate a null distribution of
+gene set enrichment scores by randomly permuting the samples or the gene
+labels in the data. Roast then calculates a gene set enrichment score
+for each gene set in the data, based on the correlation between the gene
+expression values and the sample labels. The gene set enrichment scores
+are compared to the null distribution to calculate the statistical
+significance of the enrichment. In this way, it does not requre a list
+of DEGs as input.</p>
+<p>Here, I will perform the fast approx of ROAST: fry, frmo the limma
+package on the KEGG gene sets. The top 10 gene sets in each mutant
+zebrafish are shown below.</p>
+<div id="kegg" class="section level3">
+<h3>KEGG</h3>
+<pre class="r"><code>fryKEGG &lt;- 
+  design %&gt;% colnames() %&gt;% .[2:3] %&gt;% 
+  sapply(function(y) {
+   logCPM %&gt;% 
+      fry(
+        index = KEGG,
+        design = design, 
+        contrast = y, 
+        sort = &quot;mixed&quot;
+      ) %&gt;% 
+      rownames_to_column(&quot;pathway&quot;) %&gt;% 
+      as_tibble() %&gt;% 
+      mutate(coef = y)
+  }, simplify = FALSE)
+
+fryKEGG$MPSIIIB %&gt;% 
+  dplyr::slice(1:10) %&gt;% 
+  mutate(pathway = str_remove(pathway, pattern = &quot;KEGG_&quot;)) %&gt;% 
+  ggplot(aes(x = -log10(PValue.Mixed), y = reorder(pathway, -PValue.Mixed))) +
+  geom_col(aes(fill = FDR.Mixed &lt; 0.05)) +
+  scale_fill_manual(values = c(&quot;grey50&quot;, &#39;red&#39;)) +
+  theme_pubr() +
+  labs(fill = &quot;FDR &lt; 0.05&quot;, 
+       x = &quot;-log10(PValue)&quot;, 
+       y = &quot;&quot;, 
+       title = &quot;MPS-IIIB&quot;) </code></pre>
+<p><img src="figure/analysis_larvae.Rmd/unnamed-chunk-13-1.png" width="75%" height="75%" style="display: block; margin: auto;" /></p>
+<pre class="r"><code>  #theme(text = element_text(size = 40)) 
+  # ggsave(&quot;output/plots/geneSetsInMPS-IIIB.png&quot;, width = 10, height = 7, 
+  #        units = &quot;cm&quot;, dpi = 300, scale= 5)
+  
+
+fryKEGG$EOfADlike %&gt;% 
+  dplyr::slice(1:10) %&gt;% 
+  mutate(pathway = str_remove(pathway, pattern = &quot;KEGG_&quot;)) %&gt;% 
+  ggplot(aes(x = -log10(PValue.Mixed), y = reorder(pathway, -PValue.Mixed))) +
+  geom_col(aes(fill = FDR.Mixed &lt; 0.05)) +
+  scale_fill_manual(values = c(&quot;grey50&quot;, &#39;red&#39;)) +
+  theme_pubr() +
+  labs(fill = &quot;FDR &lt; 0.05&quot;, 
+       x = &quot;-log10(PValue)&quot;, 
+       y = &quot;&quot;, 
+       title = &quot;EOfAD&quot;)</code></pre>
+<p><img src="figure/analysis_larvae.Rmd/unnamed-chunk-13-2.png" width="75%" height="75%" style="display: block; margin: auto;" /></p>
+</div>
+<div id="go" class="section level3">
+<h3>GO</h3>
+<p>Gene ontologies.</p>
+<pre class="r"><code>fry_GO &lt;-  design %&gt;% colnames() %&gt;% .[2:3] %&gt;% 
+  sapply(function(y) {
+    logCPM %&gt;% 
+      fry(
+        index = GO,
+        design = design, 
+        contrast = y, 
+        sort = &quot;mixed&quot;
+      ) %&gt;% 
+      rownames_to_column(&quot;pathway&quot;) %&gt;% 
+      as_tibble() %&gt;% 
+      mutate(coef = y, 
+             sig = FDR.Mixed &lt; 0.05)
+  }, simplify = FALSE)
+
+sigGOs &lt;- fry_GO %&gt;% 
+  bind_rows() %&gt;% 
+  dplyr::filter(sig == TRUE) %&gt;% 
+  .$pathway
+
+fry_GO %&gt;% 
+  bind_rows() %&gt;% 
+  dplyr::filter(pathway %in% sigGOs) %&gt;% 
+  arrange(desc(coef), PValue.Mixed) %&gt;% 
+  mutate(order = rownames(.)) %&gt;% 
+  ggplot(aes(x = coef, y = pathway)) +
+  geom_tile(
+    aes(fill = -log10(PValue.Mixed))
+    ) +
+  theme_pubr() +
+  scale_fill_viridis_c(option = &quot;magma&quot;) +
+  labs(fill = &quot;-log10(PValue)&quot;, 
+       x = &quot;&quot;, 
+       y = &quot;&quot;, 
+       title = &quot;MPS-IIIB&quot;)</code></pre>
+<p><img src="figure/analysis_larvae.Rmd/unnamed-chunk-14-1.png" width="75%" height="75%" style="display: block; margin: auto;" /></p>
+<pre class="r"><code>  theme(text = element_text(size = 25)) </code></pre>
+<pre><code>List of 1
+ $ text:List of 11
+  ..$ family       : NULL
+  ..$ face         : NULL
+  ..$ colour       : NULL
+  ..$ size         : num 25
+  ..$ hjust        : NULL
+  ..$ vjust        : NULL
+  ..$ angle        : NULL
+  ..$ lineheight   : NULL
+  ..$ margin       : NULL
+  ..$ debug        : NULL
+  ..$ inherit.blank: logi FALSE
+  ..- attr(*, &quot;class&quot;)= chr [1:2] &quot;element_text&quot; &quot;element&quot;
+ - attr(*, &quot;class&quot;)= chr [1:2] &quot;theme&quot; &quot;gg&quot;
+ - attr(*, &quot;complete&quot;)= logi FALSE
+ - attr(*, &quot;validate&quot;)= logi TRUE</code></pre>
+<pre class="r"><code>  # ggsave(&quot;output/plots/gotermsMPS-IIIB.png&quot;, width = 10, height = 7, 
+  #        units = &quot;cm&quot;, dpi = 300, scale= 5)
+  
+
+fry_GO$EOfADlike %&gt;% 
+  dplyr::slice(1:32) %&gt;% 
+  ggplot(aes(x = -log10(PValue.Mixed), y = reorder(pathway, -PValue.Mixed))) +
+  geom_col(aes(fill = -log10(PValue.Mixed))) +
+  scale_fill_viridis_c() +
+  theme_pubr() +
+  labs(fill = &quot;FDR &lt; 0.05&quot;, 
+       x = &quot;-log10(PValue)&quot;, 
+       y = &quot;&quot;, 
+       title = &quot;MPS IIIB&quot;) </code></pre>
+<p><img src="figure/analysis_larvae.Rmd/unnamed-chunk-14-2.png" width="75%" height="75%" style="display: block; margin: auto;" /></p>
+<pre class="r"><code>  ggsave(&quot;output/plots/gotermsMPS-IIIB.png&quot;, width = 10, height = 5, 
+         units = &quot;cm&quot;, dpi = 300, scale= 4)</code></pre>
+</div>
+<div id="ire" class="section level3">
+<h3>IRE</h3>
+<p>Statistical significance in these iron-responsive element gene sets
+can indicate iron dyshomoestasis.</p>
+<pre class="r"><code>fryIRE &lt;- design %&gt;% colnames() %&gt;% .[2:3] %&gt;% 
+  sapply(function(y) {
+    cpm(x$counts, log = TRUE) %&gt;% 
+      fry(
+        index = ireGenes,
+        design = design, 
+        contrast = y, 
+        sort = &quot;directional&quot;
+      ) %&gt;% 
+      rownames_to_column(&quot;pathway&quot;) %&gt;% 
+      as_tibble() %&gt;% 
+      mutate(coef = y)
+  }, simplify = FALSE)
+
+fryIRE %&gt;% 
+  bind_rows() %&gt;% 
+  dplyr::select(pathway, coef, pvalue = PValue.Mixed, FDR = FDR.Mixed) %&gt;% 
+  ggplot(aes(y = pathway, x = -log10(pvalue))) + 
+  geom_col(aes(fill = coef), 
+           position = &quot;dodge&quot;) +
+  geom_vline(xintercept = -log10(0.05)) +
+  scale_fill_viridis_d(end = 0.75) +
+  theme_pubr()</code></pre>
+<p><img src="figure/analysis_larvae.Rmd/unnamed-chunk-15-1.png" width="75%" height="75%" style="display: block; margin: auto;" /></p>
+<pre class="r"><code>  #ggsave(&quot;output/plots/ire.png&quot;, width = 10, height = 10, units = &quot;cm&quot;, dpi = 300)</code></pre>
+</div>
+<div id="cell-type-prop-check" class="section level3">
+<h3>Cell type prop check</h3>
+<p>Since this experiment was performed on whole larvae, we need to have
+a look at whether changes to cell type proportions could explain cause
+some artefactual changes to gene expression. We have done this
+previously by assessing the expression of marker genes of specific cell
+types. So this is what I will do here. I have taken the lists of genes
+frmo day 5 only from the zebrafish single cell atlas (Farnsworth et
+al. 2020) which contain at least 10 genes. This leaves 24 gene sets
+(cell types) to test.</p>
+<pre class="r"><code>fry.cell &lt;- design %&gt;% colnames() %&gt;% .[2:3] %&gt;% 
+  sapply(function(y) {
+    cpm(x$counts, log = TRUE) %&gt;% 
+      fry(
+        index = cell_type_markers,
+        design = design, 
+        contrast = y, 
+        sort = &quot;directional&quot;
+      ) %&gt;% 
+      rownames_to_column(&quot;pathway&quot;) %&gt;% 
+      as_tibble() %&gt;% 
+      mutate(coef = y) %&gt;% 
+      dplyr::select(1:5)
+  }, simplify = FALSE)</code></pre>
+</div>
+<div id="chromosome-gene-sets" class="section level3">
+<h3>Chromosome gene sets</h3>
+<p>Are there DEGs on the mutant chromosomes?</p>
+<pre class="r"><code>design %&gt;% colnames() %&gt;% .[2:3] %&gt;% 
+  sapply(function(y) {
+    cpm(x$counts, log = TRUE) %&gt;% 
+      fry(
+        index = c(chr),
+        design = design, 
+        contrast = y, 
+        sort = &quot;mixed&quot;
+      ) %&gt;% 
+      rownames_to_column(&quot;pathway&quot;) %&gt;% 
+      as_tibble() %&gt;% 
+      mutate(coef = y)
+  }, simplify = FALSE)</code></pre>
+<pre><code>$MPSIIIB
+# A tibble: 26 × 8
+   pathway NGenes Direction PValue   FDR PValue.Mixed     FDR.Mixed coef   
+   &lt;chr&gt;    &lt;int&gt; &lt;chr&gt;      &lt;dbl&gt; &lt;dbl&gt;        &lt;dbl&gt;         &lt;dbl&gt; &lt;chr&gt;  
+ 1 24         615 Up        0.258  0.280     2.44e-10 0.00000000634 MPSIIIB
+ 2 25         665 Up        0.0147 0.179     3.25e- 3 0.0423        MPSIIIB
+ 3 8          939 Up        0.115  0.179     1.40e- 1 0.508         MPSIIIB
+ 4 5         1219 Up        0.0729 0.179     1.75e- 1 0.508         MPSIIIB
+ 5 17         819 Up        0.115  0.179     1.81e- 1 0.508         MPSIIIB
+ 6 14         763 Up        0.122  0.179     1.94e- 1 0.508         MPSIIIB
+ 7 3         1176 Up        0.166  0.188     2.12e- 1 0.508         MPSIIIB
+ 8 15         825 Up        0.101  0.179     2.36e- 1 0.508         MPSIIIB
+ 9 12         770 Up        0.160  0.188     2.36e- 1 0.508         MPSIIIB
+10 11         734 Up        0.138  0.179     2.41e- 1 0.508         MPSIIIB
+# ℹ 16 more rows
+
+$EOfADlike
+# A tibble: 26 × 8
+   pathway NGenes Direction PValue   FDR PValue.Mixed FDR.Mixed coef     
+   &lt;chr&gt;    &lt;int&gt; &lt;chr&gt;      &lt;dbl&gt; &lt;dbl&gt;        &lt;dbl&gt;     &lt;dbl&gt; &lt;chr&gt;    
+ 1 17         819 Up         0.781 0.846        0.226     0.986 EOfADlike
+ 2 18         697 Up         0.557 0.752        0.473     0.986 EOfADlike
+ 3 9          817 Up         0.474 0.752        0.513     0.986 EOfADlike
+ 4 25         665 Up         0.237 0.752        0.548     0.986 EOfADlike
+ 5 23         834 Up         0.613 0.752        0.643     0.986 EOfADlike
+ 6 2         1055 Up         0.577 0.752        0.661     0.986 EOfADlike
+ 7 3         1176 Up         0.631 0.752        0.696     0.986 EOfADlike
+ 8 4         1084 Down       0.986 0.990        0.799     0.986 EOfADlike
+ 9 8          939 Up         0.689 0.779        0.874     0.986 EOfADlike
+10 14         763 Up         0.636 0.752        0.874     0.986 EOfADlike
+# ℹ 16 more rows</code></pre>
+</div>
+</div>
+<div id="harmonic-mean-p" class="section level2">
+<h2>Harmonic mean p</h2>
+<p>Since I’m not detecting any significant gene sets in the EOfAD-like
+mutants, I need to try another method. I will use the harmonic mean p
+val method which combines indivisual p vals from 3 gene set enrichmen
+analysis methods: fry, camera and gsea.</p>
+<pre class="r"><code># Make a custom function for calculating the HMP.  
+runHMP = function(gene.set.obj, 
+                  design,
+                  logCPM.df, 
+                  toptable) {
+fry &lt;- 
+  design %&gt;% colnames() %&gt;% .[2:3] %&gt;% 
+  sapply(function(y) {
+  logCPM.df %&gt;% 
+      fry(
+        index = gene.set.obj,
+        design = design, 
+        contrast = y, 
+        sort = &quot;mixed&quot;
+      ) %&gt;% 
+      rownames_to_column(&quot;pathway&quot;) %&gt;% 
+      as_tibble() %&gt;% 
+      mutate(coef = y)
+  }, simplify = FALSE)
+
+camera &lt;- 
+  design %&gt;% colnames() %&gt;% .[2:3] %&gt;% 
+  sapply(function(y) {
+    logCPM.df %&gt;% 
+      camera(
+        index = gene.set.obj,
+        design = design, 
+        contrast = y
+      ) %&gt;% 
+      rownames_to_column(&quot;pathway&quot;) %&gt;% 
+      as_tibble() %&gt;% 
+      mutate(coef = y)
+  }, simplify = FALSE)
+
+ranks &lt;- 
+   sapply(toptable, function(y) {
+     y %&gt;% 
+       mutate(rankstat = sign(logFC) * log10(1/PValue)) %&gt;% 
+       arrange(rankstat) %&gt;% 
+       dplyr::select(c(&quot;gene_id&quot;, &quot;rankstat&quot;)) %&gt;% #only want the Pvalue with sign
+       with(structure(rankstat, names = gene_id)) %&gt;% 
+       rev() # reverse so the start of the list is upregulated genes
+   }, simplify = FALSE)
+
+# Run fgsea
+
+# set a seed for a reproducible result
+set.seed(33)
+fgsea &lt;- ranks %&gt;%
+  sapply(function(x){
+    fgseaMultilevel(stats = x, pathways = gene.set.obj) %&gt;%
+      as_tibble() %&gt;%
+      dplyr::rename(FDR = padj) %&gt;%
+      mutate(padj = p.adjust(pval, &quot;bonferroni&quot;)) %&gt;%
+      dplyr::select(pathway, pval, FDR, padj, everything()) %&gt;%
+      arrange(pval) %&gt;%
+      mutate(sig = padj &lt; 0.05)
+  }, simplify = F)
+
+fgsea$MPSIIIB %&lt;&gt;% 
+  mutate(coef = &quot;MPSIIIB&quot;)
+fgsea$EOfADlike %&lt;&gt;% 
+  mutate(coef = &quot;EOfADlike&quot;)
+
+hmp &lt;- fry %&gt;% 
+  bind_rows() %&gt;% 
+  dplyr::select(pathway, PValue.Mixed, coef) %&gt;% 
+  dplyr::rename(fry_p = PValue.Mixed) %&gt;% 
+  left_join(camera %&gt;% 
+              bind_rows() %&gt;% 
+              dplyr::select(pathway, PValue, coef), 
+            by = c(&quot;pathway&quot;, &quot;coef&quot;)) %&gt;% 
+  dplyr::rename(camera_p = PValue) %&gt;% 
+  left_join(fgsea %&gt;% 
+              bind_rows() %&gt;% 
+              dplyr::select(pathway, pval, coef), 
+            by = c(&quot;pathway&quot;, &quot;coef&quot;)) %&gt;% 
+  dplyr::rename(fgsea_p = pval) %&gt;% 
+  bind_rows() %&gt;% 
+  nest(p = one_of(c(&quot;fry_p&quot;, &quot;camera_p&quot;, &quot;fgsea_p&quot;))) %&gt;% 
+ mutate(harmonic_p = vapply(p, function(x){
+        x &lt;- unlist(x)
+        x &lt;- x[!is.na(x)]
+        p.hmp(x, L = 4)
+      }, numeric(1))
+ ) %&gt;% 
+  unnest() %&gt;% 
+  mutate(harmonic_p_FDR = p.adjust(harmonic_p, &quot;fdr&quot;),
+         sig = harmonic_p_FDR &lt; 0.05) %&gt;% 
+  arrange(harmonic_p) 
+
+return(list(
+  hmp = hmp, 
+  fgsea = fgsea
+))
+
+}</code></pre>
+<div id="kegg-1" class="section level3">
+<h3>KEGG</h3>
+<pre class="r"><code>HMP_kegg &lt;- runHMP(gene.set.obj = KEGG, 
+                   design = design, 
+                   logCPM.df = logCPM, 
+                   toptable = toptables_cqn)
+
+sigpaths &lt;- HMP_kegg$hmp %&gt;% 
+  dplyr::filter(harmonic_p_FDR &lt; 0.05) %&gt;% 
+  .$pathway
+
+HMP_kegg$hmp %&gt;% 
+  dplyr::filter(pathway %in% sigpaths) %&gt;% 
+  ggplot(aes(x = coef, y = reorder(pathway, -harmonic_p))) + 
+  geom_tile(aes(fill = -log10(harmonic_p), 
+                alpha = sig)) +
+  geom_label(aes(label = signif(harmonic_p_FDR, digits = 2)), 
+             fill = NA) +
+  scale_fill_viridis_c()</code></pre>
+<p><img src="figure/analysis_larvae.Rmd/unnamed-chunk-19-1.png" width="75%" height="75%" style="display: block; margin: auto;" /></p>
+</div>
+<div id="ire-1" class="section level3">
+<h3>IRE</h3>
+<p>No staistical significance in the IRE genes</p>
+<pre class="r"><code>HMP_ire &lt;- runHMP(gene.set.obj = ireGenes, 
+                   design = design, 
+                   logCPM.df = logCPM, 
+                   toptable = toptables_cqn)
+
+
+HMP_ire$hmp %&gt;% 
+  ggplot(aes(x = coef, y = reorder(pathway, -harmonic_p))) + 
+  geom_tile(aes(fill = -log10(harmonic_p), 
+                alpha = sig)) +
+  geom_label(aes(label = signif(harmonic_p_FDR, digits = 2)), 
+             fill = NA) +
+  scale_fill_viridis_c()</code></pre>
+<p><img src="figure/analysis_larvae.Rmd/unnamed-chunk-20-1.png" width="75%" height="75%" style="display: block; margin: auto;" /></p>
+</div>
+</div>
+</div>
+<div id="post-hoc-power-calc" class="section level1">
+<h1>Post-hoc power calc</h1>
+<pre class="r"><code>set.seed(2016)
+
+mu &lt;- x$counts %&gt;%
+  as.data.frame() %&gt;%
+  .[grepl(colnames(x$counts), pattern = &quot;wt&quot;)] %&gt;%
+  rowMeans()
+
+disp &lt;-  x %&gt;% estimateDisp() %&gt;% . $tagwise.dispersion
+
+fc &lt;- function(y){exp(rnorm(y, log(1), 0.5*log(2)))}
+
+power &lt;- ssizeRNA_vary(nGenes = dim(x)[1], # Num detectable genes
+              pi0 = 0.9, # Proportion of non-DE genes
+              m = 30, # pseudo sample size
+              mu = mu, # Average read count for each gene in control group. Calculated from this current dataset)
+              disp = disp, # Dispersion parameter for each gene
+              fc = fc, # Fold change per gene
+              fdr = 0.05, # FDR level to control
+              #power = 0.7, # power level
+              maxN = 40,
+              replace = T
+                )</code></pre>
+<p><img src="figure/analysis_larvae.Rmd/unnamed-chunk-21-1.png" width="75%" height="75%" style="display: block; margin: auto;" /></p>
+<pre class="r"><code>power$power %&gt;% 
+  set_colnames(c(&quot;n&quot;, &quot;power&quot;)) %&gt;% 
+  ggplot(aes(x = n, y = power)) +
+  geom_point() +
+  geom_line() +
+  coord_cartesian(xlim = c(0,30)) +
+  geom_hline(yintercept = 0.7, linetype = 2, colour = &quot;red&quot;) +
+  geom_hline(yintercept = 0.51, linetype = 2, colour = &quot;blue&quot;) </code></pre>
+<p><img src="figure/analysis_larvae.Rmd/unnamed-chunk-21-2.png" width="75%" height="75%" style="display: block; margin: auto;" /></p>
+<pre class="r"><code>  #ggsave(&quot;output/plots/posthocPowerLarvae.png&quot;, width = 10, height = 5, units = &quot;cm&quot;, 
+   #      dpi = 200, scale = 1.5)</code></pre>
+</div>
+<div id="compare-with-dong-et-al.-data" class="section level1">
+<h1>Compare with Dong et al. data</h1>
+<p>Yang had previously analysed the EOfADlike mutation in pools of
+larvae. Here, I want to see how similar my results are.</p>
+<p>Obtained his github repo from here, which has the data <a
+href="https://github.com/yangdongau/20190717_Lardelli_RNASeq_Larvae"
+class="uri">https://github.com/yangdongau/20190717_Lardelli_RNASeq_Larvae</a></p>
+<p>Comparing his fc vales im not really seeing much. I wil re-process
+his data to do HMP analyses on it.</p>
+<pre class="r"><code>x.Dong &lt;- read_rds(&quot;data/DongEtAlData/dgeList.rds&quot;)
+
+x.Dong$samples %&lt;&gt;% 
+  mutate(Genotype = case_when(
+    Genotype == &quot;Q96K97del/+&quot; ~ &quot;EOfADlike&quot;, 
+    Genotype == &quot;WT&quot; ~ &quot;wt&quot;
+  ) %&gt;% 
+    factor(levels = c(&quot;wt&quot;, &quot;EOfADlike&quot;)))
+
+larvaeGenos &lt;- x.Dong$samples %&gt;% 
+  dplyr::select(Genotype) %&gt;% 
+  mutate(exp = &quot;pools&quot;) %&gt;% 
+  bind_rows(x$samples %&gt;% dplyr::select(Genotype) %&gt;% mutate(exp = &quot;individual&quot;)) %&gt;% 
+  rownames_to_column(&quot;sample&quot;)
+
+# PCA
+cpm(x, log = T) %&gt;% 
+  as.data.frame() %&gt;% 
+  rownames_to_column(&quot;gene_id&quot;) %&gt;% 
+  left_join(x.Dong$counts %&gt;% cpm(log=T) %&gt;% as.data.frame %&gt;% rownames_to_column(&quot;gene_id&quot;)) %&gt;% 
+  column_to_rownames(&quot;gene_id&quot;) %&gt;% 
+  dplyr::select(!starts_with(&quot;MPS&quot;)) %&gt;% 
+  na.omit %&gt;% 
+  t %&gt;% 
+  prcomp() %&gt;% 
+  autoplot(data = tibble(sample = rownames(.$x)) %&gt;%
+             left_join(larvaeGenos),
+           colour = &quot;Genotype&quot;, 
+           size = 4
+  ) +
+  geom_mark_ellipse(aes(labels = exp)) +
+  scale_color_discrete_qualitative(palette = &quot;Dark 3&quot;) +
+  theme(aspect.ratio = 1) </code></pre>
+<p><img src="figure/analysis_larvae.Rmd/unnamed-chunk-22-1.png" width="75%" height="75%" style="display: block; margin: auto;" /></p>
+<pre class="r"><code># suss out ECM
+toptable_dongetal &lt;- 
+  read_csv(&quot;data/DongEtAlData/topTable.csv&quot;) %&gt;% 
+  dplyr::rename( gene_id = ensembl_gene_id, 
+                 gene_name = external_gene_name)
+
+toptable_dongetal %&gt;% 
+  dplyr::filter(gene_id %in% KEGG$KEGG_ECM_RECEPTOR_INTERACTION) %&gt;% 
+  dplyr::select(gene_name, logFC.pools = logFC) %&gt;% 
+  left_join(toptables_cqn$EOfADlike %&gt;% dplyr::select(gene_name, logFC.individuals = logFC)) %&gt;% 
+  dplyr::distinct(gene_name, .keep_all = T) %&gt;% 
+  column_to_rownames(&quot;gene_name&quot;) %&gt;% 
+  pheatmap(color = colorRampPalette(rev(brewer.pal(n = 5,
+                                               name = &quot;RdBu&quot;)))(200), 
+           breaks = seq(-0.6, 0.6, by = 0.6*2/200), 
+           main =&quot;KEGG_ECM_RECEPTOR_INTERACTION&quot;)</code></pre>
+<p><img src="figure/analysis_larvae.Rmd/unnamed-chunk-22-2.png" width="75%" height="75%" style="display: block; margin: auto;" /></p>
+<pre class="r"><code>toptable_dongetal %&gt;% 
+  dplyr::filter(gene_id %in% KEGG$KEGG_ECM_RECEPTOR_INTERACTION) %&gt;% 
+  dplyr::select(gene_name, logFC.pools = logFC) %&gt;% 
+    left_join(toptables_cqn$EOfADlike %&gt;% dplyr::select(gene_name, logFC.individuals = logFC)) %&gt;% 
+  dplyr::distinct(gene_name, .keep_all = T) %&gt;% 
+  column_to_rownames(&quot;gene_name&quot;) %&gt;% 
+  ggscatter(x = &quot;logFC.individuals&quot;, y = &quot;logFC.pools&quot;,
+   color = &quot;black&quot;, shape = 21, size = 3, # Points color, shape and size
+   add = &quot;reg.line&quot;,  # Add regressin line
+   add.params = list(color = &quot;blue&quot;, fill = &quot;lightgray&quot;), # Customize reg. line
+   conf.int = TRUE, # Add confidence interval
+   cor.coef = TRUE, # Add correlation coefficient. see ?stat_cor
+   #cor.coeff.args = list(method = &quot;pearson&quot;, label.x = 3, label.sep = &quot;\n&quot;)
+   ) +
+  geom_abline(slope = 1) +
+  labs(title = &quot;Pearson corr of genes in KEGG_ECM_RECEPTOR_INTERACTION&quot;)</code></pre>
+<p><img src="figure/analysis_larvae.Rmd/unnamed-chunk-22-3.png" width="75%" height="75%" style="display: block; margin: auto;" /></p>
+<pre class="r"><code>pwf.dong &lt;- toptable_dongetal %&gt;%
+      with(
+        nullp(
+          DEgenes = structure(DE, names = gene_id), 
+          bias.data = aveLength 
+        )
+      )</code></pre>
+<p><img src="figure/analysis_larvae.Rmd/unnamed-chunk-22-4.png" width="75%" height="75%" style="display: block; margin: auto;" /></p>
+<pre class="r"><code>goseq_dong &lt;- goseq(pwf.dong, gene2cat = GO) %&gt;% 
+  as_tibble() %&gt;% 
+  #dplyr::filter(numDEInCat &gt; 0) %&gt;% 
+  mutate(FDR = p.adjust(over_represented_pvalue, method = &quot;fdr&quot;)) %&gt;% 
+  dplyr::select(-under_represented_pvalue) 
+
+goseq_dong %&gt;% dplyr::filter(category == &quot;GO_PROTON_TRANSPORTING_V_TYPE_ATPASE_COMPLEX&quot;)</code></pre>
+<pre><code># A tibble: 1 × 5
+  category                      over_represented_pva…¹ numDEInCat numInCat   FDR
+  &lt;chr&gt;                                          &lt;dbl&gt;      &lt;int&gt;    &lt;int&gt; &lt;dbl&gt;
+1 GO_PROTON_TRANSPORTING_V_TYP…                      1          0       25     1
+# ℹ abbreviated name: ¹​over_represented_pvalue</code></pre>
+<pre class="r"><code>goseq_mpsiiib %&gt;% 
+  dplyr::slice(1:10) %&gt;% 
+  mutate(propDE = numDEInCat/numInCat) %&gt;% 
+  ggplot(aes(x = -log10(over_represented_pvalue), y = reorder(category, -over_represented_pvalue))) +
+  geom_col(aes(fill = propDE, alpha = FDR &lt; 0.05)) +
+  scale_fill_viridis_c() +
+  scale_alpha_manual(values = c(0.4, 1)) +
+  labs(y = &quot;GO Term&quot;, 
+       fill = &quot;Proportion of \nDE genes in \nGO term&quot;) </code></pre>
+<p><img src="figure/analysis_larvae.Rmd/unnamed-chunk-22-5.png" width="75%" height="75%" style="display: block; margin: auto;" /></p>
+<div id="hmp-with-dong-et-al." class="section level2">
+<h2>HMP with dong et al. </h2>
+<pre class="r"><code>design.dong &lt;- model.matrix(~Genotype + W_1, x.Dong$samples) %&gt;% 
+  set_colnames(str_replace(colnames(.), pattern = &quot;Genotype.+&quot;, &quot;EOfAD-like&quot;))
+
+fry &lt;- 
+  cpm(x.Dong, log = T) %&gt;% 
+      fry(
+        index = KEGG,
+        design = design.dong, 
+        contrast = &quot;EOfAD-like&quot;, 
+        sort = &quot;mixed&quot;
+      ) %&gt;% 
+      rownames_to_column(&quot;pathway&quot;) %&gt;% 
+      as_tibble() %&gt;% 
+      mutate(coef = &quot;EOfAD-like&quot;, 
+             sig = FDR.Mixed &lt; 0.05)
+
+camera &lt;- 
+  cpm(x.Dong, log = T) %&gt;% 
+  camera(
+    index = KEGG,
+    design = design.dong, 
+    contrast = &quot;EOfAD-like&quot;
+  ) %&gt;% 
+      rownames_to_column(&quot;pathway&quot;) %&gt;% 
+      as_tibble() %&gt;% 
+      mutate(coef = &quot;EOfAD-like&quot;)
+
+ranks &lt;- 
+  toptable_dongetal %&gt;% 
+  mutate(rankstat = sign(logFC) * log10(1/PValue)) %&gt;% 
+  arrange(rankstat) %&gt;% 
+  dplyr::select(c(&quot;gene_id&quot;, &quot;rankstat&quot;)) %&gt;% #only want the Pvalue with sign
+  with(structure(rankstat, names = gene_id)) %&gt;% 
+  rev() # reverse so the start of the list is upregulated genes
+
+# Run fgsea
+
+# set a seed for a reproducible result
+set.seed(33)
+fgsea &lt;- ranks %&gt;%
+  fgseaMultilevel(pathways = KEGG) %&gt;%
+  as_tibble() %&gt;%
+  dplyr::rename(FDR = padj) %&gt;%
+  mutate(padj = p.adjust(pval, &quot;bonferroni&quot;)) %&gt;%
+  dplyr::select(pathway, pval, FDR, padj, everything()) %&gt;%
+  arrange(pval) %&gt;%
+  mutate(sig = padj &lt; 0.05, 
+         coef =&quot;EOfAD-like&quot;)
+
+hmp.dong &lt;- fry %&gt;% 
+  dplyr::select(pathway, PValue.Mixed, coef) %&gt;% 
+  dplyr::rename(fry_p = PValue.Mixed) %&gt;% 
+  left_join(camera %&gt;% 
+              dplyr::select(pathway, PValue, coef), 
+            by = c(&quot;pathway&quot;, &quot;coef&quot;)) %&gt;% 
+  dplyr::rename(camera_p = PValue) %&gt;% 
+  left_join(fgsea %&gt;% 
+              bind_rows() %&gt;% 
+              dplyr::select(pathway, pval, coef), 
+            by = c(&quot;pathway&quot;, &quot;coef&quot;)) %&gt;% 
+  dplyr::rename(fgsea_p = pval) %&gt;% 
+  bind_rows() %&gt;% 
+  nest(p = one_of(c(&quot;fry_p&quot;, &quot;camera_p&quot;, &quot;fgsea_p&quot;))) %&gt;% 
+ mutate(harmonic_p = vapply(p, function(x){
+        x &lt;- unlist(x)
+        x &lt;- x[!is.na(x)]
+        p.hmp(x, L = 4)
+      }, numeric(1))
+ ) %&gt;% 
+  unnest() %&gt;% 
+  mutate(harmonic_p_FDR = p.adjust(harmonic_p, &quot;fdr&quot;),
+         sig = harmonic_p_FDR &lt; 0.05) %&gt;% 
+  arrange(harmonic_p) 
+
+hmp.kegg.q96 &lt;- hmp.dong %&gt;% 
+  mutate(exp = &quot;pools&quot;) %&gt;% 
+  bind_rows(HMP_kegg$hmp %&gt;% 
+              mutate(exp = &quot;individuals&quot;)) %&gt;% 
+  dplyr::filter(coef == &quot;EOfADlike&quot;)
+
+sig.q96 &lt;- hmp.kegg.q96 %&gt;% 
+  dplyr::filter(sig == T) %&gt;% 
+  .$pathway %&gt;% 
+  unique
+
+hmp.dong %&gt;% 
+  dplyr::filter(pathway %in% sig.q96) %&gt;% 
+  ggplot(aes(x = -log10(harmonic_p), y = reorder(pathway, -harmonic_p))) +
+  geom_col(aes(fill = -log10(harmonic_p))) +
+  scale_fill_viridis_c() +
+  theme_classic() </code></pre>
+<p><img src="figure/analysis_larvae.Rmd/unnamed-chunk-23-1.png" width="75%" height="75%" style="display: block; margin: auto;" /></p>
+</div>
+<div id="does-genotype-drive-the-dong-ecm" class="section level2">
+<h2>does Genotype drive the Dong ECM?</h2>
+<pre class="r"><code>form &lt;- ~ (1|Genotype) + (1|pair)
+geneExpr &lt;- 
+  x.Dong$counts #%&gt;% 
+    # as.data.frame() %&gt;% 
+    # rownames_to_column(&quot;gene_id&quot;) %&gt;% 
+    # dplyr::filter(gene_id %in% KEGG$KEGG_ECM_RECEPTOR_INTERACTION) %&gt;% 
+    # column_to_rownames(&quot;gene_id&quot;)
+#
+n &lt;- parallel::detectCores()/2 # experiment!
+cl &lt;- parallel::makeCluster(n)
+doParallel::registerDoParallel(cl)
+
+# this takes forever to run.
+#varpar &lt;- fitExtractVarPartModel(geneExpr, form, x.Dong$samples, 
+#                                 BPPARAM=SnowParam(1)) # turn off parallel as my laptop sucks
+#saveRDS(varpar, &quot;data/dongvarpar.rds&quot;)                
+varpar &lt;- readRDS(&quot;data/dongvarpar.rds&quot;)
+
+varpar %&gt;% 
+  .[KEGG$KEGG_ECM_RECEPTOR_INTERACTION,] %&gt;% 
+  rownames_to_column(&quot;gene_id&quot;) %&gt;% 
+  na.omit %&gt;% 
+  arrange(Genotype) %&gt;% 
+  gather(key = &quot;var&quot;, value = &quot;prop&quot;, c(Genotype, pair, Residuals)) %&gt;% 
+  ggplot(aes(x = var, y = prop)) +
+  geom_violin() +
+  geom_boxplot(width = 0.1)</code></pre>
+<p><img src="figure/analysis_larvae.Rmd/unnamed-chunk-24-1.png" width="75%" height="75%" style="display: block; margin: auto;" />
+## power calc Dong # Post-hoc power calc</p>
+<pre class="r"><code>set.seed(2016)
+
+mu2 &lt;- 
+  x.Dong$counts %&gt;%
+  as.data.frame() %&gt;%
+  .[,(x.Dong$samples %&gt;% dplyr::filter(Genotype == &quot;wt&quot;) %&gt;% .$sample)] %&gt;%
+  rowMeans()
+
+disp2 &lt;-  x.Dong %&gt;% estimateDisp() %&gt;% . $tagwise.dispersion
+
+fc &lt;- function(y){exp(rnorm(y, log(1), 0.5*log(1.5)))}
+
+power2 &lt;- ssizeRNA_vary(nGenes = dim(x.Dong)[1], # Num detectable genes
+              pi0 = 0.8, # Proportion of non-DE genes
+              m = 30, # pseudo sample size
+              mu = mu2, # Average read count for each gene in control group. Calculated from this current dataset)
+              disp = disp2, # Dispersion parameter for each gene
+              fc = fc, # Fold change per gene
+              fdr = 0.05, # FDR level to control
+              #power = 0.7, # power level
+              maxN = 40,
+              replace = T
+                )</code></pre>
+<p><img src="figure/analysis_larvae.Rmd/unnamed-chunk-25-1.png" width="75%" height="75%" style="display: block; margin: auto;" /></p>
+<pre class="r"><code>power2$power %&gt;% 
+  set_colnames(c(&quot;n&quot;, &quot;power&quot;)) %&gt;% 
+  ggplot(aes(x = n, y = power)) +
+  geom_point() +
+  geom_line() +
+  coord_cartesian(xlim = c(0,30)) +
+  geom_vline(xintercept = 8)</code></pre>
+<p><img src="figure/analysis_larvae.Rmd/unnamed-chunk-25-2.png" width="75%" height="75%" style="display: block; margin: auto;" /></p>
+<pre class="r"><code>  geom_hline(yintercept = 0.51, linetype = 2, colour = &quot;blue&quot;) </code></pre>
+<pre><code>mapping: yintercept = ~yintercept 
+geom_hline: na.rm = FALSE
+stat_identity: na.rm = FALSE
+position_identity </code></pre>
+<pre class="r"><code>  # ggsave(&quot;output/plots/posthocPowerLarvae.png&quot;, width = 10, height = 5, units = &quot;cm&quot;, 
+  #        dpi = 200, scale = 1.5)</code></pre>
+</div>
+<div id="data-export" class="section level2">
+<h2>Data export</h2>
+<pre class="r"><code>x %&gt;% saveRDS(&quot;data/R_objects/larvae/dge.rds&quot;)
+logCPM %&gt;% saveRDS(&quot;data/R_objects/larvae/logcpm.rds&quot;)
+toptables_cqn %&gt;% saveRDS(&quot;data/R_objects/larvae/toptablescqn.rds&quot;)
+HMP_kegg %&gt;% saveRDS(&quot;data/R_objects/larvae/hmp_kegg.rds&quot;)
+HMP_ire %&gt;% saveRDS(&quot;data/R_objects/larvae/hmp_ire.rds&quot;)
+fry.cell %&gt;% saveRDS(&quot;data/R_objects/larvae/celltype_larvae.rds&quot;)
+
+# 
+# ire.output &lt;- HMP_ire$hmp %&gt;% 
+#   left_join(HMP_ire$fgsea %&gt;% 
+#               bind_rows() %&gt;% 
+#               dplyr::select(pathway, coef, leadingEdge),
+#             by = c(&#39;pathway&#39;, &#39;coef&#39;)
+#   ) %&gt;% 
+#   split(f = .$coef) %&gt;% 
+#   lapply(dplyr::select, -coef) %&gt;% 
+#   set_names(
+#     names(.) %&gt;% 
+#       paste0(&quot;mRNA_ire_7dpf_&quot;, .)
+#   )
+# 
+# KEGG.output &lt;- HMP_kegg$hmp %&gt;% 
+#   left_join(HMP_kegg$fgsea %&gt;% 
+#               bind_rows() %&gt;% 
+#               dplyr::select(pathway, coef, leadingEdge),
+#             by = c(&#39;pathway&#39;, &#39;coef&#39;)
+#   ) %&gt;% 
+#   split(f = .$coef) %&gt;% 
+#   lapply(dplyr::select, -coef) %&gt;% 
+#   set_names(
+#     names(.) %&gt;% 
+#       paste0(&quot;mRNA_KEGG_7dpf_&quot;, .)
+#   )
+# 
+# c(KEGG.output, ire.output) %&gt;%
+#   write.xlsx(&quot;output/spreadsheets/RNAseqlarvae_hmpoutputs.xlsx&quot;)
+# 
+# fry.cell %&gt;% 
+#   write.xlsx(&quot;output/spreadsheets/RNAseqlarvae_celltypeFry.xlsx&quot;)</code></pre>
+<!-- # a few extra plots -->
+<!-- ```{r} -->
+<!-- png("output/plots4poster/KEGG_ECM.png", width = 7, height = 10, units = "cm", res = 300) -->
+<!-- toptable_dongetal %>%  -->
+<!--   dplyr::filter(gene_id %in% KEGG$KEGG_ECM_RECEPTOR_INTERACTION) %>%  -->
+<!--   dplyr::select(gene_name, logFC.pools = logFC) %>%  -->
+<!--   left_join(toptables_cqn$`EOfAD-like` %>% dplyr::select(gene_name, logFC.individuals = logFC)) %>%  -->
+<!--   left_join(toptables_cqn$`MPS-IIIB` %>% dplyr::select(gene_name, logFC.MPSIIIB = logFC)) %>%  -->
+<!--   dplyr::distinct(gene_name, .keep_all = T) %>%  -->
+<!--   column_to_rownames("gene_name") %>%  -->
+<!--   pheatmap(color = colorRampPalette(rev(brewer.pal(n = 5, -->
+<!--                                                name = "RdBu")))(200),  -->
+<!--            gaps_row = 2, -->
+<!--            breaks = seq(-0.5, 0.5, length.out = 200),  -->
+<!--            angle_col = 315, -->
+<!--            show_rownames = F,  -->
+<!--            border_color = NA, -->
+<!--            main ="KEGG_ECM_RECEPTOR_INTERACTION") -->
+<!-- dev.off() -->
+<!-- x.Dong %>%  -->
+<!--   cpm(log=T) %>%  -->
+<!--   as.data.frame() %>%  -->
+<!--   .[GO$GO_IRON_ION_TRANSPORT,] %>%  -->
+<!--   na.omit() %>%  -->
+<!--   pheatmap(scale = "row") -->
+<!-- png("output/plots4poster/go_protontranspostrtinVatpase.png", width = 7, height = 10, units = "cm", res = 300) -->
+<!-- toptable_dongetal %>%  -->
+<!--   dplyr::filter(gene_id %in% GO$GO_PROTON_TRANSPORTING_V_TYPE_ATPASE_COMPLEX) %>%  -->
+<!--   dplyr::select(gene_name, logFC.pools = logFC) %>%  -->
+<!--   left_join(toptables_cqn$`EOfAD-like` %>% dplyr::select(gene_name, logFC.individuals = logFC)) %>%  -->
+<!--   left_join(toptables_cqn$`MPS-IIIB` %>% dplyr::select(gene_name, logFC.MPSIIIB = logFC)) %>%  -->
+<!--   dplyr::distinct(gene_name, .keep_all = T) %>%  -->
+<!--   column_to_rownames("gene_name") %>%  -->
+<!--   na.omit %>%  -->
+<!--   pheatmap(color = colorRampPalette(rev(brewer.pal(n = 5, -->
+<!--                                                name = "RdBu")))(200),  -->
+<!--              gaps_row = 2, -->
+<!--            breaks = seq(-0.5, 0.5, length.out = 200),  -->
+<!--            angle_col = 315, -->
+<!--            show_rownames = F,  -->
+<!--            border_color = NA, -->
+<!--            main ="GO_PROTON_TRANSPORTING_V_TYPE_ATPASE_COMPLEX") -->
+<!--  dev.off() -->
+<!--  png("output/plots4poster/go_irontransport.png", width = 7, height = 10, units = "cm", res = 300) -->
+<!-- toptable_dongetal %>%  -->
+<!--   dplyr::filter(gene_id %in% GO$GO_IRON_ION_TRANSPORT) %>%  -->
+<!--   dplyr::select(gene_name, logFC.pools = logFC) %>%  -->
+<!--   left_join(toptables_cqn$`EOfAD-like` %>% dplyr::select(gene_name, logFC.individuals = logFC)) %>%  -->
+<!--   left_join(toptables_cqn$`MPS-IIIB` %>% dplyr::select(gene_name, logFC.MPSIIIB = logFC)) %>%  -->
+<!--   dplyr::distinct(gene_name, .keep_all = T) %>%  -->
+<!--   column_to_rownames("gene_name") %>%  -->
+<!--   na.omit %>%  -->
+<!--   pheatmap(color = colorRampPalette(rev(brewer.pal(n = 5, -->
+<!--                                                name = "RdBu")))(200),  -->
+<!--              gaps_row = 2, -->
+<!--            breaks = seq(-0.6, 0.6, length.out = 200),  -->
+<!--            angle_col = 315, -->
+<!--            show_rownames = F,  -->
+<!--            border_color = NA, -->
+<!--            main ="GO_IRON_ION_TRANSPORT") -->
+<!--  dev.off() -->
+<!-- ``` -->
+<!-- ```{r} -->
+<!-- cpm(x.Dong, log = T) %>%  -->
+<!--       fry( -->
+<!--         index = GO, -->
+<!--         design = design.dong,  -->
+<!--         contrast = "EOfAD-like",  -->
+<!--         sort = "mixed" -->
+<!--       ) %>%  -->
+<!--       rownames_to_column("pathway") %>%  -->
+<!--       as_tibble() %>%  -->
+<!--       mutate(coef = "EOfAD-like",  -->
+<!--              sig = FDR.Mixed < 0.05) -->
+<!-- ``` -->
+<br>
+<p>
+<button type="button" class="btn btn-default btn-workflowr btn-workflowr-sessioninfo" data-toggle="collapse" data-target="#workflowr-sessioninfo" style="display: block;">
+<span class="glyphicon glyphicon-wrench" aria-hidden="true"></span>
+Session information
+</button>
+</p>
+<div id="workflowr-sessioninfo" class="collapse">
+<pre class="r"><code>sessionInfo()</code></pre>
+<pre><code>R version 4.3.2 (2023-10-31)
+Platform: aarch64-apple-darwin20 (64-bit)
+Running under: macOS Sonoma 14.3
+
+Matrix products: default
+BLAS:   /Library/Frameworks/R.framework/Versions/4.3-arm64/Resources/lib/libRblas.0.dylib 
+LAPACK: /Library/Frameworks/R.framework/Versions/4.3-arm64/Resources/lib/libRlapack.dylib;  LAPACK version 3.11.0
+
+locale:
+[1] en_US.UTF-8/en_US.UTF-8/en_US.UTF-8/C/en_US.UTF-8/en_US.UTF-8
+
+time zone: Australia/Adelaide
+tzcode source: internal
+
+attached base packages:
+[1] stats4    splines   stats     graphics  grDevices utils     datasets 
+[8] methods   base     
+
+other attached packages:
+ [1] ensembldb_2.26.0         AnnotationFilter_1.26.0  GenomicFeatures_1.54.4  
+ [4] AnnotationDbi_1.64.1     Biobase_2.62.0           GenomicRanges_1.54.1    
+ [7] GenomeInfoDb_1.38.8      IRanges_2.36.0           S4Vectors_0.40.2        
+[10] variancePartition_1.32.5 BiocParallel_1.36.0      ssizeRNA_1.3.2          
+[13] harmonicmeanp_3.0.1      FMStable_0.1-4           cqn_1.48.0              
+[16] quantreg_5.97            SparseM_1.81             preprocessCore_1.64.0   
+[19] nor1mix_1.3-3            mclust_6.1               fgsea_1.28.0            
+[22] goseq_1.54.0             geneLenDataBase_1.38.0   BiasedUrn_2.0.11        
+[25] edgeR_4.0.16             limma_3.58.1             UpSetR_1.4.0            
+[28] colorspace_2.1-0         RColorBrewer_1.1-3       ggforce_0.4.2           
+[31] ggfortify_0.4.16         ggrepel_0.9.5            ggpubr_0.6.0            
+[34] pheatmap_1.0.12          scales_1.3.0             pander_0.6.5            
+[37] msigdbr_7.5.1            AnnotationHub_3.10.1     BiocFileCache_2.10.2    
+[40] dbplyr_2.5.0             ngsReports_2.4.0         patchwork_1.2.0         
+[43] BiocGenerics_0.48.1      readxl_1.4.3             magrittr_2.0.3          
+[46] lubridate_1.9.3          forcats_1.0.0            stringr_1.5.1           
+[49] dplyr_1.1.4              purrr_1.0.2              readr_2.1.5             
+[52] tidyr_1.3.1              tibble_3.2.1             ggplot2_3.5.0           
+[55] tidyverse_2.0.0          workflowr_1.7.1         
+
+loaded via a namespace (and not attached):
+  [1] ProtGenerics_1.34.0           fs_1.6.3                     
+  [3] matrixStats_1.3.0             bitops_1.0-7                 
+  [5] doParallel_1.0.17             httr_1.4.7                   
+  [7] numDeriv_2016.8-1.1           tools_4.3.2                  
+  [9] backports_1.4.1               utf8_1.2.4                   
+ [11] R6_2.5.1                      DT_0.33                      
+ [13] lazyeval_0.2.2                mgcv_1.9-1                   
+ [15] withr_3.0.0                   prettyunits_1.2.0            
+ [17] gridExtra_2.3                 textshaping_0.3.7            
+ [19] cli_3.6.2                     labeling_0.4.3               
+ [21] sass_0.4.9                    mvtnorm_1.2-4                
+ [23] systemfonts_1.0.6             Rsamtools_2.18.0             
+ [25] rstudioapi_0.16.0             RSQLite_2.3.6                
+ [27] generics_0.1.3                BiocIO_1.12.0                
+ [29] vroom_1.6.5                   gtools_3.9.5                 
+ [31] car_3.1-2                     GO.db_3.18.0                 
+ [33] Matrix_1.6-5                  fansi_1.0.6                  
+ [35] abind_1.4-5                   lifecycle_1.0.4              
+ [37] whisker_0.4.1                 yaml_2.3.8                   
+ [39] carData_3.0-5                 SummarizedExperiment_1.32.0  
+ [41] gplots_3.1.3.1                qvalue_2.34.0                
+ [43] SparseArray_1.2.4             grid_4.3.2                   
+ [45] blob_1.2.4                    promises_1.3.0               
+ [47] crayon_1.5.2                  lattice_0.22-6               
+ [49] cowplot_1.1.3                 KEGGREST_1.42.0              
+ [51] pillar_1.9.0                  knitr_1.45                   
+ [53] boot_1.3-30                   rjson_0.2.21                 
+ [55] corpcor_1.6.10                codetools_0.2-20             
+ [57] fastmatch_1.1-4               ssize.fdr_1.3                
+ [59] glue_1.7.0                    getPass_0.2-4                
+ [61] data.table_1.15.4             vctrs_0.6.5                  
+ [63] png_0.1-8                     Rdpack_2.6                   
+ [65] cellranger_1.1.0              gtable_0.3.4                 
+ [67] cachem_1.0.8                  xfun_0.43                    
+ [69] rbibutils_2.2.16              S4Arrays_1.2.1               
+ [71] mime_0.12                     survival_3.5-8               
+ [73] iterators_1.0.14              statmod_1.5.0                
+ [75] interactiveDisplayBase_1.40.0 nlme_3.1-164                 
+ [77] pbkrtest_0.5.2                bit64_4.0.5                  
+ [79] EnvStats_2.8.1                progress_1.2.3               
+ [81] filelock_1.0.3                rprojroot_2.0.4              
+ [83] bslib_0.7.0                   KernSmooth_2.23-22           
+ [85] DBI_1.2.2                     tidyselect_1.2.1             
+ [87] processx_3.8.4                bit_4.0.5                    
+ [89] compiler_4.3.2                curl_5.2.1                   
+ [91] git2r_0.33.0                  xml2_1.3.6                   
+ [93] ggdendro_0.2.0                DelayedArray_0.28.0          
+ [95] plotly_4.10.4                 rtracklayer_1.62.0           
+ [97] caTools_1.18.2                remaCor_0.0.18               
+ [99] callr_3.7.6                   rappdirs_0.3.3               
+[101] digest_0.6.35                 minqa_1.2.6                  
+[103] rmarkdown_2.26                aod_1.3.3                    
+[105] XVector_0.42.0                RhpcBLASctl_0.23-42          
+[107] htmltools_0.5.8.1             pkgconfig_2.0.3              
+[109] lme4_1.1-35.2                 MatrixGenerics_1.14.0        
+[111] highr_0.10                    fastmap_1.1.1                
+[113] rlang_1.1.3                   htmlwidgets_1.6.4            
+[115] shiny_1.8.1.1                 farver_2.1.1                 
+[117] jquerylib_0.1.4               zoo_1.8-12                   
+[119] jsonlite_1.8.8                RCurl_1.98-1.14              
+[121] GenomeInfoDbData_1.2.11       munsell_0.5.1                
+[123] Rcpp_1.0.12                   babelgene_22.9               
+[125] stringi_1.8.3                 zlibbioc_1.48.2              
+[127] MASS_7.3-60.0.1               plyr_1.8.9                   
+[129] parallel_4.3.2                Biostrings_2.70.3            
+[131] hms_1.1.3                     locfit_1.5-9.9               
+[133] ps_1.7.6                      ggsignif_0.6.4               
+[135] reshape2_1.4.4                biomaRt_2.58.2               
+[137] BiocVersion_3.18.1            XML_3.99-0.16.1              
+[139] evaluate_0.23                 BiocManager_1.30.22          
+[141] foreach_1.5.2                 nloptr_2.0.3                 
+[143] tzdb_0.4.0                    tweenr_2.0.3                 
+[145] httpuv_1.6.15                 MatrixModels_0.5-3           
+[147] polyclip_1.10-6               broom_1.0.5                  
+[149] xtable_1.8-4                  restfulr_0.0.15              
+[151] fANCOVA_0.6-1                 rstatix_0.7.2                
+[153] later_1.3.2                   ragg_1.3.0                   
+[155] viridisLite_0.4.2             lmerTest_3.1-3               
+[157] memoise_2.0.1                 GenomicAlignments_1.38.2     
+[159] timechange_0.3.0             </code></pre>
+</div>
+</div>
+</div>
+
+
+<!-- Adjust MathJax settings so that all math formulae are shown using
+TeX fonts only; see
+https://docs.mathjax.org/en/latest/web/configuration.html. This will make
+the presentation more consistent at the cost of the webpage sometimes
+taking slightly longer to load. Note that this only works because the
+footer is added to webpages before the MathJax javascript. -->
+<script type="text/x-mathjax-config">
+  MathJax.Hub.Config({
+    "HTML-CSS": { availableFonts: ["TeX"] }
+  });
+</script>
+
+
+
+
+</div>
+</div>
+
+</div>
+
+<script>
+
+// add bootstrap table styles to pandoc tables
+function bootstrapStylePandocTables() {
+  $('tr.odd').parent('tbody').parent('table').addClass('table table-condensed');
+}
+$(document).ready(function () {
+  bootstrapStylePandocTables();
+});
+
+
+</script>
+
+<!-- tabsets -->
+
+<script>
+$(document).ready(function () {
+  window.buildTabsets("TOC");
+});
+
+$(document).ready(function () {
+  $('.tabset-dropdown > .nav-tabs > li').click(function () {
+    $(this).parent().toggleClass('nav-tabs-open');
+  });
+});
+</script>
+
+<!-- code folding -->
+<script>
+$(document).ready(function () {
+  window.initializeCodeFolding("hide" === "show");
+});
+</script>
+
+<script>
+$(document).ready(function ()  {
+
+    // temporarily add toc-ignore selector to headers for the consistency with Pandoc
+    $('.unlisted.unnumbered').addClass('toc-ignore')
+
+    // move toc-ignore selectors from section div to header
+    $('div.section.toc-ignore')
+        .removeClass('toc-ignore')
+        .children('h1,h2,h3,h4,h5').addClass('toc-ignore');
+
+    // establish options
+    var options = {
+      selectors: "h1,h2,h3",
+      theme: "bootstrap3",
+      context: '.toc-content',
+      hashGenerator: function (text) {
+        return text.replace(/[.\\/?&!#<>]/g, '').replace(/\s/g, '_');
+      },
+      ignoreSelector: ".toc-ignore",
+      scrollTo: 0
+    };
+    options.showAndHide = true;
+    options.smoothScroll = true;
+
+    // tocify
+    var toc = $("#TOC").tocify(options).data("toc-tocify");
+});
+</script>
+
+<!-- dynamically load mathjax for compatibility with self-contained -->
+<script>
+  (function () {
+    var script = document.createElement("script");
+    script.type = "text/javascript";
+    script.src  = "https://mathjax.rstudio.com/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML";
+    document.getElementsByTagName("head")[0].appendChild(script);
+  })();
+</script>
+
+</body>
+</html>

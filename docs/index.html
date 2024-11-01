@@ -13,7 +13,8 @@
 
 <title>Home</title>
 
-<script src="site_libs/jquery-1.11.3/jquery.min.js"></script>
+<script src="site_libs/header-attrs-2.26/header-attrs.js"></script>
+<script src="site_libs/jquery-3.6.0/jquery-3.6.0.min.js"></script>
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <link href="site_libs/bootstrap-3.3.5/css/cosmo.min.css" rel="stylesheet" />
 <script src="site_libs/bootstrap-3.3.5/js/bootstrap.min.js"></script>
@@ -33,13 +34,15 @@
 <link href="site_libs/highlightjs-9.12.0/textmate.css" rel="stylesheet" />
 <script src="site_libs/highlightjs-9.12.0/highlight.js"></script>
 
-<link rel="icon" href="https://github.com/workflowr/workflowr-assets/raw/master/img/reproducible.png">
+<link rel="icon" href="https://github.com/workflowr/workflowr-assets/raw/main/img/reproducible.png">
 <!-- Add a small amount of space between sections. -->
 <style type="text/css">
 div.section {
   padding-top: 12px;
 }
 </style>
+
+
 
 <style type="text/css">
   code{white-space: pre-wrap;}
@@ -68,6 +71,7 @@ if (window.hljs) {
 
 
 
+
 <style type = "text/css">
 .main-container {
   max-width: 940px;
@@ -88,6 +92,9 @@ button.code-folding-btn:focus {
 }
 summary {
   display: list-item;
+}
+details > summary > p:only-child {
+  display: inline;
 }
 pre code {
   padding: 0;
@@ -145,11 +152,15 @@ $(document).ready(function () {
     href = "index.html";
   var menuAnchor = $('a[href="' + href + '"]');
 
-  // mark it active
-  menuAnchor.tab('show');
-
-  // if it's got a parent navbar menu mark it active as well
-  menuAnchor.closest('li.dropdown').addClass('active');
+  // mark the anchor link active (and if it's in a dropdown, also mark that active)
+  var dropdown = menuAnchor.closest('li.dropdown');
+  if (window.bootstrap) { // Bootstrap 4+
+    menuAnchor.addClass('active');
+    dropdown.find('> .dropdown-toggle').addClass('active');
+  } else { // Bootstrap 3
+    menuAnchor.parent().addClass('active');
+    dropdown.addClass('active');
+  }
 
   // Navbar adjustments
   var navHeight = $(".navbar").first().height() + 15;
@@ -178,8 +189,8 @@ $(document).ready(function () {
   border-radius: 4px;
 }
 
-.tabset-dropdown > .nav-tabs > li.active:before {
-  content: "";
+.tabset-dropdown > .nav-tabs > li.active:before, .tabset-dropdown > .nav-tabs.nav-tabs-open:before {
+  content: "\e259";
   font-family: 'Glyphicons Halflings';
   display: inline-block;
   padding: 10px;
@@ -187,16 +198,9 @@ $(document).ready(function () {
 }
 
 .tabset-dropdown > .nav-tabs.nav-tabs-open > li.active:before {
-  content: "&#xe258;";
-  border: none;
-}
-
-.tabset-dropdown > .nav-tabs.nav-tabs-open:before {
-  content: "";
+  content: "\e258";
   font-family: 'Glyphicons Halflings';
-  display: inline-block;
-  padding: 10px;
-  border-right: 1px solid #ddd;
+  border: none;
 }
 
 .tabset-dropdown > .nav-tabs > li.active {
@@ -243,7 +247,7 @@ $(document).ready(function () {
 <div class="navbar navbar-default  navbar-fixed-top" role="navigation">
   <div class="container">
     <div class="navbar-header">
-      <button type="button" class="navbar-toggle collapsed" data-toggle="collapse" data-target="#navbar">
+      <button type="button" class="navbar-toggle collapsed" data-toggle="collapse" data-bs-toggle="collapse" data-target="#navbar" data-bs-target="#navbar">
         <span class="icon-bar"></span>
         <span class="icon-bar"></span>
         <span class="icon-bar"></span>
@@ -256,10 +260,19 @@ $(document).ready(function () {
   <a href="index.html">Home</a>
 </li>
 <li>
-  <a href="QC.html">QC</a>
+  <a href="QC.html">QC_larvae</a>
 </li>
 <li>
-  <a href="license.html">License</a>
+  <a href="analysis_larvae.html">analysis_larvae</a>
+</li>
+<li>
+  <a href="QC_adult.html">QC_adult</a>
+</li>
+<li>
+  <a href="analysis_adultbrain.html">analysis_adultbrain</a>
+</li>
+<li>
+  <a href="proteomics.html">proteomics_adult</a>
 </li>
       </ul>
       <ul class="nav navbar-nav navbar-right">
@@ -272,7 +285,7 @@ $(document).ready(function () {
 <div id="header">
 
 <div class="btn-group pull-right float-right">
-<button type="button" class="btn btn-default btn-xs btn-secondary btn-sm dropdown-toggle" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false"><span>Code</span> <span class="caret"></span></button>
+<button type="button" class="btn btn-default btn-xs btn-secondary btn-sm dropdown-toggle" data-toggle="dropdown" data-bs-toggle="dropdown" aria-haspopup="true" aria-expanded="false"><span>Code</span> <span class="caret"></span></button>
 <ul class="dropdown-menu dropdown-menu-right" style="min-width: 50px;">
 <li><a id="rmd-show-all-code" href="#">Show All Code</a></li>
 <li><a id="rmd-hide-all-code" href="#">Hide All Code</a></li>
@@ -288,7 +301,9 @@ $(document).ready(function () {
 
 <p>
 <button type="button" class="btn btn-default btn-workflowr btn-workflowr-report" data-toggle="collapse" data-target="#workflowr-report">
-<span class="glyphicon glyphicon-list" aria-hidden="true"></span> workflowr <span class="glyphicon glyphicon-exclamation-sign text-danger" aria-hidden="true"></span>
+<span class="glyphicon glyphicon-list" aria-hidden="true"></span>
+workflowr <span class="glyphicon glyphicon-ok text-success"
+aria-hidden="true"></span>
 </button>
 </p>
 <div id="workflowr-report" class="collapse">
@@ -297,7 +312,9 @@ $(document).ready(function () {
 <a data-toggle="tab" href="#summary">Summary</a>
 </li>
 <li>
-<a data-toggle="tab" href="#checks"> Checks <span class="glyphicon glyphicon-exclamation-sign text-danger" aria-hidden="true"></span> </a>
+<a data-toggle="tab" href="#checks"> Checks <span
+class="glyphicon glyphicon-ok text-success" aria-hidden="true"></span>
+</a>
 </li>
 <li>
 <a data-toggle="tab" href="#versions">Past versions</a>
@@ -306,17 +323,28 @@ $(document).ready(function () {
 <div class="tab-content">
 <div id="summary" class="tab-pane fade in active">
 <p>
-<strong>Last updated:</strong> 2021-11-27
+<strong>Last updated:</strong> 2024-11-01
 </p>
 <p>
-<strong>Checks:</strong> <span class="glyphicon glyphicon-ok text-success" aria-hidden="true"></span> 1 <span class="glyphicon glyphicon-exclamation-sign text-danger" aria-hidden="true"></span> 1
+<strong>Checks:</strong> <span
+class="glyphicon glyphicon-ok text-success" aria-hidden="true"></span> 2
+<span class="glyphicon glyphicon-exclamation-sign text-danger"
+aria-hidden="true"></span> 0
 </p>
 <p>
-<strong>Knit directory:</strong> <code>2021_MPSIIIBvQ96-RNAseq-7dpfLarve/</code> <span class="glyphicon glyphicon-question-sign" aria-hidden="true" title="This is the local directory in which the code in this file was executed."> </span>
+<strong>Knit directory:</strong>
+<code>2021_MPSIIIBvQ96-RNAseq-7dpfLarve/</code> <span
+class="glyphicon glyphicon-question-sign" aria-hidden="true"
+title="This is the local directory in which the code in this file was executed.">
+</span>
 </p>
 <p>
-This reproducible <a href="http://rmarkdown.rstudio.com">R Markdown</a> analysis was created with <a
-  href="https://github.com/jdblischak/workflowr">workflowr</a> (version 1.6.2). The <em>Checks</em> tab describes the reproducibility checks that were applied when the results were created. The <em>Past versions</em> tab lists the development history.
+This reproducible <a href="https://rmarkdown.rstudio.com">R Markdown</a>
+analysis was created with <a
+  href="https://github.com/workflowr/workflowr">workflowr</a> (version
+1.7.1). The <em>Checks</em> tab describes the reproducibility checks
+that were applied when the results were created. The <em>Past
+versions</em> tab lists the development history.
 </p>
 <hr>
 </div>
@@ -325,53 +353,175 @@ This reproducible <a href="http://rmarkdown.rstudio.com">R Markdown</a> analysis
 <div class="panel panel-default">
 <div class="panel-heading">
 <p class="panel-title">
-<a data-toggle="collapse" data-parent="#workflowr-checks" href="#strongRMarkdownfilestronguncommittedchanges"> <span class="glyphicon glyphicon-exclamation-sign text-danger" aria-hidden="true"></span> <strong>R Markdown file:</strong> uncommitted changes </a>
+<a data-toggle="collapse" data-parent="#workflowr-checks" href="#strongRMarkdownfilestronguptodate">
+<span class="glyphicon glyphicon-ok text-success"
+aria-hidden="true"></span> <strong>R Markdown file:</strong> up-to-date
+</a>
 </p>
 </div>
-<div id="strongRMarkdownfilestronguncommittedchanges" class="panel-collapse collapse">
+<div id="strongRMarkdownfilestronguptodate"
+class="panel-collapse collapse">
 <div class="panel-body">
-<p>The R Markdown file has unstaged changes. To know which version of the R Markdown file created these results, you’ll want to first commit it to the Git repo. If you’re still working on the analysis, you can ignore this warning. When you’re finished, you can run <code>wflow_publish</code> to commit the R Markdown file and build the HTML.</p>
+<p>Great! Since the R Markdown file has been committed to the Git
+repository, you know the exact version of the code that produced these
+results.</p>
 </div>
 </div>
 </div>
 <div class="panel panel-default">
 <div class="panel-heading">
 <p class="panel-title">
-<a data-toggle="collapse" data-parent="#workflowr-checks" href="#strongRepositoryversionstrongahrefhttpsgithubcomkarissab2021MPSIIIBvQ96RNAseq7dpfLarvetree4c30595ad17dcb1c0eab74bb75c50a7708e6858ftargetblank4c30595a"> <span class="glyphicon glyphicon-ok text-success" aria-hidden="true"></span> <strong>Repository version:</strong> <a href="https://github.com/karissa-b/2021_MPSIIIBvQ96-RNAseq-7dpfLarve/tree/4c30595ad17dcb1c0eab74bb75c50a7708e6858f" target="_blank">4c30595</a> </a>
+<a data-toggle="collapse" data-parent="#workflowr-checks" href="#strongRepositoryversionstrongahrefhttpsgithubcomkarissab2021MPSIIIBvQ96RNAseq7dpfLarvetree7bb9ce697cf60b5a72b13752e492d75b4a21d5eetargetblank7bb9ce6a">
+<span class="glyphicon glyphicon-ok text-success"
+aria-hidden="true"></span> <strong>Repository version:</strong>
+<a href="https://github.com/karissa-b/2021_MPSIIIBvQ96-RNAseq-7dpfLarve/tree/7bb9ce697cf60b5a72b13752e492d75b4a21d5ee" target="_blank">7bb9ce6</a>
+</a>
 </p>
 </div>
-<div id="strongRepositoryversionstrongahrefhttpsgithubcomkarissab2021MPSIIIBvQ96RNAseq7dpfLarvetree4c30595ad17dcb1c0eab74bb75c50a7708e6858ftargetblank4c30595a" class="panel-collapse collapse">
+<div
+id="strongRepositoryversionstrongahrefhttpsgithubcomkarissab2021MPSIIIBvQ96RNAseq7dpfLarvetree7bb9ce697cf60b5a72b13752e492d75b4a21d5eetargetblank7bb9ce6a"
+class="panel-collapse collapse">
 <div class="panel-body">
 <p>
-Great! You are using Git for version control. Tracking code development and connecting the code version to the results is critical for reproducibility.
+Great! You are using Git for version control. Tracking code development
+and connecting the code version to the results is critical for
+reproducibility.
 </p>
 <p>
-The results in this page were generated with repository version <a href="https://github.com/karissa-b/2021_MPSIIIBvQ96-RNAseq-7dpfLarve/tree/4c30595ad17dcb1c0eab74bb75c50a7708e6858f" target="_blank">4c30595</a>. See the <em>Past versions</em> tab to see a history of the changes made to the R Markdown and HTML files.
+The results in this page were generated with repository version
+<a href="https://github.com/karissa-b/2021_MPSIIIBvQ96-RNAseq-7dpfLarve/tree/7bb9ce697cf60b5a72b13752e492d75b4a21d5ee" target="_blank">7bb9ce6</a>.
+See the <em>Past versions</em> tab to see a history of the changes made
+to the R Markdown and HTML files.
 </p>
 <p>
-Note that you need to be careful to ensure that all relevant files for the analysis have been committed to Git prior to generating the results (you can use <code>wflow_publish</code> or <code>wflow_git_commit</code>). workflowr only checks the R Markdown file, but you know if there are other scripts or data files that it depends on. Below is the status of the Git repository when the results were generated:
+Note that you need to be careful to ensure that all relevant files for
+the analysis have been committed to Git prior to generating the results
+(you can use <code>wflow_publish</code> or
+<code>wflow_git_commit</code>). workflowr only checks the R Markdown
+file, but you know if there are other scripts or data files that it
+depends on. Below is the status of the Git repository when the results
+were generated:
 </p>
 <pre><code>
 Ignored files:
     Ignored:    .DS_Store
+    Ignored:    .RData
     Ignored:    .Rapp.history
     Ignored:    .Rhistory
     Ignored:    .Rproj.user/
+    Ignored:    analysis/.DS_Store
+    Ignored:    code/.DS_Store
+    Ignored:    code/6mBrain_RNAseq_genoSex.rmd
+    Ignored:    code/6mBrain_fems.rmd
+    Ignored:    code/HS.R
+    Ignored:    code/about.Rmd
+    Ignored:    code/analysis.Rmd
+    Ignored:    code/analysis_final.rmd
+    Ignored:    code/analysis_final_v2.rmd
+    Ignored:    code/checkGenotypes.rmd
+    Ignored:    code/explorationRUV.Rmd
+    Ignored:    code/genotypeCheck.Rmd
+    Ignored:    code/license.Rmd
+    Ignored:    code/nhi6mdata.rmd
+    Ignored:    code/plots4pub2.rmd
+    Ignored:    code/plots4pub_RNAseq_afterreview1.R
+    Ignored:    code/wgcna.rmd
     Ignored:    data/.DS_Store
-    Ignored:    data/fastqc_align/.DS_Store
-    Ignored:    data/fastqc_align_dedup/.DS_Store
-    Ignored:    data/fastqc_raw/.DS_Store
-    Ignored:    data/fastqc_trim/.DS_Store
-    Ignored:    data/featureCounts/.DS_Store
-    Ignored:    data/meta/.DS_Store
-    Ignored:    data/starAlignLog/.DS_Store
+    Ignored:    data/Nhi_data/.DS_Store
+    Ignored:    data/R_objects/.DS_Store
+    Ignored:    data/R_objects/larvae/.DS_Store
+    Ignored:    data/adult_brain/.DS_Store
+    Ignored:    data/adult_brain/05_featureCounts/.DS_Store
+    Ignored:    data/adult_brain/fastqc_raw/.DS_Store
+    Ignored:    data/gene_sets/.DS_Store
+    Ignored:    data/larvae/.DS_Store
+    Ignored:    data/larvae/fastqc_align/.DS_Store
+    Ignored:    data/larvae/fastqc_align_dedup/.DS_Store
+    Ignored:    data/larvae/fastqc_raw/.DS_Store
+    Ignored:    data/larvae/fastqc_trim/.DS_Store
+    Ignored:    data/larvae/featureCounts/.DS_Store
+    Ignored:    data/larvae/meta/.DS_Store
+    Ignored:    data/larvae/starAlignLog/.DS_Store
+    Ignored:    output/.DS_Store
+    Ignored:    output/plots/
+    Ignored:    output/plots4poster/.DS_Store
+    Ignored:    output/plots4pub/
+
+Untracked files:
+    Untracked:  Rplot01.pdf
+    Untracked:  Rplot02.png
+    Untracked:  data/R_objects/adult_brain/HMPKEGG_6m_brain_genosex_CQN.rds
+    Untracked:  data/R_objects/adult_brain/HMP_ire_6m_brain_genosex_CQN.rds
+    Untracked:  data/R_objects/adult_brain/cqn_logCPM_6m_brain.rds
+    Untracked:  data/R_objects/adult_brain/dge_6m_brain_cqn.rds
+    Untracked:  data/R_objects/adult_brain/fry_cell_6m_brain_genosex_CQN.rds
+    Untracked:  data/R_objects/adult_brain/fry_cell_RNAseq.rds
+    Untracked:  data/R_objects/adult_brain/goseqtibbles_6m_brain_genosex_CQN.rds
+    Untracked:  data/R_objects/adult_brain/hmp.kegg.rna.rds
+    Untracked:  data/R_objects/adult_brain/toptablescqn_bysex.rds
+    Untracked:  data/allLLIDs.rds
+    Untracked:  data/ensembl_zebrafish.rds
+    Untracked:  data/proteomics/
+    Untracked:  data/with_go_evidence.rds
+    Untracked:  dre00020.pathview.multi.png
+    Untracked:  dre00020.png
+    Untracked:  dre00020.xml
+    Untracked:  hsa04650.EOfADproteomes.multi.png
+    Untracked:  hsa04650.MPSIIIBproteomes.multi.png
+    Untracked:  hsa04650.png
+    Untracked:  hsa04650.xml
+    Untracked:  hsa04666.EOfADproteomes.multi.png
+    Untracked:  hsa04666.MPSIIIBproteomes.multi.png
+    Untracked:  hsa04666.png
+    Untracked:  hsa04666.xml
+    Untracked:  larvae dre00020.pathview.multi.png
+    Untracked:  output/DE_proteins_for_string/
+    Untracked:  output/GOenrichment_enrichmentTable.csv
+    Untracked:  output/plots4RADposter/
+    Untracked:  output/plots4kim/
+    Untracked:  output/plots4pub2/
+    Untracked:  output/plots4pub3/
+    Untracked:  output/spreadsheets/RNAseqlarvae_celltypeFry.xlsx
+    Untracked:  output/spreadsheets/RNAseqlarvae_hmpoutputs.xlsx
+    Untracked:  output/spreadsheets/geneset_RNAseq_v2.xlsx
+    Untracked:  output/spreadsheets/goseq_RNAseq_v2.xlsx
+    Untracked:  output/spreadsheets/limma_proteomics_6mbrain.xlsx
+    Untracked:  output/spreadsheets/proteomics_6mbrain_hmpoutputs.xlsx
+    Untracked:  output/spreadsheets/toptables_RNAseq_v2.xlsx
+    Untracked:  output/spreadsheets/~$limma_proteomics_6mbrain.xlsx
+    Untracked:  temp.png
 
 Unstaged changes:
-    Modified:   analysis/index.Rmd
+    Modified:   .gitignore
+    Deleted:    analysis/6mBrain_fems.rmd
+    Deleted:    analysis/HS.R
+    Deleted:    analysis/about.Rmd
+    Deleted:    analysis/analysis.Rmd
+    Deleted:    analysis/analysis_adultbrain.knit.md
+    Deleted:    analysis/analysis_final.rmd
+    Deleted:    analysis/checkGenotypes.rmd
+    Deleted:    analysis/explorationRUV.Rmd
+    Deleted:    analysis/genotypeCheck.Rmd
+    Deleted:    analysis/license.Rmd
+    Deleted:    analysis/nhi6mdata.rmd
+    Deleted:    analysis/plots4pub2.rmd
+    Modified:   data/R_objects/adult_brain/dge.rds
+    Modified:   data/R_objects/adult_brain/hmp_ire.rds
+    Modified:   data/R_objects/adult_brain/logcpm.rds
+    Modified:   data/R_objects/larvae/celltype_larvae.rds
+    Modified:   data/R_objects/larvae/dge.rds
+    Modified:   data/R_objects/larvae/hmp_ire.rds
+    Modified:   data/R_objects/larvae/hmp_kegg.rds
+    Modified:   data/R_objects/larvae/logcpm.rds
+    Modified:   data/R_objects/larvae/toptablescqn.rds
+    Modified:   data/adult_brain/karissas_metadata.xlsx
+    Modified:   output/spreadsheets/toptables_cqn.xlsx
 
 </code></pre>
 <p>
-Note that any generated files, e.g. HTML, png, CSS, etc., are not included in this status report because it is ok for generated content to have uncommitted changes.
+Note that any generated files, e.g. HTML, png, CSS, etc., are not
+included in this status report because it is ok for generated content to
+have uncommitted changes.
 </p>
 </div>
 </div>
@@ -382,7 +532,11 @@ Note that any generated files, e.g. HTML, png, CSS, etc., are not included in t
 <div id="versions" class="tab-pane fade">
 
 <p>
-These are the previous versions of the repository in which changes were made to the R Markdown (<code>analysis/index.Rmd</code>) and HTML (<code>docs/index.html</code>) files. If you’ve configured a remote Git repository (see <code>?wflow_git_remote</code>), click on the hyperlinks in the table below to view the files as they were in that past version.
+These are the previous versions of the repository in which changes were
+made to the R Markdown (<code>analysis/index.Rmd</code>) and HTML
+(<code>docs/index.html</code>) files. If you’ve configured a remote Git
+repository (see <code>?wflow_git_remote</code>), click on the hyperlinks
+in the table below to view the files as they were in that past version.
 </p>
 <div class="table-responsive">
 <table class="table table-condensed table-hover">
@@ -411,6 +565,57 @@ Message
 Rmd
 </td>
 <td>
+<a href="https://github.com/karissa-b/2021_MPSIIIBvQ96-RNAseq-7dpfLarve/blob/7bb9ce697cf60b5a72b13752e492d75b4a21d5ee/analysis/index.Rmd" target="_blank">7bb9ce6</a>
+</td>
+<td>
+Karissa Barthelson
+</td>
+<td>
+2024-11-01
+</td>
+<td>
+wflow_publish("analysis/*")
+</td>
+</tr>
+<tr>
+<td>
+Rmd
+</td>
+<td>
+<a href="https://github.com/karissa-b/2021_MPSIIIBvQ96-RNAseq-7dpfLarve/blob/905b66a664612ffcad08e1c919b667b52278069c/analysis/index.Rmd" target="_blank">905b66a</a>
+</td>
+<td>
+Karissa Barthelson
+</td>
+<td>
+2021-11-27
+</td>
+<td>
+e
+</td>
+</tr>
+<tr>
+<td>
+html
+</td>
+<td>
+<a href="https://rawcdn.githack.com/karissa-b/2021_MPSIIIBvQ96-RNAseq-7dpfLarve/905b66a664612ffcad08e1c919b667b52278069c/docs/index.html" target="_blank">905b66a</a>
+</td>
+<td>
+Karissa Barthelson
+</td>
+<td>
+2021-11-27
+</td>
+<td>
+e
+</td>
+</tr>
+<tr>
+<td>
+Rmd
+</td>
+<td>
 <a href="https://github.com/karissa-b/2021_MPSIIIBvQ96-RNAseq-7dpfLarve/blob/7a5deb1a553d85e274535d2f8008a33ecebff631/analysis/index.Rmd" target="_blank">7a5deb1</a>
 </td>
 <td>
@@ -430,14 +635,25 @@ Start workflowr project.
 </div>
 </div>
 </div>
-<div id="rna-seq-analysis-of-psen1-q96_k979del-vs-naglu-a603fs-zerbafish-larvae." class="section level1">
-<h1>RNA-seq analysis of <em>psen1</em> Q96_K979del vs <em>naglu</em> A603fs zerbafish larvae.</h1>
+<div
+id="multi-omics-analysis-of-psen1-q96_k979del-vs-naglu-a603fs-zerbafish"
+class="section level1">
+<h1>Multi-omics analysis of <em>psen1</em> Q96_K979del vs <em>naglu</em>
+A603fs zerbafish</h1>
+<ul>
+<li><a href="QC.html">7dpf larvae - QC</a></li>
+<li><a href="analysis_larvae.html">7dpf larvae - analysis</a></li>
+<li><a href="QC_adult.html">6m brain RNAseq - QC</a></li>
+<li><a href="analysis_adultbrain.html">6m brain RNAseq -
+analysis</a></li>
+<li><a href="proteomics.html">6m brain proteomics - analysis</a></li>
+</ul>
 </div>
 
 
 <!-- Adjust MathJax settings so that all math formulae are shown using
 TeX fonts only; see
-http://docs.mathjax.org/en/latest/configuration.html.  This will make
+https://docs.mathjax.org/en/latest/web/configuration.html. This will make
 the presentation more consistent at the cost of the webpage sometimes
 taking slightly longer to load. Note that this only works because the
 footer is added to webpages before the MathJax javascript. -->
@@ -446,6 +662,8 @@ footer is added to webpages before the MathJax javascript. -->
     "HTML-CSS": { availableFonts: ["TeX"] }
   });
 </script>
+
+
 
 
 
