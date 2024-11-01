@@ -5,10 +5,16 @@ navbar:
   left:
   - text: Home
     href: index.html
-  - text: QC
+  - text: QC_larvae
     href: QC.html
-  - text: License
-    href: license.html
+  - text: analysis_larvae
+    href: analysis_larvae.html
+  - text: QC_adult
+    href: QC_adult.html
+  - text: analysis_adultbrain
+    href: analysis_adultbrain.html
+  - text: proteomics_adult
+    href: proteomics.html
 output:
   workflowr::wflow_html:
     toc: yes

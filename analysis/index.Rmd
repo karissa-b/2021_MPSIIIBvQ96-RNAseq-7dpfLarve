@@ -8,4 +8,10 @@ editor_options:
   chunk_output_type: console
 ---
 
-# RNA-seq analysis of *psen1* Q96_K979del vs *naglu* A603fs zerbafish larvae. 
+# Multi-omics analysis of *psen1* Q96_K979del vs *naglu* A603fs zerbafish 
+
+- [7dpf larvae - QC](QC.html)
+- [7dpf larvae - analysis](analysis_larvae.html)
+- [6m brain RNAseq - QC](QC_adult.html) 
+- [6m brain RNAseq - analysis](analysis_adultbrain.html)
+- [6m brain proteomics - analysis](proteomics.html)

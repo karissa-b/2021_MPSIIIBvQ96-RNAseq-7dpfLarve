@@ -6,7 +6,7 @@ output: workflowr::wflow_html
 editor_options:
   chunk_output_type: console
 ---
-## Introduction
+
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(
   autodep = TRUE,
@@ -34,6 +34,9 @@ library(scales)
 library(ggrepel)
 library(ggfortify)
 library(RColorBrewer)
+library(ComplexHeatmap)
+library(tidyHeatmap)
+library(circlize)
 library(UpSetR)
 library(edgeR)
 library(goseq)
@@ -43,8 +46,15 @@ library(kableExtra)
 library(harmonicmeanp)
 library(ssizeRNA)
 
-theme_set(theme_bw())
+theme_set(
+  theme_bw() +
+    theme(
+      plot.title = element_text(hjust = 0.5)
+    ))
 ```
+
+# Read in data 
+
 
 ```{r anno}
 ah <- AnnotationHub() %>%
@@ -76,234 +86,30 @@ mcols(grGenes) %<>%
 ```
 
 ```{r meta}
+# readin meta and tidy up columns
 meta <- read_excel("data/adult_brain/karissas_metadata.xlsx", sheet = "onlyseq") %>% 
-  mutate(Genotype = `usable genotype?` %>% 
-           factor(levels = c("wt", "MPS-III", "EOfAD")), 
-         Tank = as.factor(tank)
+  mutate(genotype = case_when(
+    `usable genotype?` == "wt" ~ "wt", 
+    `usable genotype?` == "EOfAD" ~ "EOfADlike", 
+    `usable genotype?` == "MPS-III" ~ "MPSIIIB"
   ) %>% 
-  mutate(sample = paste0(fish, "_", Genotype)) 
+    factor(levels = c("wt",  "EOfADlike", "MPSIIIB")), 
+  tank = as.factor(tank), 
+  sex  = as.factor(sex),
+  sample = paste0(fish, "_", genotype), 
+  group = paste0(genotype, "_", sex) %>% as.factor(),
+  age = "6 m adult brain",
+  RIN = as.numeric(`RIN/DIN`)
+  ) %>% 
+  dplyr::select(
+    # reorder the metadata nicely
+    fish,genotype,sex,group,batch,tank,RIN,everything()
+    ) %>% 
+  as_tibble()
 ```
 
-<!-- First, I will assess the quality of the RNA-seq data for the *psen1* Q96_K97del/+ vs *naglu* A603fs/A603fs experiment on zebrafish adult brains at 7 days post fertilisation (dpf).  -->
-
-<!-- Total RNA was purified from the head end of the individual larvae, while the tail end was used for gDNA extraction and PCR genotyping. The total RNA was DNase treated (to remove any genomic DNA which was carried over from the RNA extraction), then delivered to SAGC for polyA+ library preparation and sequencing using the MGI DNBSEQ technology.  -->
-
-<!-- The sequencing was performed over four lanes which were subsequently merged. This was done using the `merge.sh` script shown below.  -->
-
-<!-- <!-- # ```{r meregFilesBashScript} --> -->
-<!-- <!-- # ## Insert the merge files script here --> -->
-<!-- <!-- # readLines("code/mergeFiles.sh") %>%  --> -->
-<!-- <!-- #   cat(sep = "\n") --> -->
-<!-- <!-- # ``` --> -->
-
-<!-- ## fastqc: raw data -->
-
-<!-- Here, I will use the `ngsReports` package to combine and visualise the fastqc results.  -->
-<!-- ```{r fastqcRawObejct} -->
-<!-- fastqc_raw <- list.files( -->
-<!--   path = "data/fastqc_raw", -->
-<!--   pattern = "zip",  -->
-<!--   recursive = TRUE, -->
-<!--   full.names = TRUE) %>%  -->
-<!--   FastqcDataList() -->
-<!-- ``` -->
-
-<!-- The total number of reads ranged between `r range(readTotals(fastqc_raw)$Total_Sequences) %>% comma %>% pander` reads. Note that the number of reads in the `R1` file indeed equals to the number of reads in the `R2` file.  -->
-
-<!-- ```{r} -->
-<!-- readTotals(fastqc_raw) %>%  -->
-<!--   mutate(Read = case_when( -->
-<!--     grepl(Filename, pattern = "_R1") ~ "R1",  -->
-<!--     grepl(Filename, pattern = "_R2") ~ "R2" -->
-<!--   ),  -->
-<!--   ULN = str_remove(Filename, "_S[0-9]+_merged.+") -->
-<!--   ) %>%  -->
-<!--   left_join(meta) %>%  -->
-<!--   ggplot(aes(x = ULN, y = Total_Sequences, fill = Read)) +  -->
-<!--            geom_col(position = "dodge") + -->
-<!--   coord_flip() + -->
-<!--   scale_fill_viridis_d(end = 0.8) + -->
-<!--   facet_wrap(~Genotype, scales = "free_y", ncol = 1, strip.position = "right") -->
-<!-- ``` -->
-
-<!-- The base quality of all the reads also looked good. However, something a bit strange is going on in the sample `21-015556` file R2 file. Inspecting the boxplot for this file and it looks OK to me. -->
-
-<!-- ```{r} -->
-<!-- plotBaseQuals(fastqc_raw) -->
-<!-- ``` -->
-
-<!-- ### GC Content -->
-
-<!-- All samples have similar GC content. No issues are present.  -->
-
-<!-- ```{r} -->
-<!-- plotGcContent( -->
-<!--   x = fastqc_raw,  -->
-<!--   plotType = "line", -->
-<!--   gcType = "Transcriptome",  -->
-<!--   species = "Drerio",  -->
-<!--   usePlotly = F -->
-<!-- ) + -->
-<!--   theme(legend.position = "none") -->
-<!-- ``` -->
-
-<!-- ### Over-repreented seq -->
-
-<!-- No over-represented sequences are present in this dataset.  -->
-
-<!-- ```{r} -->
-<!-- getModule(fastqc_raw, "Overrep")  -->
-<!-- ``` -->
-
-
-<!-- ## trimmed data fastQC -->
-
-<!-- The raw fastq. files were then processed with `fastp`. In this step, the adaptor sequeces were trimmed from the reads. Then all length and quality filters were left as default values. Less than 1% of the reads was discarded, and no observed changes are apparent in the %GC in the reads.  -->
-
-<!-- ```{r} -->
-<!-- fastqc_trim <- list.files(path = "data/fastqc_trim", -->
-<!--   pattern = "zip",  -->
-<!--   recursive = TRUE, -->
-<!--   full.names = TRUE) %>%  -->
-<!--   FastqcDataList() -->
-<!-- ``` -->
-
-<!-- ```{r} -->
-<!-- trimStats <- readTotals(fastqc_raw) %>% -->
-<!--   dplyr::rename(Raw = Total_Sequences) %>% -->
-<!--   left_join(readTotals(fastqc_trim), by = "Filename") %>% -->
-<!--   dplyr::rename(Trimmed = Total_Sequences) %>% -->
-<!--   mutate( -->
-<!--     Discarded = 1 - Trimmed / Raw, -->
-<!--     Retained = Trimmed / Raw -->
-<!--   ) -->
-
-<!-- trimStats %>%  -->
-<!--   mutate(ULN = str_remove(Filename, "_S[0-9]+_merged.+") -->
-<!--   ) %>%  -->
-<!--   left_join(meta) %>%  -->
-<!--   unique() %>%  -->
-<!--   ggplot(aes(y = ULN)) + -->
-<!--   geom_col(aes(x = Discarded*100)) + -->
-<!--   facet_wrap(~Genotype, scales = "free_y", ncol = 1, strip.position = "right") + -->
-<!--   labs(x = "Percentage reads discarded by fastp") -->
-<!-- ``` -->
-
-<!-- ```{r} -->
-<!-- plotBaseQuals(fastqc_trim) -->
-<!-- ``` -->
-
-
-<!-- ```{r} -->
-<!-- ggarrange( -->
-<!--   plotGcContent( -->
-<!--     x = fastqc_raw,  -->
-<!--     plotType = "line", -->
-<!--     gcType = "Transcriptome",  -->
-<!--     species = "Drerio" -->
-<!--   ) + -->
-<!--     theme(legend.position = "none") + -->
-<!--     ggtitle("Before fastp"),  -->
-<!--   plotGcContent( -->
-<!--   x = fastqc_trim,  -->
-<!--   plotType = "line", -->
-<!--   gcType = "Transcriptome",  -->
-<!--   species = "Drerio" -->
-<!-- ) + -->
-<!--   theme(legend.position = "none")+ -->
-<!--   ggtitle("After fastp") -->
-<!-- )  -->
-
-<!-- ``` -->
-
-<!-- ## Aligned QC -->
-<!-- The reads were aligned to the GRCz11 genome. The majority of reads were aligned uniquely. S -->
-<!-- ```{r} -->
-<!-- fastqc_align <- list.files( -->
-<!--   path = "data/fastqc_align", -->
-<!--   pattern = "zip",  -->
-<!--   recursive = TRUE, -->
-<!--   full.names = TRUE) %>%  -->
-<!--   FastqcDataList() -->
-<!-- ``` -->
-
-<!-- ```{r} -->
-<!-- list.files("data/starlog", full.names = TRUE) %>%  -->
-<!--   .[grepl(x = ., pattern = "Log.final.out")] %>%  -->
-<!--   ngsReports::plotAlignmentSummary(type = "star") + -->
-<!--   scale_fill_viridis_d(end = 0.8) + -->
-<!--   theme(legend.position = "right") + -->
-<!--   ggtitle("Summary of alignment (STAR)",  -->
-<!--           subtitle = "In all samples, the majority of reads mapped uniquely to the zebrafish genome.") -->
-<!-- ``` -->
-
-<!-- ```{r} -->
-<!-- plotBaseQuals(fastqc_align) -->
-<!-- ``` -->
-
-
-<!-- ```{r} -->
-<!-- plotGcContent(x = fastqc_align,  -->
-<!--     plotType = "line", -->
-<!--     gcType = "Transcriptome",  -->
-<!--     species = "Drerio" -->
-<!--   ) + -->
-<!--   theme(legend.position = "none")  -->
-<!-- ``` -->
-
-<!-- ## Dedup align QC -->
-
-<!-- This dataset was processed with UMIs, which allow PCR duplicates to be removed. I did this using `umi-tools`. After de-duplciation ** reads were retained.  -->
-
-<!-- ```{r} -->
-<!-- fastqc_align_dedup <- list.files( -->
-<!--   path = "data/fastqc_dedup", -->
-<!--   pattern = "zip",  -->
-<!--   recursive = TRUE, -->
-<!--   full.names = TRUE) %>%  -->
-<!--   FastqcDataList() -->
-<!-- ``` -->
-
-<!-- ```{r} -->
-<!-- readTotals(fastqc_align) %>%  -->
-<!--   mutate(align = "raw") %>%  -->
-<!--   bind_rows(readTotals(fastqc_align_dedup) %>%  -->
-<!--               mutate(align = "dedup")) %>%  -->
-<!--   mutate(ULN = str_remove(Filename, "_S[0-9]+_merged.+")) %>%  -->
-<!--   left_join(meta) %>%  -->
-<!--   ggplot(aes(x = ULN, y = Total_Sequences, fill = align)) +  -->
-<!--            geom_col(position = "dodge") + -->
-<!--   coord_flip() + -->
-<!--   scale_fill_viridis_d(end = 0.8) + -->
-<!--   scale_y_continuous(labels = comma) + -->
-<!--   facet_wrap(~Genotype, scales = "free_y", ncol = 1, strip.position = "right") -->
-<!-- ``` -->
-
-<!-- ## FeatureCounts summary -->
-
-<!-- ```{r} -->
-<!-- FC_summary <- read.delim("data/05_featureCounts/counts.out.summary") -->
-
-<!-- colnames(FC_summary) %<>%  -->
-<!--   str_remove(pattern = "_S[0-9]+_merged.Aligned.sortedByCoord.dedup.out.bam") %>%  -->
-<!--   str_remove(pattern = "X04_dedup.bam.") %>%  -->
-<!--   str_replace(pattern = "\\.", replacement = "\\-") -->
-
-<!-- FC_summary %>%  -->
-<!--  gather(key = "ULN", value = "NumReads", starts_with("22")) %>%  -->
-<!--   left_join(meta) %>%  -->
-<!--   as_tibble() %>%  -->
-<!--   dplyr::filter(NumReads > 0) %>%    -->
-<!--   ggplot(aes(y = ULN, x = NumReads, fill = Status)) + -->
-<!--   geom_col() + -->
-<!--   scale_fill_viridis_d(end = 0.8) + -->
-<!--   scale_x_continuous(labels = comma) + -->
-<!--   facet_wrap(~Genotype, scales = "free_y", ncol = 1, strip.position = "right") -->
-<!-- ``` -->
-
-# DGE
-
 ```{r}
+# read in counts and cleanup
 featureCounts <- 
   read_delim("data/adult_brain/05_featureCounts/counts.out", delim = "\t", skip = 1) %>%
   set_names(basename(names(.))) %>% 
@@ -312,7 +118,7 @@ featureCounts <-
   dplyr::select(-c(Chr, Start, End, Length, Strand)) %>% 
   gather(key = "ULN", value = "counts", starts_with("22")) %>% 
   left_join(meta) %>% 
-  mutate(sample = paste0(fish, "_", Genotype)) %>% 
+  mutate(sample = paste0(fish, "_", genotype)) %>% 
   dplyr::select(Geneid, counts, sample) %>% 
   spread(key = "sample", value = "counts") %>% 
   column_to_rownames("Geneid") %>% 
@@ -320,8 +126,11 @@ featureCounts <-
 ```
 
 
-## filter lowly expressed genes
+# filter lowly expressed genes
 
+Genes which are lowly expressed are considered uninformative for de analysis. Here, we set the threshold to be a min CPM of 0.5 (following the 10/min lib size rule proposed by gordon smyth). The effect of filtering is found below.
+
+DGEList objects were created, which brings together the sample metadata and counts in each experiment. TMM normalisation to the counts is also applied when making these objects. 
 
 ```{r filt}
 a <- featureCounts %>% 
@@ -343,12 +152,12 @@ a <- featureCounts %>%
   }) %>%
   bind_rows() %>%
   left_join(meta) %>% 
-  ggplot(aes(x, y, colour = Genotype, group = sample)) +
+  ggplot(aes(x, y, colour = genotype, group = sample)) +
   geom_line() +
   labs(
     x = "logCPM",
     y = "Density",
-    colour = "Genotype"
+    colour = "genotype"
   )+
   ggtitle("Before filtering") +
   theme_bw()
@@ -372,12 +181,12 @@ b <- featureCounts %>%
   }) %>%
   bind_rows() %>%
   left_join(meta) %>% 
-  ggplot(aes(x, y, colour = Genotype, group = sample)) +
+  ggplot(aes(x, y, colour = genotype, group = sample)) +
   geom_line() +
   labs(
     x = "logCPM",
     y = "Density",
-    colour = "Genotype"
+    colour = "genotype"
   )+
   ggtitle("After filtering")
 
@@ -404,19 +213,20 @@ x <- featureCounts %>%
 ```
 
 ## PCA
-
+I first want to explore the overall similarity between samples by PCA. No distinct clusters of samples are observed. However, there might be some subtle seperatation of the MPS IIIB mutants. 
 ```{r}
-x$counts %>% 
+x %>% 
   cpm(log=TRUE) %>% 
   t() %>% 
   prcomp() %>% 
   autoplot(data = tibble(sample = rownames(.$x)) %>%
       left_join(x$samples),
-    colour = "Genotype", 
+    colour = "genotype", 
+    shape = "sex",
     size = 6
   ) +
   theme(aspect.ratio = 1) +
-  labs(colour = "Genotype") 
+  labs(colour = "genotype") 
 
 x$counts %>% 
   cpm(log=TRUE) %>% 
@@ -436,25 +246,72 @@ x$counts %>%
   prcomp() %>% 
   autoplot(data = tibble(sample = rownames(.$x)) %>%
       left_join(x$samples),
-    colour = "Tank", 
+    colour = "tank", 
     size = 6
   ) +
   theme(aspect.ratio = 1) +
   labs(colour = "Tank") 
-
-  #ggsave("output/plots/PCAblue.png", width = 10, height = 10, units = "cm", dpi = 300, scale = 1.25)
 ```
 
-# GC Length check
+### within sexes
+Since it is a bit hard to see whats going on within sexes, I will next perform PCAs on each sex seperately
+
 ```{r}
-design <- model.matrix(~Genotype + Tank, data = x$samples) %>% 
-  set_colnames(gsub(colnames(.), pattern = "Genotype", replacement = ""))
+fem.samples <- x$samples %>% 
+  dplyr::filter(sex == "F") %>% 
+  rownames()
+
+male.samples <- x$samples %>% 
+  dplyr::filter(sex == "M") %>% 
+  rownames()
+
+x %>% 
+  cpm(log = TRUE) %>% 
+  .[,fem.samples] %>% 
+  t %>% 
+  prcomp() %>% 
+  autoplot(data = tibble(sample = rownames(.$x)) %>%
+             left_join(x$samples),
+           colour = "genotype",
+           shape = "sex", 
+           size = 6
+  ) +
+  theme(aspect.ratio = 1) +
+  labs(
+    title = "Females"
+  )
+
+x %>% 
+  cpm(log = TRUE) %>% 
+  .[,male.samples] %>% 
+  t %>% 
+  prcomp() %>% 
+  autoplot(data = tibble(sample = rownames(.$x)) %>%
+             left_join(x$samples),
+           colour = "genotype",
+           shape = "sex", 
+           size = 6
+  ) +
+  theme(aspect.ratio = 1) +
+  labs(
+    title = "Males"
+  )
+```
+
+
+# Initial DE analysis to check for %GC and length bias
+
+For this analysis, I will keep the model matrix simple and look at only effect of genotype. This should be sufficient to look for bias due to GC and length, ans so whether CQN is required. 
+
+```{r}
+design.simple <- model.matrix(~genotype, data = x$samples) %>% 
+  set_colnames(gsub(colnames(.), pattern = "genotype", replacement = ""))
 
 fit_1 <- x %>% 
-  estimateDisp(design) %>% 
-  glmFit(design)
+  estimateDisp(design.simple) %>% 
+  glmFit(design.simple)
 
-toptable_1 <- design %>% colnames() %>% .[2:3] %>%
+toptable_1 <- design.simple %>% colnames() %>% .[2:3] %>%
   sapply(function(x){
     glmLRT(fit_1, coef = x) %>%
       topTags(n = Inf) %>%
@@ -494,6 +351,7 @@ toptable_1 %>%
   geom_point(
     alpha = 0.5
   ) +
+  
   facet_wrap(~coef) +
   # geom_label_repel(
   #   aes(label = gene_name), 
@@ -552,7 +410,8 @@ labels = "AUTO"
 
 # CQN
 
-Some 
+Some bias is observed, and so CQN will be applied. 
+
 ```{r}
 cqn <- 
   x %>% 
@@ -564,7 +423,7 @@ cqn <-
       sizeFactors = samples$lib.size
     )
   )
-# cre
+# 
 logCPM <- cqn$y + cqn$offset
 ```
 
@@ -580,17 +439,19 @@ par(mfrow = c(1, 1))
 PCA analysis was repeated. Similar clustering of samples was observed, with MPS-IIIA samples appearing to form a more distinct cluster from the rest of the samples. The sgsh/+ samples appear much more variable. 
 
 ```{r}
+genocols = c("#000000", "#DBDB2F", "#377EB8")
+
 ggarrange(
   cpm(x, log = T) %>%
     t() %>%
     prcomp() %>% 
     autoplot(data = tibble(sample = rownames(.$x)) %>%
                left_join(x$samples),
-             colour = "Genotype", 
+             colour = "genotype", 
              shape = "sex", 
              size = 4
     ) +
-    scale_color_viridis_d(option = "turbo", end = 0.8) +
+    scale_colour_manual(values = genocols) +
     theme(aspect.ratio = 1) +
     ggtitle("Before CQN"),
   
@@ -599,10 +460,10 @@ ggarrange(
     prcomp() %>%
     autoplot(data = tibble(sample = rownames(.$x)) %>%
                left_join(x$samples),
-             colour = "Genotype", 
+             colour = "genotype", 
              size = 4
     ) +
-    scale_color_viridis_d(option = "turbo", end = 0.8) +
+    scale_colour_manual(values = genocols) +
     theme(aspect.ratio = 1) +
     ggtitle("After CQN"),
   common.legend = T, 
@@ -614,18 +475,44 @@ ggarrange(
 ## DE with cqn
 
 The DE analysis was then repeated, this time including the offset generated by `cqn` in the model. 
+
+Will also create a new design and contrasts matrices to be able to determine the DEGs within sexes. 
+
 ```{r}
 # Add the offset to the dge object 
 x$offset <- cqn$glm.offset
 
-# fit the glm
-fit_cqn <- x %>% 
-  estimateDisp(design) %>% 
-  glmFit(design)
+# new desing matrix
+design.bygroup <- 
+  model.matrix(~0 + group, data = x$samples %>% 
+                 droplevels()) %>% 
+   set_colnames(gsub(colnames(.), pattern = "group", replacement = ""))
 
-toptables_cqn <- design %>% colnames() %>% .[2:3] %>% 
+
+contrasts <- makeContrasts( 
+ 
+  MPSIIIB_M - wt_M , # effect of MPS IIIB in males
+  MPSIIIB_F - wt_F, # effect of MPS IIIB in females
+  
+  EOfADlike_M - wt_M, # effect of EOfAD in males
+  EOfADlike_F - wt_F, # effect of EOfAD in females
+
+  levels = design.bygroup
+  )
+
+# fit the glm
+fit_cqn_simple <- x %>% 
+  estimateDisp(design.simple) %>% 
+  glmFit(design.simple)
+
+fit_cqn_bysex <- x %>% 
+  estimateDisp(design.bygroup) %>% 
+  glmFit(design.bygroup)
+
+# call toptables 
+toptables_cqn_simple <- design.simple %>% colnames() %>% .[2:3] %>% 
   sapply(function(x){
-    glmLRT(fit_cqn, coef = x) %>%
+    glmLRT(fit_cqn_simple, coef = x) %>%
       topTags(n = Inf) %>%
       .[["table"]] %>%
       as_tibble() %>%
@@ -639,37 +526,65 @@ toptables_cqn <- design %>% colnames() %>% .[2:3] %>%
       )
       
   }, simplify = FALSE)
+
+toptables_cqn_bygroup <- 
+  colnames(contrasts) %>% 
+  sapply(function(x) {
+    glmLRT(fit_cqn_bysex, contrast = contrasts[,x]) %>% 
+      topTags(n = Inf)  %>% 
+      .[["table"]] %>%
+      as_tibble() %>%
+      arrange(PValue) %>%
+      mutate(
+        coef = x,
+        coef = str_remove(coef, pattern = " - .+"),
+        DE = FDR < 0.05
+      ) %>% 
+      dplyr::select(
+        gene_name, logFC, logCPM, PValue, FDR, DE, everything()
+      )
+        }, simplify = FALSE)
+
+# tidy up the names of this. 
+names(toptables_cqn_bygroup) %<>% 
+  str_remove(pattern = " - .+")
+
 ```
 
 ## Visualisation
-### Number of DE genes
+
+### tables of n DE
 ```{r}
-toptables_cqn %>% 
-  lapply(function(x){
-    x %>%
-      mutate(Direction = case_when(
-        sign(logFC) == "1" ~ "up",
-        sign(logFC) == "-1" ~ "down"
-      ))
-  }) %>%
-  bind_rows() %>%
-  dplyr::filter(DE == TRUE) %>%
-  ggplot(aes(y = `coef`)) +
-  geom_bar(stat = "count",
-           width = 0.5,
-           aes(fill = Direction),
-           position = "dodge") +
-  theme(legend.position = "bottom") +
-  ggtitle("Number of DE genes in each comparison") +
-  labs(x = "Number of DE genes",
-       y = "Contrast",
-       colour = "Direction of change", 
-       title = "Number of DE genes in each comparison")
+toptables_cqn_bygroup %>% 
+  lapply(function(y) {
+    y %>% 
+      mutate(
+      direction = sign(logFC), .after = logFC
+      ) %>% 
+      dplyr::filter(DE == TRUE) %>% 
+      group_by(direction) %>% 
+      summarise(n = n())
+  })
+
+toptables_cqn_bygroup %>% lapply(dplyr::filter, DE == T)
+
+
+toptables_cqn_simple %>% 
+  lapply(function(y) {
+    y %>% 
+      mutate(
+      direction = sign(logFC), .after = logFC
+      ) %>% 
+      dplyr::filter(DE == TRUE) %>% 
+      group_by(direction) %>% 
+      summarise(n = n())
+  })
 ```
+
 
 ### Volcano plot
 ```{r}
-toptables_cqn %>%
+toptables_cqn_simple %>%
   bind_rows() %>% 
   ggplot(aes(y = -log10(PValue), x = logFC, colour = DE)) +
   geom_point(
@@ -685,12 +600,28 @@ toptables_cqn %>%
                   ylim = c(0, 20) )+
   theme(legend.position = "none") +
   scale_color_manual(values = c("grey50", "red")) 
-  #ggsave("output/plots/volvano.png", width = 18, height = 10, units = "cm", dpi = 300, scale = 1.5)
+
+toptables_cqn_bygroup %>%
+  bind_rows() %>% 
+  ggplot(aes(y = -log10(PValue), x = logFC, colour = DE)) +
+  geom_point(
+    alpha = 0.5, size = 1.25
+  ) +
+  facet_wrap(~coef) +
+  # geom_label_repel(
+  #   aes(label = gene_name),
+  #   data = .  %>% dplyr::filter(FDR < 0.05),
+  #   show.legend = FALSE
+  #   ) +
+  coord_cartesian(xlim = c(-2.5,2.5), 
+                  ylim = c(0, 20) )+
+  theme(legend.position = "none") +
+  scale_color_manual(values = c("grey50", "red")) 
 ```
 
 ### MD plot
 ```{r}
-toptables_cqn %>%
+toptables_cqn_bygroup %>%
   bind_rows() %>% 
   ggplot(aes(x = logCPM, y = logFC)) +
   geom_point(
@@ -703,51 +634,8 @@ toptables_cqn %>%
   geom_smooth(se = F)
 ```
 
-## Recheck the %GC and length bias
 
-The %GC and length bias data was checked again. Some gene length bias still remains. But this seems to be driven only at the ends, where there is less genes. So this should be ok.
-```{r}
-ggarrange(
-toptables_cqn %>% 
-  bind_rows() %>% 
-  mutate(rankstat = sign(logFC)*-log10(PValue)) %>% 
-  ggplot(aes(x = length, y = rankstat)) +
-  geom_point(
-    aes(colour = DE),
-    alpha = 0.5
-  ) +
-  geom_smooth(se = FALSE, method = "gam") +
-  facet_grid(rows = vars(coef)) +
-  theme(legend.position = "none") +
-  scale_color_manual(values = c("grey50", "red")) +
-  scale_x_log10()+
-  labs(x = "Average transcript length per gene",
-       colour = "Differentially expressed?",
-       y = "sign(logFC)*-log10(PValue)") +
-  coord_cartesian(ylim = c(-10, 10)),
-
-toptables_cqn %>% 
-  bind_rows() %>% 
-  mutate(rankstat = sign(logFC)*-log10(PValue)) %>% 
-  ggplot(aes(x = gc_content, y = rankstat)) +
-  geom_point(
-    aes(colour = DE),
-    alpha = 0.5
-  ) +
-  geom_smooth(se = FALSE, method = "gam") +
-  facet_grid(rows = vars(coef)) +
-  theme(legend.position = "none") +
-  scale_color_manual(values = c("grey50", "red")) +
-  coord_cartesian(ylim = c(-10,10)) + 
-  labs(x = "Weighted average GC content (%) per gene", 
-       colour = "Differentially expressed?", 
-       y = "sign(logFC)*-log10(PValue)"),
-common.legend = TRUE, 
-labels = "AUTO"
-) 
-```
-
-## Gene set enrichment analysis
+# Gene set enrichment analysis
 
 I now am going to test the KEGG, gene ontology (GO), iron-responsive element (IRE), cell type markers and chromosomal location gene sets to determine whether any of them display changes to gene expression as a group. The gene sets were obtained from MSIGDB using the msigdbr package. 
 
@@ -780,10 +668,10 @@ sizes <- KEGG %>%
   rownames_to_column("gs")
 
 
-# retain gene sets with at least 5 genes in it
-KEGG <- KEGG[sizes %>% dplyr::filter(n_genes > 5) %>% .$gs]
+# retain gene sets with at least 3 genes in it
+KEGG <- KEGG[sizes %>% dplyr::filter(n_genes > 3) %>% .$gs]
 
-# GO Terms summaues that The UofA biohub made. 
+# GO Terms summaries that The UofA biohub made. 
 goSummaries <- url("https://uofabioinformaticshub.github.io/summaries2GO/data/goSummaries.RDS") %>%
   readRDS() %>%
   mutate(
@@ -793,6 +681,7 @@ goSummaries <- url("https://uofabioinformaticshub.github.io/summaries2GO/data/go
     )
 
 minPath <- 3
+
 # obtain the GO terms 
 GO <- 
   msigdbr("Danio rerio", category = "C5") %>% 
@@ -808,17 +697,19 @@ GO <-
   split(f = .$gs_name) %>%
   lapply(extract2, "gene_id")
 
-# GOdf <-  msigdbr("Danio rerio", category = "C5") %>% 
-#   dplyr::filter(grepl(gs_name, pattern = "^GO")) %>% 
-#   left_join(x.ab$genes, by = c("gene_symbol" = "gene_name")) %>% 
-#   dplyr::filter(gene_id %in% rownames(x)) %>% 
-#   mutate(gs_name = str_replace(gs_name, pattern = "GOBP_", replacement = "GO_")) %>% 
-#   mutate(gs_name = str_replace(gs_name, pattern = "GOMF_", replacement = "GO_")) %>%     
-#   mutate(gs_name = str_replace(gs_name, pattern = "GOCC_", replacement = "GO_")) %>%     
-#   left_join(goSummaries) %>% 
-#   dplyr::filter(shortest_path >= minPath) %>%
-#   distinct(gs_name, gene_id, .keep_all = TRUE) %>% 
-#   dplyr::select(gs_name, gene_id)
+GOdf <-  msigdbr("Danio rerio", category = "C5") %>%
+  dplyr::filter(grepl(gs_name, pattern = "^GO")) %>%
+  left_join(x$genes, by = c("gene_symbol" = "gene_name")) %>%
+  dplyr::filter(gene_id %in% rownames(x)) %>%
+  mutate(
+    gs_full_name = gs_name, 
+    gs_name = str_replace(gs_name, pattern = "GOBP_", replacement = "GO_"), 
+    gs_name = str_replace(gs_name, pattern = "GOMF_", replacement = "GO_"), 
+    gs_name = str_replace(gs_name, pattern = "GOCC_", replacement = "GO_")
+  ) %>%
+  left_join(goSummaries) %>%
+  dplyr::filter(shortest_path >= minPath) %>%
+  distinct(gs_name, gene_id, .keep_all = TRUE) 
 
 sizes_GO <- GO %>%
   lapply(length) %>%
@@ -828,8 +719,8 @@ sizes_GO <- GO %>%
   rownames_to_column("gs")
 
 
-# retain gene sets with at least 5 genes in it
-GO <- GO[sizes_GO %>% dplyr::filter(n_genes > 5) %>% .$gs]
+# retain gene sets with at least 3 genes in it
+GO <- GO[sizes_GO %>% dplyr::filter(n_genes > 3) %>% .$gs]
 
 ireGenes <- readRDS("data/gene_sets/zebrafishireGenes.rds") %>% 
   unlist() %>% 
@@ -869,599 +760,624 @@ cell_type_markers %<>%
 
 I first will look at enrichment of GO terms within the DE genes using goseq. I like goseq as it lets you include a covariate. Since there was still a bit of bias left after cqn for gene length, i will use this as the covariate.  
 ```{r}
-pwf <- toptables_cqn$`MPS-III` %>%
+pwfs <- 
+  c(toptables_cqn_bygroup, toptables_cqn_simple) %>% 
+  lapply(function(y) {
+    
+    y %>% 
       with(
         nullp(
           DEgenes = structure(DE, names = gene_id), 
           bias.data = length
         )
       )
+  })
 
-goseq.mps <- goseq(pwf, gene2cat = GO) %>% 
-  as_tibble() %>% 
-  dplyr::filter(numDEInCat > 0) %>% 
-  mutate(FDR = p.adjust(over_represented_pvalue, method = "fdr")) %>% 
-  dplyr::select(-under_represented_pvalue)
-  
-goseq.mps %>% 
-  dplyr::filter(FDR <0.05) %>% 
-  kable(caption = "Sign over-represented GO terms in MPS-IIIB DE genes") %>% 
-  kable_styling(full_width = FALSE)
-
-```
-
-For the DE genes in the OEFAD brains, lots of GO terms are observed. But they generally have just 1 or 2 DE genes in the significant GO terms. So I dont think these are particularly meaningful. 
-
-```{r}
-pwf2 <- toptables_cqn$EOfAD %>%
-      with(
-        nullp(
-          DEgenes = structure(DE, names = gene_id), 
-          bias.data = length
-        )
-      )
-goseq.eofad <- goseq(pwf2, gene2cat = GO) %>% 
-  as_tibble() %>% 
-  dplyr::filter(numDEInCat > 0) %>% 
-  mutate(FDR = p.adjust(over_represented_pvalue, method = "fdr")) %>% 
-  dplyr::select(-under_represented_pvalue)
-  
-goseq.eofad %>% 
-  dplyr::slice(1:10)%>% 
-  kable(caption = "Top 10 over-represented GO terms inEOfAD DE genes.") %>% 
-  kable_styling(full_width = FALSE)
-```
-
-
-## FRY
-
-Overrepresenation analysis using goseq relies on a hard threshold for gene to be called DE. This can lose information as there are genes which are almost DE (i.e. FDRp = 0.06), but are not interpreted in this way. 
-
-Another method to test for enrichment of gene sets is to use ROAST. Roast uses a rotation-based approach to generate a null distribution of gene set enrichment scores by randomly permuting the samples or the gene labels in the data. Roast then calculates a gene set enrichment score for each gene set in the data, based on the correlation between the gene expression values and the sample labels. The gene set enrichment scores are compared to the null distribution to calculate the statistical significance of the enrichment. In this way, it does not requre a list of DEGs as input. 
-
-Here, I will perform the fast approx of ROAST: fry, frmo the limma package on the KEGG gene sets. The top 10 gene sets in each mutant zebrafish are shown below. 
-
-### KEGG 
-```{r}
-fryKEGG <- 
-  design %>% colnames() %>% .[2:3] %>% 
-  sapply(function(y) {
-    cpm(x, log = T) %>% 
-      fry(
-        index = KEGG,
-        design = design, 
-        contrast = y, 
-        sort = "mixed"
-      ) %>% 
-      rownames_to_column("pathway") %>% 
+goseq.results <- 
+  pwfs %>% 
+  lapply(function(y) {
+    goseq(y, gene2cat = GO) %>% 
       as_tibble() %>% 
-      mutate(coef = y)
-  }, simplify = FALSE)
+      mutate(
+        FDR = p.adjust(over_represented_pvalue, method = "fdr")
+        ) %>% 
+      dplyr::select(-under_represented_pvalue) %>% 
+      left_join(GOdf %>% dplyr::select(category = gs_name, gs_subcat) %>% unique) %>% 
+      dplyr::select(GO = category, GO_subcat = gs_subcat, everything())
+  })
 
-fryKEGG$`MPS-III` %>% 
-  dplyr::slice(1:10) %>% 
-  mutate(pathway = str_remove(pathway, pattern = "KEGG_")) %>% 
-  ggplot(aes(x = -log10(PValue.Mixed), y = reorder(pathway, -FDR.Mixed))) +
-  geom_col(aes(fill = FDR.Mixed < 0.05)) +
-  scale_fill_manual(values = c("grey50", 'red')) +
-  theme_pubr() +
-  labs(fill = "FDR < 0.05", 
-       x = "-log10(PValue)", 
-       y = "")
-
-fryKEGG$EOfAD %>% 
-  dplyr::slice(1:10) %>% 
-  mutate(pathway = str_remove(pathway, pattern = "KEGG_")) %>% 
-  ggplot(aes(x = -log10(PValue.Mixed), y = reorder(pathway, -FDR.Mixed))) +
-  geom_col(aes(fill = FDR.Mixed < 0.05)) +
-  scale_fill_manual(values = c("grey50", 'red')) +
-  theme_pubr() +
-  labs(fill = "FDR < 0.05", 
-       x = "-log10(PValue)", 
-       y = "")  
-
-
-```
-
-
-### GO
-```{r}
-fry_GO <-  design %>% colnames() %>% .[2:3] %>% 
-  sapply(function(y) {
-    logCPM %>% 
-      fry(
-        index = GO,
-        design = design, 
-        contrast = y, 
-        sort = "mixed"
-      ) %>% 
-      rownames_to_column("pathway") %>% 
-      as_tibble() %>% 
-      mutate(coef = y, 
-             sig = FDR.Mixed < 0.05)
-  }, simplify = FALSE)
-```
-
-```{r}
-toptables_cqn %>% 
-  bind_rows() %>% 
-  dplyr::filter(gene_id %in% GO$GO_REGULATION_OF_MICROGLIAL_CELL_ACTIVATION) %>% 
-  dplyr::select(gene_name, logFC, coef) %>% 
-  dplyr::distinct(gene_name, coef, .keep_all = T) %>% 
-  spread(key = "coef", value = "logFC") %>% 
-  column_to_rownames("gene_name") %>% 
-  t() %>% 
-  pheatmap(color = colorRampPalette(rev(brewer.pal(n = 5,
-                                               name = "RdBu")))(100), 
-           main = "GO_REGULATION_OF_MICROGLIAL_CELL_ACTIVATION: FDR = 6.44e-5", 
-           breaks = c(seq(min(.), 0, length.out=ceiling(100/2) + 1), 
-              seq(max(.)/100, max(.), length.out=50)), 
-           cellheight = 30, cellwidth = 12,angle_col = 45,
-           treeheight_row = 0, treeheight_col = 0
-           )
-
-
-toptables_cqn %>% 
-  bind_rows() %>% 
-    dplyr::filter(gene_id %in% GO$GO_PH_REDUCTION) %>% 
-  dplyr::select(gene_name, logFC, coef) %>% 
-  dplyr::distinct(gene_name, coef, .keep_all = T) %>% 
-  spread(key = "coef", value = "logFC") %>% 
-  column_to_rownames("gene_name") %>% 
-  t() %>% 
-  pheatmap(color = colorRampPalette(rev(brewer.pal(n = 5,
-                                               name = "RdBu")))(100), 
-           breaks = c(seq(min(.), 0, length.out=ceiling(100/2) + 1), 
-              seq(max(.)/100, max(.), length.out=50)), 
-           cellheight = 30, cellwidth = 12,angle_col = 45,
-           treeheight_row = 0, treeheight_col = 0
-           )
-```
-
-### IRE
-
-```{r}
-fryIRE <- design %>% colnames() %>% .[2:3] %>% 
-  sapply(function(y) {
-    logCPM %>% 
-      fry(
-        index = ireGenes,
-        design = design, 
-        contrast = y, 
-        sort = "directional"
-      ) %>% 
-      rownames_to_column("pathway") %>% 
-      as_tibble() %>% 
-      mutate(coef = y)
-  }, simplify = FALSE)
-
-fryIRE %>% 
-  bind_rows() %>% 
-  dplyr::select(pathway, coef, pvalue = PValue.Mixed, FDR = FDR.Mixed) %>% 
-  ggplot(aes(y = pathway, x = -log10(pvalue))) + 
-  geom_col(aes(fill = coef, alpha = ), 
-           position = "dodge") +
-  scale_fill_viridis_d(end = 0.75) +
-  geom_vline(xintercept = 1.88) +
-  annotate(geom = "label", x = 1.8, y = "ire5_HQ", label = "FDR = 0.05")
-  #ggsave("output/plots/AB_ire.png", width = 20, height = 10, units = "cm", dpi = 400, scale = 2)
-
-
-png("output/plots4poster/KEGG_oxphos.png", width = 6, height = 10, units = "cm", res = 300)
-toptables_cqn %>% 
-  bind_rows() %>% 
-    dplyr::filter(gene_id %in% KEGG$KEGG_OXIDATIVE_PHOSPHORYLATION) %>% 
-  dplyr::select(gene_name, logFC, coef) %>% 
-  dplyr::distinct(gene_name, coef, .keep_all = T) %>% 
-  spread(key = "coef", value = "logFC") %>% 
-  column_to_rownames("gene_name") %>% 
-  pheatmap(color = colorRampPalette(rev(brewer.pal(n = 5,
-                                               name = "RdBu")))(200), 
-           breaks = seq(-0.5, 0.5, length.out = 200), 
-           angle_col = 315,
-           show_rownames = F, 
-           border_color = NA,
-           main ="KEGG_OXIDATIVE_PHOSPHORYLATION")
-           )
-dev.off()
-```
-
-### Cell type prop check
-
-Since this experiment was performed on whole larvae, we need to have a look at whether changes to cell type proportions could explain cause some artefactual changes to gene expression. We have done this previously by assessing the expression of marker genes of specific cell types. So this is what I will do here. I have taken the lists of genes frmo day 5 only from the zebrafish single cell atlas (Farnsworth et al. 2020) which contain at least 10 genes. This leaves  `r length(cell_type_markers)` gene sets (cell types) to test.
-
-```{r}
-celltype <- design %>% colnames() %>% .[2:3] %>% 
-  sapply(function(y) {
-    logCPM %>% 
-      fry(
-        index = cell_type_markers,
-        design = design, 
-        contrast = y, 
-        sort = "directional"
-      ) %>% 
-      rownames_to_column("pathway") %>% 
-      as_tibble() %>% 
-      mutate(coef = y) %>% 
-      dplyr::select(1:5, coef)
-  }, simplify = FALSE)
-
-celltype %>% 
-  bind_rows() %>% 
-  ggplot(aes(y = pathway, x = -log10(PValue))) + 
-  geom_col(aes(fill = coef), 
-           position = "dodge") +
-  scale_fill_viridis_d(end = 0.75) +
-  geom_vline(xintercept = 1.7) +
-  annotate(geom = "label", x = 1.2, y = 4.4, label = "FDR = 0.05") 
-```
-
-
-### Chrosomosomes gene sets
-
-```{r}
-fry_chr <- design %>% colnames() %>% .[2:3] %>% 
-  sapply(function(y) {
-    logCPM %>% 
-      fry(
-        index = c(chr),
-        design = design, 
-        contrast = y, 
-        sort = "mixed"
-      ) %>% 
-      rownames_to_column("pathway") %>% 
-      as_tibble() %>% 
-      mutate(coef = y)
-  }, simplify = FALSE)
-
-
-fry_chr %>% 
-  bind_rows() %>% 
-  mutate(pathway = factor(pathway, levels = c("MT", seq(1:25)))) %>% 
-  ggplot(aes(y = pathway, x = -log10(PValue.Mixed), fill = coef)) +
-  geom_col(position = "dodge")
-  
-```
-
-An enrichment of DE genes is observed on the same chromosome as the mutation. This is obsevred in the manhat plots below. 
-
-```{r}
-manhat_input <- 
-	toptables_cqn %>% 
-  bind_rows() %>% 
-	left_join(x$genes %>% 
-			  	as_tibble() %>% 
-			  	dplyr::select(start, end, chromosome, gene_id) %>% 
-			  	group_by(gene_id) %>% 
-			  	mutate(mid = mean(c(start, end)))
-	) %>% 
-  dplyr::filter(chromosome %in% seq(1:25)) %>% 
-  group_by(gene_id) %>% 
-  mutate(mid = mean(c(start, end))) %>% 
-  ungroup %>% 
-  mutate(chromosome = factor(chromosome, levels = seq(1:25)))  %>% 
-  group_by(chromosome) %>% 
-  summarise(chrLen = max(mid)) %>% 
-  mutate(chrSt = cumsum(chrLen)-chrLen) %>% 
-	dplyr::select(-chrLen) %>% 
-  left_join(toptable_1 %>% 
-              bind_rows() %>% 
-              left_join(x$genes %>% 
-                          as_tibble() %>% 
-                          dplyr::select(start, end, chromosome, gene_id) %>% 
-                          group_by(gene_id) %>% 
-                          mutate(mid = mean(c(start, end)))
-              )
-  ) %>% 
-  group_by(gene_id) %>% 
-  mutate(mid = mean(c(start, end))) %>% 
-  ungroup %>% 
-  dplyr::arrange(mid, chromosome) %>% 
-  mutate(midCum = chrSt + mid)
-
-axis <- manhat_input %>%
-  group_by(chromosome) %>%
-  dplyr::arrange(chromosome) %>%
-  summarize(center = (max(midCum) + min(midCum)) / 2) %>%
-  mutate(
-    seqnames = as.numeric(chromosome),
-    colour = rep(c("grey40", "black"), length.out = 25)
-  )
-
-ggplot(manhat_input, aes(x = midCum, y = -log10(PValue))) +
-  geom_point(aes(color=chromosome), alpha = 0.5, size = 1) +
-  geom_point(alpha = 0.5, size = 1, colour = "red", 
-             data = . %>% 
-               dplyr::filter(coef == "MPS-III" & chromosome == 24)) +
-  geom_point(alpha = 0.5, size = 1, colour = "red", 
-             data = . %>% 
-               dplyr::filter(coef ==  "EOfAD" & chromosome == 17)) +
-  scale_color_manual(values = axis$colour) +
-  scale_x_continuous(label = axis$chromosome, breaks = axis$center) +
-  scale_y_continuous(limits =c(0, 10)) + # zoom in
-  facet_wrap(~coef, ncol = 1) +
-  labs(x = "Chromosome", y = expression(paste(-log[10], "(p)"))) +
-  theme( 
-    legend.position="none",
-    panel.border = element_blank(),
-    panel.grid.major.x = element_blank(),
-    panel.grid.minor.x = element_blank()
-  ) 
+goseq.results %<>% 
+  map2(names(.), ~.x %>% mutate(coef = .y))  
 ```
 
 ## HMP
-
-Im not really detecting anything using fry in the EOfAD mutants. This is consistent with all my previous analyses. I will use the harmonic mean p val method which combines individual p vals from 3 gene set enrichment analysis methods: fry, camera and gsea. 
-
+Since I'm not detecting any significant gene sets in the EOfAD-like mutants, I need to try another method. I will use the harmonic mean p val method which combines indivisual p vals from 3 gene set enrichmen analysis methods: fry, camera and gsea.
 ```{r}
-# Make a custom function for calculating the HMP.  
-runHMP = function(gene.set.obj, 
-                  design,
-                  logCPM.df, 
-                  toptable) {
-fry <- 
-  design %>% colnames() %>% .[2:3] %>% 
+# a function to run the HMP calculation. 
+runHMP = function(
+  geneset, 
+  logCPM,
+  toptable, 
+  design, 
+  contrasts
+  
+) {
+ 
+  # run fry
+  fry <- 
+    colnames(contrasts) %>% 
   sapply(function(y) {
-  logCPM.df %>% 
-      fry(
-        index = gene.set.obj,
-        design = design, 
-        contrast = y, 
+    logCPM %>%
+      limma::fry(
+        index = geneset,
+        design = design,
+        contrast = contrasts[,y],
         sort = "mixed"
-      ) %>% 
-      rownames_to_column("pathway") %>% 
+      ) %>%
+      rownames_to_column("pathway") %>%
       as_tibble() %>% 
-      mutate(coef = y)
+      mutate(
+        coef = y, 
+        coef = str_remove(coef, pattern = " - wt.+")
+        ) 
   }, simplify = FALSE)
 
-camera <- 
-  design %>% colnames() %>% .[2:3] %>% 
+  # run camera
+  camera <- colnames(contrasts) %>% 
   sapply(function(y) {
-    logCPM.df %>% 
-      camera(
-        index = gene.set.obj,
-        design = design, 
-        contrast = y
-      ) %>% 
-      rownames_to_column("pathway") %>% 
+    logCPM %>%
+      limma::camera(
+        index = geneset,
+        design = design,
+        contrast = contrasts[,y]
+      ) %>%
+      rownames_to_column("pathway") %>%
       as_tibble() %>% 
-      mutate(coef = y)
+      mutate(coef = y, 
+             coef = str_remove(coef, pattern = " - wt.+")) 
   }, simplify = FALSE)
-
-ranks <- 
-   sapply(toptable, function(y) {
-     y %>% 
-       mutate(rankstat = sign(logFC) * log10(1/PValue)) %>% 
-       arrange(rankstat) %>% 
-       dplyr::select(c("gene_id", "rankstat")) %>% #only want the Pvalue with sign
-       with(structure(rankstat, names = gene_id)) %>% 
-       rev() # reverse so the start of the list is upregulated genes
-   }, simplify = FALSE)
-
-# Run fgsea
-
-# set a seed for a reproducible result
-set.seed(33)
-fgsea <- ranks %>%
+  
+  # create ranks for fgsea
+  ranks <-
+    sapply(toptable, function(y) {
+      y %>%
+        mutate(rankstat = sign(logFC) * log10(1/PValue)) %>%
+        arrange(rankstat) %>%
+        dplyr::select(c("gene_id", "rankstat")) %>% #only want the Pvalue with sign
+        with(structure(rankstat, names = gene_id)) %>%
+        rev() # reverse so the start of the list is upregulated genes
+    }, simplify = FALSE)
+  
+  # run fgsea
+  set.seed(1)
+  fgsea <- ranks %>% 
   sapply(function(x){
-    fgseaMultilevel(stats = x, pathways = gene.set.obj) %>%
+    fgseaMultilevel(stats = x, 
+                    pathways = geneset) %>%
       as_tibble() %>%
       dplyr::rename(FDR = padj) %>%
       mutate(padj = p.adjust(pval, "bonferroni")) %>%
       dplyr::select(pathway, pval, FDR, padj, everything()) %>%
-      arrange(pval) %>%
-      mutate(sig = padj < 0.05)
+      arrange(pval) 
   }, simplify = F)
+  
+  fgsea %<>% 
+    map2(names(.), ~.x %>% mutate(coef = .y))  
 
-fgsea$`MPS-III` %<>% 
-  mutate(coef = "MPS-III")
-fgsea$`EOfAD` %<>% 
-  mutate(coef = "EOfAD")
+  
+  # calculate HMP
+  hmp <- 
+    fry %>%
+    bind_rows() %>%
+    dplyr::select(pathway, PValue.Mixed, coef) %>%
+    dplyr::rename(fry_p = PValue.Mixed) %>%
+    left_join(camera %>%
+                bind_rows() %>%
+                dplyr::select(pathway, PValue, coef),
+              by = c("pathway", "coef")) %>%
+    dplyr::rename(camera_p = PValue) %>%
+    left_join(fgsea %>%
+                bind_rows() %>%
+                dplyr::select(pathway, pval, coef),
+              by = c("pathway", "coef")) %>%
+    dplyr::rename(fgsea_p = pval) %>%
+    bind_rows() %>%
+    nest(p = one_of(c("fry_p", "camera_p", "fgsea_p"))) %>%
+    mutate(harmonic_p = vapply(p, function(x){
+      x <- unlist(x)
+      x <- x[!is.na(x)]
+      p.hmp(x, L = 4)
+    }, numeric(1))
+    ) %>%
+    unnest() %>%
+    mutate(harmonic_p_FDR = p.adjust(harmonic_p, "fdr"),
+           sig = harmonic_p_FDR < 0.05) %>%
+    arrange(harmonic_p)
+  
+  return( 
+    list(
+      hmp = hmp,
+      fgsea = fgsea
+    ))
+}
+```
 
-fry %>% 
+### KEGG
+```{r}
+hmp.adult.kegg.cqn.bygroup <- runHMP(
+  geneset = KEGG, logCPM = logCPM, 
+  toptable = toptables_cqn_bygroup, 
+  design = design.bygroup, contrasts = contrasts
+  )
+
+sig.kegg.morethan1 <- hmp.adult.kegg.cqn.bygroup$hmp %>% 
+  dplyr::filter(harmonic_p_FDR < 0.05) %>% 
+  group_by(pathway) %>% 
+  summarise(n = n()) %>% 
+  ungroup %>% 
+  dplyr::filter(n > 1)
+
+hmp.adult.kegg.cqn.bygroup$hmp %>%   
+  dplyr::filter(pathway %in% sig.kegg.morethan1$pathway) %>% 
+  left_join(sig.kegg.morethan1) %>% 
+  mutate(
+    sex = case_when(
+      grepl(coef, pattern = "_F") ~ "female", 
+      grepl(coef, pattern = "_M") ~ "male"
+    )
+  ) %>% 
+  ggplot(
+    aes(
+      x = coef, 
+      y = reorder(pathway, n-harmonic_p)
+      )) +
+  geom_tile(
+    aes(fill = -log10(harmonic_p), alpha = sig)
+  ) +
+  geom_label(
+    aes(label = signif(harmonic_p_FDR, 2))
+  ) +
+  scale_fill_viridis_c() +
+  facet_wrap(~sex, scales = "free_x")
+```
+
+#### oxidative phosphorylation
+
+```{r}
+oxphos.adult <- toptables_cqn_bygroup %>% 
   bind_rows() %>% 
-  dplyr::select(pathway, PValue.Mixed, coef) %>% 
-  dplyr::rename(fry_p = PValue.Mixed) %>% 
-  left_join(camera %>% 
-              bind_rows() %>% 
-              dplyr::select(pathway, PValue, coef), 
-            by = c("pathway", "coef")) %>% 
-  dplyr::rename(camera_p = PValue) %>% 
-  left_join(fgsea %>% 
-              bind_rows() %>% 
-              dplyr::select(pathway, pval, coef), 
-            by = c("pathway", "coef")) %>% 
-  dplyr::rename(fgsea_p = pval) %>% 
+  dplyr::filter(gene_id %in% KEGG$KEGG_OXIDATIVE_PHOSPHORYLATION) %>% 
+  dplyr::select(gene_name, logFC, coef) %>% 
+  dplyr::distinct(gene_name, coef, .keep_all = T) %>% 
+  spread(key = "coef", value = "logFC") %>% 
+  column_to_rownames("gene_name") %>% 
+  as.matrix()
+```
+
+```{r}
+#png("output/plots/new_KEGG_hms/oxphos.png", width = 8, height = 12, units = "cm", res = 300)
+pheatmap(
+  oxphos.adult, 
+  color = colorRampPalette(rev(brewer.pal(n = 7, name = "RdBu")))(100), 
+  breaks = seq(-0.4,0.4, by = 0.01), 
+  cellwidth = 20, 
+  treeheight_row = 0, 
+  show_rownames = FALSE
+  )
+#dev.off()
+```
+
+upset plot to show the overlap of leading edge genes
+```{r}
+#png("output/plots/new_KEGG_hms/oxphos_upset.png", width = 3.5, height = 3.5, units = "cm", res = 300)
+hmp.adult.kegg.cqn.bygroup$fgsea %>% 
   bind_rows() %>% 
-  nest(p = one_of(c("fry_p", "camera_p", "fgsea_p"))) %>% 
- mutate(harmonic_p = vapply(p, function(x){
-        x <- unlist(x)
-        x <- x[!is.na(x)]
-        p.hmp(x, L = 4)
-      }, numeric(1))
- ) %>% 
-  unnest() %>% 
-  mutate(harmonic_p_FDR = p.adjust(harmonic_p, "fdr"),
-         sig = harmonic_p_FDR < 0.05) %>% 
-  arrange(harmonic_p) 
+  dplyr::filter(coef != "MPSIIIB_M") %>% 
+  dplyr::filter(pathway == "KEGG_OXIDATIVE_PHOSPHORYLATION") %>% 
+  dplyr::select(coef, leadingEdge) %>% 
+  split(f = .$coef) %>% 
+  lapply(function(y) {y$leadingEdge[[1]]}) %>% 
+  fromList() %>% 
+  upset(
+    order.by = "freq", 
+    #mb.ratio = c(0.5,0.5),
+    text.scale = 0.4, 
+    point.size = 0.2,
+    line.size = 0.2, 
+    set_size.show = FALSE
+  )
+#dev.off()
+  
+```
+
+shared leading edge genes:
+```{r}
+leadingedge.oxphos <- hmp.adult.kegg.cqn.bygroup$fgsea %>% 
+  bind_rows() %>% 
+  dplyr::filter(pathway == "KEGG_OXIDATIVE_PHOSPHORYLATION") %>% 
+  dplyr::filter(coef != "MPSIIIB_M") %>% 
+  dplyr::select(coef, leadingEdge) %>% 
+  split(f = .$coef) %>% 
+  lapply(function(y) {y$leadingEdge[[1]]}) 
+
+
+#png("output/plots/new_KEGG_hms/oxphos_leadingedge.png", width = 8, height = 6, units = "cm", res = 300)
+toptables_cqn_bygroup %>% 
+  bind_rows() %>% 
+  dplyr::filter(gene_id %in% Reduce(intersect, leadingedge.oxphos)) %>% 
+  dplyr::select(gene_name, logFC, coef) %>% 
+  dplyr::filter(coef != "MPSIIIB_M") %>% 
+  dplyr::distinct(gene_name, coef, .keep_all = T) %>% 
+  spread(key = "coef", value = "logFC") %>% 
+  column_to_rownames("gene_name") %>% 
+  as.matrix() %>% 
+  pheatmap(
+    color = colorRampPalette(rev(brewer.pal(n = 5, name = "RdBu")))(100), 
+    breaks = seq(-0.4, 0.4, by = 0.1), 
+    cluster_cols = F, 
+    cellwidth = 20,
+    treeheight_row = 0, 
+    fontsize = 6, 
+    border_color = "white", 
+    height = 20
+  )
+#dev.off()
+```
+
+#### lysosome
+
+```{r}
+lyso.adult <- toptables_cqn_bygroup %>% 
+  bind_rows() %>% 
+  dplyr::filter(gene_id %in% KEGG$KEGG_LYSOSOME) %>% 
+  dplyr::select(gene_name, logFC, coef) %>% 
+  dplyr::distinct(gene_name, coef, .keep_all = T) %>% 
+  spread(key = "coef", value = "logFC") %>% 
+  column_to_rownames("gene_name") %>% 
+  as.matrix()
+```
+
+```{r}
+#png("output/plots/new_KEGG_hms/lyso.png", width = 8, height = 12, units = "cm", res = 300)
+pheatmap(
+  lyso.adult, 
+  color = colorRampPalette(rev(brewer.pal(n = 7, name = "RdBu")))(100), 
+  breaks = seq(-0.5,0.5, by = 0.01), 
+  cellwidth = 20, 
+  treeheight_row = 0, 
+  show_rownames = FALSE
+  )
+#dev.off()
+```
+
+upset plot to show the overlap of leading edge genes
+```{r}
+#png("output/plots/new_KEGG_hms/lyso_upset.png", width = 3.5, height = 3.5, units = "cm", res = 300)
+hmp.adult.kegg.cqn.bygroup$fgsea %>% 
+  bind_rows() %>% 
+  dplyr::filter(pathway == "KEGG_LYSOSOME") %>% 
+  dplyr::select(coef, leadingEdge) %>% 
+  split(f = .$coef) %>% 
+  lapply(function(y) {y$leadingEdge[[1]]}) %>%
+  fromList() %>% 
+  upset(
+    order.by = "freq", 
+    #mb.ratio = c(0.5,0.5),
+    text.scale = 0.4, 
+    point.size = 0.2,
+    line.size = 0.2, 
+    set_size.show = FALSE
+  )
+#dev.off()
+```
+
+leading edge genes shared 
+```{r}
+leadingedge.lyso <- hmp.adult.kegg.cqn.bygroup$fgsea %>% 
+  bind_rows() %>% 
+  dplyr::filter(pathway == "KEGG_LYSOSOME") %>% 
+  dplyr::select(coef, leadingEdge) %>% 
+  split(f = .$coef) %>% 
+  lapply(function(y) {y$leadingEdge[[1]]}) 
+
+#png("output/plots/new_KEGG_hms/lyso_leadingedge.png", width = 8, height = 6, units = "cm", res = 300)
+toptables_cqn_bygroup %>% 
+  bind_rows() %>% 
+  dplyr::filter(gene_id %in% Reduce(intersect, leadingedge.lyso)) %>% 
+  dplyr::select(gene_name, logFC, coef) %>% 
+  dplyr::distinct(gene_name, coef, .keep_all = T) %>% 
+  spread(key = "coef", value = "logFC") %>% 
+  column_to_rownames("gene_name") %>% 
+  as.matrix() %>% 
+  pheatmap(
+    color = colorRampPalette(rev(brewer.pal(n = 5, name = "RdBu")))(100), 
+    breaks = seq(-0.4, 0.4, by = 0.1), 
+    cluster_cols = F, 
+    cellwidth = 20,
+    treeheight_row = 0, 
+    fontsize = 6, 
+    border_color = "white", 
+    height = 20
+  )
+#dev.off()
+```
+
+#### ribosome
+
+```{r}
+ribo.adult <- toptables_cqn_bygroup %>% 
+  bind_rows() %>% 
+  dplyr::filter(gene_id %in% KEGG$KEGG_RIBOSOME) %>% 
+  dplyr::select(gene_name, logFC, coef) %>% 
+  dplyr::distinct(gene_name, coef, .keep_all = T) %>% 
+  spread(key = "coef", value = "logFC") %>% 
+  column_to_rownames("gene_name") %>% 
+  as.matrix()
+```
+
+```{r}
+#png("output/plots/new_KEGG_hms/ribo.png", width = 8, height = 12, units = "cm", res = 300)
+pheatmap(
+  ribo.adult, 
+  color = colorRampPalette(rev(brewer.pal(n = 7, name = "RdBu")))(100), 
+  breaks = seq(-0.5,0.5, by = 0.01), 
+  cellwidth = 20, 
+  treeheight_row = 0, 
+  show_rownames = FALSE, 
+  border_color = NA
+  )
+#dev.off()
+```
+
+upset plot to show the overlap of leading edge genes
+```{r}
+# png("output/plots/new_KEGG_hms/ribo_upset.png", width = 3.5, height = 3.5, units = "cm", res = 300)
+hmp.adult.kegg.cqn.bygroup$fgsea %>% 
+  bind_rows() %>% 
+  dplyr::filter(pathway == "KEGG_RIBOSOME") %>% 
+  dplyr::filter(coef != "EOfADlike_M") %>% 
+  dplyr::select(coef, leadingEdge) %>% 
+  split(f = .$coef) %>% 
+  lapply(function(y) {y$leadingEdge[[1]]}) %>%
+  fromList() %>% 
+  upset(
+    order.by = "freq", 
+    #mb.ratio = c(0.5,0.5),
+    text.scale = 0.4, 
+    point.size = 0.2,
+    line.size = 0.2, 
+    set_size.show = FALSE
+  )
+#dev.off()
+```
+
+
+shared leadging edge genes
+```{r}
+leadingedge.ribo <- hmp.adult.kegg.cqn.bygroup$fgsea %>% 
+  bind_rows() %>% 
+  dplyr::filter(pathway == "KEGG_RIBOSOME") %>% 
+  dplyr::filter(coef != "EOfADlike_M") %>% 
+  dplyr::select(coef, leadingEdge) %>% 
+  split(f = .$coef) %>% 
+  lapply(function(y) {y$leadingEdge[[1]]}) 
+
+#png("output/plots/new_KEGG_hms/ribo_leadingedge.png", width = 8, height = 10, units = "cm", res = 300)
+toptables_cqn_bygroup %>% 
+  bind_rows() %>% 
+  dplyr::filter(coef != "EOfADlike_M") %>% 
+  dplyr::filter(gene_id %in% Reduce(intersect, leadingedge.ribo)) %>% 
+  dplyr::select(gene_name, logFC, coef) %>% 
+  dplyr::distinct(gene_name, coef, .keep_all = T) %>% 
+  spread(key = "coef", value = "logFC") %>% 
+  column_to_rownames("gene_name") %>% 
+  as.matrix() %>% 
+  pheatmap(
+    color = colorRampPalette(rev(brewer.pal(n = 5, name = "RdBu")))(100), 
+    breaks = seq(-0.4, 0.4, by = 0.1), 
+    cluster_cols = F, 
+    cellwidth = 20,
+    treeheight_row = 0, 
+    fontsize = 6, 
+    border_color = "white", 
+    height = 22
+  )
+#dev.off()
+```
+
+#### inflammation gene sets
+```{r}
+plot.cell.type.hm = function(celltype.gs, plot.title) {
+
+  toptables_cqn_bygroup %>%
+    bind_rows() %>%
+    mutate(
+      exp = "mRNA"
+    ) %>%
+    dplyr::select(
+      gene_name, logFC, PValue, FDR, coef, exp
+    ) %>%
+    bind_rows(
+      toptables %>%
+        bind_rows() %>%
+        mutate(exp = "protein") %>%
+        dplyr::filter(coef != "wt_M - wt_F") %>%
+        dplyr::select(
+          gene_name, logFC, PValue = pval, FDR, coef, exp
+        )
+    ) %>%
+    dplyr::filter(
+      gene_name %in% celltype.gs
+    ) %>%
+    group_by(exp) %>%
+
+    tidyHeatmap::heatmap(
+      # input data
+      .column = gene_name,
+      .row = coef,
+      .value = logFC,
+
+      # colours
+      palette_value = circlize::colorRamp2(
+        seq(-0.4, 0.4, length.out = 11),
+        rev(RColorBrewer::brewer.pal(11, "RdBu"))),
+      rect_gp = grid::gpar(col = "#161616", lwd = 0.5),
+
+      # sizes
+      row_names_gp = gpar(fontsize = 14),
+      column_names_gp = gpar(fontsize = 14),
+      heatmap_width = unit(28, "cm"),
+      heatmap_height = unit(11, "cm"),
+
+
+      # dendro
+      cluster_rows = FALSE,
+      show_column_dend = F,
+      show_row_dend = F
+    ) %>%
+    annotation_tile(exp, show_legend = FALSE) %>%
+    wrap_heatmap() +
+    ggtitle(label = paste(plot.title))
 
 }
 ```
 
-```{r}
-hmp.fry <- runHMP(gene.set.obj = KEGG, 
-                  design = design, 
-                  logCPM.df = logCPM, 
-                  toptable = toptables_cqn)
 
-sigpaths <- hmp.fry %>% 
-  dplyr::filter(sig == TRUE) %>% 
-  .$pathway
-
-sig_in <- hmp.fry %>% 
-  dplyr::select(pathway, coef, sig) %>% 
-  spread(key = coef, value = sig ) %>% 
-  mutate(sig_in = case_when(
-    EOfAD == FALSE & `MPS-III` == TRUE ~ "mpsiiionly",
-    EOfAD == FALSE & `MPS-III` == FALSE ~ "neither",
-    EOfAD == TRUE & `MPS-III` == TRUE ~ "both",
-    EOfAD == TRUE & `MPS-III` == F ~ "fas only"
-  )) %>% 
-  dplyr::select(pathway, sig_in)
-
-hmp.fry %>% 
-  dplyr::filter(pathway %in% sigpaths) %>% 
-  left_join(sig_in) %>% 
-  ggplot(aes(y = pathway, x = -log10(harmonic_p))) +
-  geom_col(aes(fill = coef,alpha = sig), 
-           position = "dodge") +
-  geom_vline(xintercept = -log10(3.0000e-03)) + 
-  scale_alpha_manual(values = c(0.5, 1))+
-  facet_wrap(~sig_in, scales = "free_y", ncol = 1, strip.position = "right")
-```
-
+### fry: cell types
 
 ```{r}
-toptables_cqn %>% 
-  bind_rows() %>% 
-    dplyr::filter(gene_id %in% cell_type_markers$`Neural stem cell`) %>% 
-  dplyr::select(gene_name, logFC, coef) %>% 
-  dplyr::distinct(gene_name, coef, .keep_all = T) %>% 
-  spread(key = "coef", value = "logFC") %>% 
-  column_to_rownames("gene_name") %>% 
-  t() %>% 
-  pheatmap(color = colorRampPalette(rev(brewer.pal(n = 5,
-                                               name = "RdBu")))(100), 
-         #  main = "KEGG_RIBOSOME", 
-           breaks = c(seq(min(.), 0, length.out=ceiling(100/2) + 1), 
-              seq(max(.)/100, max(.), length.out=50)), 
-           cellheight = 30, 
-           #cellwidth = 3,
-           angle_col = 45,
-           treeheight_row = 0, 
-           treeheight_col = 0, 
-           show_colnames = T, 
-         fontsize = 20
-           )
+fry.celltype.RNAseq <- 
+  colnames(contrasts) %>% 
+  sapply(function(y) {
+    logCPM %>%
+      limma::fry(
+        index = cell_type_markers,
+        design = design.bygroup,
+        contrast = contrasts[,y],
+        sort = "directional"
+      ) %>%
+      rownames_to_column("pathway") %>%
+      as_tibble() %>% 
+      mutate(
+        coef = y, 
+        coef = str_remove(coef, pattern = " - wt.+") # cleanup the coef col
+      ) 
+  }, simplify = FALSE)
 
-toptables_cqn %>% 
-  bind_rows() %>% 
-    dplyr::filter(gene_id %in% KEGG$KEGG_RIBOSOME) %>% 
-  dplyr::select(gene_name, logFC, coef) %>% 
-  dplyr::distinct(gene_name, coef, .keep_all = T) %>% 
-  spread(key = "coef", value = "logFC") %>% 
-  column_to_rownames("gene_name") %>% 
-  ggscatter(x = "EOfAD", y = "MPS-III", 
-          add = "reg.line", 
-          conf.int = TRUE, 
-          cor.coef = TRUE, 
-          cor.method = "spearman",
-  )
 
-toptables_cqn %>% 
+fry.celltype.RNAseq %>% 
   bind_rows() %>% 
-    dplyr::filter(gene_id %in% KEGG$ %>% ) %>% 
-  dplyr::select(gene_name, logFC, coef) %>% 
-  dplyr::distinct(gene_name, coef, .keep_all = T) %>% 
-  spread(key = "coef", value = "logFC") %>% 
-  column_to_rownames("gene_name") %>% 
-  ggscatter(x = "EOfAD", y = "MPS-III", 
-          add = "reg.line", 
-          conf.int = TRUE, 
-          cor.coef = TRUE, 
-          cor.method = "spearman",
-  )
+  mutate(
+    logpval = -log10(PValue), 
+    FDR = signif(FDR, 2)
+    ) %>% 
+  tidyHeatmap::heatmap(
+    
+    .row = pathway, 
+    .column = coef, 
+    .value = logpval, 
+    
+    show_column_dend = F,
+    show_row_dend = F,
+    
+    col = viridis::viridis(30)
+  
+) %>% 
+  layer_text(
+    .value = FDR, 
+    FDR < 0.1
+    )
 
-toptables_cqn %>% 
-  bind_rows() %>% 
-    dplyr::filter(gene_id %in% KEGG$KEGG_PARKINSONS_DISEASE) %>% 
-  dplyr::select(gene_name, logFC, coef) %>% 
-  dplyr::distinct(gene_name, coef, .keep_all = T) %>% 
-  spread(key = "coef", value = "logFC") %>% 
-  column_to_rownames("gene_name") %>% 
-  ggscatter(x = "EOfAD", y = "MPS-III", 
-          add = "reg.line", 
-          conf.int = TRUE, 
-          cor.coef = TRUE, 
-          cor.method = "spearman",
-  )
-
-toptables_cqn %>% 
-  bind_rows() %>% 
-    dplyr::filter(gene_id %in% KEGG$KEGG_OXIDATIVE_PHOSPHORYLATION) %>% 
-  dplyr::select(gene_name, logFC, coef) %>% 
-  dplyr::distinct(gene_name, coef, .keep_all = T) %>% 
-  spread(key = "coef", value = "logFC") %>% 
-  column_to_rownames("gene_name") %>% 
-  ggscatter(x = "EOfAD", y = "MPS-III", 
-          add = "reg.line", 
-          conf.int = TRUE, 
-          cor.coef = TRUE, 
-          cor.method = "spearman",
-  )
 ```
+
 
 ## HMP IRE
 
 ```{r}
-hmp.ire <- runHMP(gene.set.obj = ireGenes, 
-       design = design, 
-       logCPM.df = logCPM, 
-       toptable = toptables_cqn)
+hmp.adult.IREgenes.cqn.bygroup <- runHMP(
+  geneset = ireGenes, logCPM = logCPM, 
+  toptable = toptables_cqn_bygroup, 
+  design = design.bygroup, contrasts = contrasts
+  )
 
-hmp.ire %>% 
-  ggplot(aes(y = pathway, x = -log10(harmonic_p))) +
-  geom_col(aes(fill = coef,
-               alpha = sig), 
-           position = "dodge") +
-  geom_vline(xintercept = -log10(3.0000e-03)) + 
-  scale_alpha_manual(values = c(0.5, 1))
+hmp.adult.IREgenes.cqn.bygroup$hmp %>% 
+  mutate(
+    logpval = -log10(harmonic_p), 
+    harmonic_p_FDR = signif(harmonic_p_FDR, 2)
+    ) %>% 
+  tidyHeatmap::heatmap(
+    
+    .row = pathway, 
+    .column = coef, 
+    .value = logpval, 
+    
+    show_column_dend = F,
+    show_row_dend = F,
+    
+    col = colorRamp2(seq(0, 4, length = 10), viridis::viridis(10))
+  ) %>% 
+  layer_text(
+    .value = harmonic_p_FDR,
+    )
 
 ```
-
-# check the tf and ferritin genes
-```{r}
-iron_genes <- x$genes %>% 
-  dplyr::filter(grepl(description, pattern = "transferrin|ferri")) %>% 
-  .$gene_id
-
-
-logCPM.adult[iron_genes,] %>%
-  as.data.frame() %>% 
-  rownames_to_column("gene_id") %>% 
-  gather(key = "sample", value = "logCPM", 2:25) %>% 
-  left_join(x.adult$samples) %>% 
-  left_join(x$genes) %>% 
-  ggplot(aes(x = Genotype, y = logCPM)) +
-  geom_boxplot(outlier.shape = NA) +
-  geom_jitter(aes(shape = sex)) +
-  stat_mean(geom = "bar", colour = "black", fill = NA) +
-  facet_wrap(~gene_name, scales = "free_y")
-  
-```
-
 
 # Post-hoc power calc
 ```{r}
 set.seed(2016)
 
-mu <- x$counts %>%
-  as.data.frame() %>%
-  .[grepl(colnames(x$counts), pattern = "wt")] %>%
+# convert CQN logCPM to counts. 
+mu <- logCPM %>% 
+  as.data.frame() %>% 
+  rownames_to_column("gene_id") %>% 
+  gather(key = "sample", value = "logCPM", colnames(x)) %>%
+  dplyr::filter(grepl(sample, pattern = "wt")) %>% 
+  left_join(
+    x$samples %>% dplyr::select(sample, lib.size)
+    ) %>% 
+  mutate(
+    CPM = 10^logCPM, 
+    counts = CPM * lib.size
+    ) %>% 
+  as_tibble() %>% 
+  dplyr::select(-logCPM, - lib.size, -CPM) %>% 
+  pivot_wider(
+    names_from = "sample", values_from = "counts") %>% 
+  column_to_rownames("gene_id") %>% 
   rowMeans()
 
-disp <-  x %>% estimateDisp() %>% . $tagwise.dispersion
+
+disp <- logCPM %>% 
+  as.data.frame() %>% 
+  rownames_to_column("gene_id") %>% 
+  gather(key = "sample", value = "logCPM", colnames(x)) %>%
+  dplyr::filter(grepl(sample, pattern = "wt")) %>% 
+  left_join(
+    x$samples %>% dplyr::select(sample, lib.size)
+    ) %>% 
+  mutate(
+    CPM = 10^logCPM, 
+    counts = CPM * lib.size
+    ) %>% 
+  as_tibble() %>% 
+  dplyr::select(-logCPM, - lib.size, -CPM) %>% 
+  pivot_wider(
+    names_from = "sample", values_from = "counts") %>% 
+  column_to_rownames("gene_id") %>% 
+  DGEList() %>% 
+  estimateDisp() %>% 
+  .$tagwise.dispersion
 
 fc <- function(y){exp(rnorm(y, log(1), 0.5*log(2)))}
 
 power <- ssizeRNA_vary(nGenes = dim(x)[1], # Num detectable genes
-              pi0 = 0.8, # Proportion of non-DE genes
+              pi0 = 0.9, # Proportion of non-DE genes
               m = 50, # pseudo sample size
               mu = mu, # Average read count for each gene in control group. Calculated from this current dataset)
               disp = disp, # Dispersion parameter for each gene
               fc = fc, # Fold change per gene
               fdr = 0.05, # FDR level to control
-              power = 0.6, # power level
+              power = 0.9, # power level
               maxN = 40,
               replace = T
                 ) 
@@ -1472,165 +1388,162 @@ power$power %>%
   ggplot(aes(x = n, y = Power)) +
   geom_point() + 
   geom_line() +
-  geom_vline(xintercept = 8, colour = "red") +
-  annotate(geom = "label", label = "n = 8, ~53% power", 
-           x = 15, y = 0.4, colour = "red")
+  scale_x_continuous(limits = c(0,20))
 ```
 
 ## Data export
 ```{r}
 x %>% saveRDS("data/R_objects/adult_brain/dge.rds")
 logCPM %>% saveRDS("data/R_objects/adult_brain/logcpm.rds")
-toptables_cqn %>% saveRDS("data/R_objects/adult_brain/toptablescqn.rds")
-hmp.fry %>% saveRDS("data/R_objects/adult_brain/hmp_kegg.rds")
-hmp.ire %>% saveRDS("data/R_objects/adult_brain/hmp_ire.rds")
-celltype %>% saveRDS("data/R_objects/adult_brain/celltype.rds") 
+toptables_cqn_bygroup %>% saveRDS("data/R_objects/adult_brain/toptablescqn_bysex.rds")
+fry.celltype.RNAseq %>% saveRDS("data/R_objects/adult_brain/fry_cell_RNAseq.rds")
+hmp.adult.IREgenes.cqn.bygroup %>% saveRDS("data/R_objects/adult_brain/hmp_ire.rds")
+hmp.adult.kegg.cqn.bygroup %>% saveRDS("data/R_objects/adult_brain/hmp.kegg.rna.rds") 
 ```
 
 
 
 
-## extra plots
-```{r}
-hmp.fry %>% 
-  dplyr::filter(pathway %in% sigpaths) %>% 
-  arrange(harmonic_p_FDR) %>% 
-  mutate(order = case_when(
-    pathway %in% c("KEGG_OXIDATIVE_PHOSPHORYLATION", "KEGG_RIBOSOME") ~ 1,
-    pathway == "KEGG_PARKINSONS_DISEASE" ~ 2,
-    pathway == "KEGG_LYSOSOME" ~ 3,
-    pathway == "KEGG_OTHER_GLYCAN_DEGRADATION" ~ 4,
-    pathway == "KEGG_AMINO_SUGAR_AND_NUCLEOTIDE_SUGAR_METABOLISM" ~ 5,
-    pathway == "KEGG_GLYCOSAMINOGLYCAN_DEGRADATION" ~ 6,
-    TRUE ~7
-           )
-    ) %>% 
-  ggplot(aes(x = coef, y = reorder(pathway, -order))) + 
-  geom_tile(aes(fill = -log10(harmonic_p), 
-                alpha = sig)) +
-  geom_label(aes(label = signif(harmonic_p_FDR, digits = 2)), 
-             fill = NA) +
-  scale_fill_viridis_c() +
-  labs(y = "KEGG gene set", 
-       x = "", 
-       alpha = "FDR p < 0.05") +
-  theme_classic()
-```
+<!-- ## extra plots -->
+<!-- ```{r} -->
+<!-- hmp.fry %>%  -->
+<!--   dplyr::filter(pathway %in% sigpaths) %>%  -->
+<!--   arrange(harmonic_p_FDR) %>%  -->
+<!--   mutate(order = case_when( -->
+<!--     pathway %in% c("KEGG_OXIDATIVE_PHOSPHORYLATION", "KEGG_RIBOSOME") ~ 1, -->
+<!--     pathway == "KEGG_PARKINSONS_DISEASE" ~ 2, -->
+<!--     pathway == "KEGG_LYSOSOME" ~ 3, -->
+<!--     pathway == "KEGG_OTHER_GLYCAN_DEGRADATION" ~ 4, -->
+<!--     pathway == "KEGG_AMINO_SUGAR_AND_NUCLEOTIDE_SUGAR_METABOLISM" ~ 5, -->
+<!--     pathway == "KEGG_GLYCOSAMINOGLYCAN_DEGRADATION" ~ 6, -->
+<!--     TRUE ~7 -->
+<!--            ) -->
+<!--     ) %>%  -->
+<!--   ggplot(aes(x = coef, y = reorder(pathway, -order))) +  -->
+<!--   geom_tile(aes(fill = -log10(harmonic_p),  -->
+<!--                 alpha = sig)) + -->
+<!--   geom_label(aes(label = signif(harmonic_p_FDR, digits = 2)),  -->
+<!--              fill = NA) + -->
+<!--   scale_fill_viridis_c() + -->
+<!--   labs(y = "KEGG gene set",  -->
+<!--        x = "",  -->
+<!--        alpha = "FDR p < 0.05") + -->
+<!--   theme_classic() -->
+<!-- ``` -->
 
-# compare with Nhis experiment
-```{r}
+<!-- # compare with Nhis experiment -->
+<!-- ```{r} -->
+<!-- x.nhi <- readRDS("data/R_objects/adult_brain/dgeNhi.rds") -->
+<!-- logCPM.nhi <- readRDS("data/R_objects/adult_brain/logcpmNhi.rds") -->
+<!-- toptable.cqn.nhi <- readRDS("data/R_objects/adult_brain/toptablescqnNhi.rds") -->
 
-x.nhi <- readRDS("data/R_objects/adult_brain/dgeNhi.rds")
-logCPM.nhi <- readRDS("data/R_objects/adult_brain/logcpmNhi.rds")
-toptable.cqn.nhi <- readRDS("data/R_objects/adult_brain/toptablescqnNhi.rds")
+<!-- hmp.ire.nhi <- readRDS("data/R_objects/adult_brain/hmp_ireNhi.rds") -->
+<!-- fry.go.nhi <- readRDS("data/R_objects/adult_brain/fryGoNhi.rds") -->
+<!-- hmp.kegg.nhi <- readRDS("data/R_objects/adult_brain/hmp_keggNhi.rds") -->
 
-hmp.ire.nhi <- readRDS("data/R_objects/adult_brain/hmp_ireNhi.rds")
-fry.go.nhi <- readRDS("data/R_objects/adult_brain/fryGoNhi.rds")
-hmp.kegg.nhi <- readRDS("data/R_objects/adult_brain/hmp_keggNhi.rds")
+<!-- ``` -->
 
-```
-
-```{r}
-toptable.cqn.nhi <- toptable.cqn.nhi$`Q96_K97del/+` %<>% 
-  mutate(coef = "EOfAD-like/+ exp 2")
-```
+<!-- ```{r} -->
+<!-- toptable.cqn.nhi <- toptable.cqn.nhi$`Q96_K97del/+` %<>%  -->
+<!--   mutate(coef = "EOfAD-like/+ exp 2") -->
+<!-- ``` -->
 
 
-```{r}
-png("output/plots/oxphos_kegg_adultBrain2.png", width = 7, height = 10, units = "cm", res = 300)
-toptables_cqn %>% 
-  bind_rows() %>% 
-  bind_rows(toptable.cqn.nhi) %>% 
-  dplyr::filter(gene_id %in% KEGG$KEGG_OXIDATIVE_PHOSPHORYLATION) %>% 
-  dplyr::select(gene_name, logFC, coef) %>% 
-  dplyr::distinct(gene_name, coef, .keep_all = T) %>% 
-  spread(key = "coef", value = "logFC") %>% 
-  column_to_rownames("gene_name") %>% 
-  na.omit %>% 
-  pheatmap(color = colorRampPalette(rev(brewer.pal(n = 5,
-                                               name = "RdBu")))(100),
-           breaks = seq(-0.4,0.4, length.out = 100), 
-           #cellheight = 30, cellwidth = 12,
-           border_color = NA, 
-           angle_col = 45,
-           show_rownames = F,
-           cluster_rows = T,
-           treeheight_row = 0, treeheight_col = 0
-           )
-dev.off()
-```
+<!-- ```{r} -->
+<!-- png("output/plots/oxphos_kegg_adultBrain2.png", width = 7, height = 10, units = "cm", res = 300) -->
+<!-- toptables_cqn %>%  -->
+<!--   bind_rows() %>%  -->
+<!--   bind_rows(toptable.cqn.nhi) %>%  -->
+<!--   dplyr::filter(gene_id %in% KEGG$KEGG_OXIDATIVE_PHOSPHORYLATION) %>%  -->
+<!--   dplyr::select(gene_name, logFC, coef) %>%  -->
+<!--   dplyr::distinct(gene_name, coef, .keep_all = T) %>%  -->
+<!--   spread(key = "coef", value = "logFC") %>%  -->
+<!--   column_to_rownames("gene_name") %>%  -->
+<!--   na.omit %>%  -->
+<!--   pheatmap(color = colorRampPalette(rev(brewer.pal(n = 5, -->
+<!--                                                name = "RdBu")))(100), -->
+<!--            breaks = seq(-0.4,0.4, length.out = 100),  -->
+<!--            #cellheight = 30, cellwidth = 12, -->
+<!--            border_color = NA,  -->
+<!--            angle_col = 45, -->
+<!--            show_rownames = F, -->
+<!--            cluster_rows = T, -->
+<!--            treeheight_row = 0, treeheight_col = 0 -->
+<!--            ) -->
+<!-- dev.off() -->
+<!-- ``` -->
 
-```{r}
-png("output/plots/lyso_kegg_adultBrain2.png", width = 7, height = 10, units = "cm", res = 300)
-toptables_cqn %>% 
-  bind_rows() %>% 
-  bind_rows(toptable.cqn.nhi) %>% 
-  dplyr::filter(gene_id %in% KEGG$KEGG_LYSOSOME) %>% 
-  dplyr::select(gene_name, logFC, coef) %>% 
-  dplyr::distinct(gene_name, coef, .keep_all = T) %>% 
-  spread(key = "coef", value = "logFC") %>% 
-  column_to_rownames("gene_name") %>% 
-  na.omit %>% 
-  pheatmap(color = colorRampPalette(rev(brewer.pal(n = 5,
-                                               name = "RdBu")))(100),
-           breaks = seq(-0.5,0.5, length.out = 100), 
-           #cellheight = 30, cellwidth = 12,
-           border_color = NA, 
-           angle_col = 45,
-           show_rownames = F,
-           cluster_rows = T,
-           treeheight_row = 0, treeheight_col = 0
-           )
-dev.off()
-```
+<!-- ```{r} -->
+<!-- png("output/plots/lyso_kegg_adultBrain2.png", width = 7, height = 10, units = "cm", res = 300) -->
+<!-- toptables_cqn %>%  -->
+<!--   bind_rows() %>%  -->
+<!--   bind_rows(toptable.cqn.nhi) %>%  -->
+<!--   dplyr::filter(gene_id %in% KEGG$KEGG_LYSOSOME) %>%  -->
+<!--   dplyr::select(gene_name, logFC, coef) %>%  -->
+<!--   dplyr::distinct(gene_name, coef, .keep_all = T) %>%  -->
+<!--   spread(key = "coef", value = "logFC") %>%  -->
+<!--   column_to_rownames("gene_name") %>%  -->
+<!--   na.omit %>%  -->
+<!--   pheatmap(color = colorRampPalette(rev(brewer.pal(n = 5, -->
+<!--                                                name = "RdBu")))(100), -->
+<!--            breaks = seq(-0.5,0.5, length.out = 100),  -->
+<!--            #cellheight = 30, cellwidth = 12, -->
+<!--            border_color = NA,  -->
+<!--            angle_col = 45, -->
+<!--            show_rownames = F, -->
+<!--            cluster_rows = T, -->
+<!--            treeheight_row = 0, treeheight_col = 0 -->
+<!--            ) -->
+<!-- dev.off() -->
+<!-- ``` -->
 
-```{r}
-png("output/plots/complement__adultBrain2.png", width = 7, height = 10, units = "cm", res = 300)
-toptables_cqn %>% 
-  bind_rows() %>% 
-  bind_rows(toptable.cqn.nhi) %>% 
-  dplyr::filter(gene_id %in% KEGG$KEGG_COMPLEMENT_AND_COAGULATION_CASCADES) %>% 
-  dplyr::select(gene_name, logFC, coef) %>% 
-  dplyr::distinct(gene_name, coef, .keep_all = T) %>% 
-  spread(key = "coef", value = "logFC") %>% 
-  column_to_rownames("gene_name") %>% 
-  na.omit %>% 
-  pheatmap(color = colorRampPalette(rev(brewer.pal(n = 5,
-                                               name = "RdBu")))(100),
-           breaks = seq(-0.75,0.75, length.out = 100), 
-           #cellheight = 30, cellwidth = 12,
-           border_color = NA, 
-           angle_col = 45,
-           show_rownames = F,
-           cluster_rows = T,
-           treeheight_row = 0, treeheight_col = 0
-           )
-dev.off()
-```
+<!-- ```{r} -->
+<!-- png("output/plots/complement__adultBrain2.png", width = 7, height = 10, units = "cm", res = 300) -->
+<!-- toptables_cqn %>%  -->
+<!--   bind_rows() %>%  -->
+<!--   bind_rows(toptable.cqn.nhi) %>%  -->
+<!--   dplyr::filter(gene_id %in% KEGG$KEGG_COMPLEMENT_AND_COAGULATION_CASCADES) %>%  -->
+<!--   dplyr::select(gene_name, logFC, coef) %>%  -->
+<!--   dplyr::distinct(gene_name, coef, .keep_all = T) %>%  -->
+<!--   spread(key = "coef", value = "logFC") %>%  -->
+<!--   column_to_rownames("gene_name") %>%  -->
+<!--   na.omit %>%  -->
+<!--   pheatmap(color = colorRampPalette(rev(brewer.pal(n = 5, -->
+<!--                                                name = "RdBu")))(100), -->
+<!--            breaks = seq(-0.75,0.75, length.out = 100),  -->
+<!--            #cellheight = 30, cellwidth = 12, -->
+<!--            border_color = NA,  -->
+<!--            angle_col = 45, -->
+<!--            show_rownames = F, -->
+<!--            cluster_rows = T, -->
+<!--            treeheight_row = 0, treeheight_col = 0 -->
+<!--            ) -->
+<!-- dev.off() -->
+<!-- ``` -->
 
-```{r}
-png("output/plots/complement__adultBrain2.png", width = 7, height = 10, units = "cm", res = 300)
-toptables_cqn %>% 
-  bind_rows() %>% 
-  bind_rows(toptable.cqn.nhi) %>% 
-  dplyr::filter(gene_id %in% GO$GO_IRON_ION_BINDING) %>% 
-  dplyr::select(gene_name, logFC, coef) %>% 
-  dplyr::distinct(gene_name, coef, .keep_all = T) %>% 
-  spread(key = "coef", value = "logFC") %>% 
-  column_to_rownames("gene_name") %>% 
-  na.omit %>% 
-  pheatmap(color = colorRampPalette(rev(brewer.pal(n = 5,
-                                               name = "RdBu")))(100),
-           breaks = seq(-0.75,0.75, length.out = 100), 
-           #cellheight = 30, cellwidth = 12,
-           border_color = NA, 
-           angle_col = 45,
-           show_rownames = F,
-           cluster_rows = T,
-           treeheight_row = 0, treeheight_col = 0
-           )
-dev.off()
-```
+<!-- ```{r} -->
+<!-- png("output/plots/complement__adultBrain2.png", width = 7, height = 10, units = "cm", res = 300) -->
+<!-- toptables_cqn %>%  -->
+<!--   bind_rows() %>%  -->
+<!--   bind_rows(toptable.cqn.nhi) %>%  -->
+<!--   dplyr::filter(gene_id %in% GO$GO_IRON_ION_BINDING) %>%  -->
+<!--   dplyr::select(gene_name, logFC, coef) %>%  -->
+<!--   dplyr::distinct(gene_name, coef, .keep_all = T) %>%  -->
+<!--   spread(key = "coef", value = "logFC") %>%  -->
+<!--   column_to_rownames("gene_name") %>%  -->
+<!--   na.omit %>%  -->
+<!--   pheatmap(color = colorRampPalette(rev(brewer.pal(n = 5, -->
+<!--                                                name = "RdBu")))(100), -->
+<!--            breaks = seq(-0.75,0.75, length.out = 100),  -->
+<!--            #cellheight = 30, cellwidth = 12, -->
+<!--            border_color = NA,  -->
+<!--            angle_col = 45, -->
+<!--            show_rownames = F, -->
+<!--            cluster_rows = T, -->
+<!--            treeheight_row = 0, treeheight_col = 0 -->
+<!--            ) -->
+<!-- dev.off() -->
+<!-- ``` -->
 
 
 

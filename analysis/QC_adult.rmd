@@ -1,7 +1,7 @@
 ---
-title: "QC of 7dpf RNAseq dataset"
+title: "QC_adult"
 author: "Karissa Barthelson"
-date: "2021-11-20"
+date: "2024-11-01"
 output: workflowr::wflow_html
 editor_options:
   chunk_output_type: console
@@ -65,40 +65,32 @@ mcols(grGenes) %<>%
 ```
 
 ```{r meta}
-meta <- read_excel("data/larvae/meta/naglu_v_Q96_larvae_metadata.xlsx", sheet = 3) %>% 
-  na.omit() %>% 
-  left_join(read_excel("data/larvae/meta/naglu_v_Q96_larvae_metadata.xlsx", sheet = 5) %>% 
-              mutate(temp1 = str_split(temp, pattern = " ")) %>% 
-              mutate(ULN = lapply(temp1, function(x){
-                x %>% 
-                  .[1]
-              }), 
-              sample_name =  lapply(temp1, function(x){
-                x %>% 
-                  .[2]
-              }), 
-              RIN = lapply(temp1, function(x){
-                x %>% 
-                  .[4]
-              })
-              ) %>% 
-              unnest() %>% 
-              dplyr::select(ULN, sample_name, RIN) %>% 
-              na.omit() %>% 
-              unique
+# readin meta and tidy up columns
+meta <- read_excel("data/adult_brain/karissas_metadata.xlsx", sheet = "onlyseq") %>% 
+  mutate(genotype = case_when(
+    `usable genotype?` == "wt" ~ "wt", 
+    `usable genotype?` == "EOfAD" ~ "EOfADlike", 
+    `usable genotype?` == "MPS-III" ~ "MPSIIIB"
   ) %>% 
-  mutate(Genotype = case_when(
-    `naglu genotype` == "wt" & `psen1 genotype` == "wt" ~ "wt",
-    `naglu genotype` == "A603fs/A603fs" & `psen1 genotype` == "wt" ~ "MPS-IIIB",
-    `naglu genotype` == "wt" & `psen1 genotype` == "Q96_K97del/+" ~ "EOfAD-like",
+    factor(levels = c("wt",  "EOfADlike", "MPSIIIB")), 
+  tank = as.factor(tank), 
+  sex  = as.factor(sex),
+  sample = paste0(fish, "_", genotype), 
+  group = paste0(genotype, "_", sex) %>% as.factor(),
+  age = "6 m adult brain",
+  RIN = as.numeric(`RIN/DIN`)
   ) %>% 
-    factor(levels = c("wt", "MPS-IIIB", "EOfAD-like")))
+  dplyr::select(
+    # reorder the metadata nicely
+    fish,genotype,sex,group,batch,tank,RIN,everything()
+    ) %>% 
+  as_tibble()
 ```
 
 
-Here, I will assess the quality of the RNA-seq data for the *psen1* Q96_K97del/+ vs *naglu* A603fs/A603fs experiment on zebrafish larvae at 7 days post fertilisation (dpf). 
+Here, I will assess the quality of the RNA-seq data for the *psen1* Q96_K97del/+ vs *naglu* A603fs/A603fs experiment on zebrafish brains at 6 mo old. 
 
-Total RNA was purified from the head end of the individual larvae, while the tail end was used for gDNA extraction and PCR genotyping. The total RNA was DNase treated (to remove any genomic DNA which was carried over from the RNA extraction), then delivered to SAGC for polyA+ library preparation and sequencing using the MGI DNBSEQ technology. 
+Total RNA was purified from the brains of individual fish, while the tail end was used for gDNA extraction and PCR genotyping. The total RNA was DNase treated (to remove any genomic DNA which was carried over from the RNA extraction), then delivered to SAGC for polyA+ library preparation and sequencing using the MGI DNBSEQ technology. 
 
 The sequencing was performed over four lanes which were subsequently merged. This was done using the `merge.sh` script shown below. 
 
@@ -113,7 +105,7 @@ readLines("code/mergeFiles.sh") %>%
 Here, I will use the `ngsReports` package to combine and visualise the fastqc results. 
 ```{r fastqcRawObejct}
 fastqc_raw <- list.files(
-  path = "data/larvae/fastqc_raw",
+  path = "data/adult_brain/fastqc_raw",
   pattern = "zip", 
   recursive = TRUE,
   full.names = TRUE) %>% 
@@ -128,22 +120,20 @@ readTotals(fastqc_raw) %>%
     grepl(Filename, pattern = "_R1") ~ "R1", 
     grepl(Filename, pattern = "_R2") ~ "R2"
   ), 
-  ULN = str_remove(Filename, "_S1_merged.+")
+  ULN = str_remove(Filename, "_S.+_merged.+")
   ) %>% 
   left_join(meta) %>% 
   ggplot(aes(x = ULN, y = Total_Sequences, fill = Read)) + 
            geom_col(position = "dodge") +
   coord_flip() +
   scale_fill_viridis_d(end = 0.8) +
-  facet_wrap(~Genotype, scales = "free_y", ncol = 1, strip.position = "right")
+  facet_wrap(~genotype, scales = "free_y", ncol = 1, strip.position = "right")
 ```
 
-The base quality of all the reads also looked good. However, something a bit strange is going on in the sample `21-015556` file R2 file. Inspecting the boxplot for this file and it looks OK to me.
+The base quality of all the reads also looked good.
 
 ```{r}
 plotBaseQuals(fastqc_raw)
-
-plotBaseQuals(fastqc_raw[44], plotType = "boxplot")
 ```
 
 ### GC Content
@@ -171,10 +161,10 @@ getModule(fastqc_raw, "Overrep")
 
 ## trimmed data fastQC
 
-The raw fastq. files were then processed with `fastp`. In this step, the adaptor sequeces were trimmed from the reads. Then all length and quality filters were left as default values. Less than 1% of the reads was discarded, and no observed changes are apparent in the %GC in the reads. 
+The raw fastq. files were then processed with `fastp`. In this step, the adaptor sequeces were trimmed from the reads. Then all length and quality filters were left as default values. Less than 1% of the reads was discarded, and no observed changes are apparent in the %GC in the reads, and quality all looks good. 
 
 ```{r}
-fastqc_trim <- list.files(path = "data/larvae/fastqc_trim",
+fastqc_trim <- list.files(path = "data/adult_brain/fastqc_trim",
   pattern = "zip", 
   recursive = TRUE,
   full.names = TRUE) %>% 
@@ -192,13 +182,13 @@ trimStats <- readTotals(fastqc_raw) %>%
   )
 
 trimStats %>% 
-  mutate(ULN = str_remove(Filename, "_S1_merged.+")
+  mutate(ULN = str_remove(Filename, "_S.+_merged.+")
   ) %>% 
   left_join(meta) %>% 
   unique() %>% 
   ggplot(aes(y = ULN)) +
   geom_col(aes(x = Discarded*100)) +
-  facet_wrap(~Genotype, scales = "free_y", ncol = 1, strip.position = "right") +
+  facet_wrap(~genotype, scales = "free_y", ncol = 1, strip.position = "right") +
   labs(x = "Percentage reads discarded by fastp")
 ```
 
@@ -230,10 +220,11 @@ ggarrange(
 ```
 
 ## Aligned QC
-The reads were aligned to the GRCz11 genome. The majority of reads were aligned uniquely. S
+The reads were aligned to the GRCz11 genome. The majority of reads were aligned uniquely. 
+
 ```{r}
 fastqc_align <- list.files(
-  path = "data/larvae/fastqc_align",
+  path = "data/adult_brain/fastqc_align",
   pattern = "zip", 
   recursive = TRUE,
   full.names = TRUE) %>% 
@@ -241,7 +232,7 @@ fastqc_align <- list.files(
 ```
 
 ```{r}
-list.files("data/larvae/starAlignLog", full.names = TRUE) %>% 
+list.files("data/adult_brain/starlog", full.names = TRUE) %>% 
   .[grepl(x = ., pattern = "Log.final.out")] %>% 
   ngsReports::plotAlignmentSummary(type = "star") +
   scale_fill_viridis_d(end = 0.8) +
@@ -270,7 +261,7 @@ This dataset was processed with UMIs, which allow PCR duplicates to be removed. 
 
 ```{r}
 fastqc_align_dedup <- list.files(
-  path = "data/larvae/fastqc_align_dedup",
+  path = "data/adult_brain/fastqc_dedup",
   pattern = "zip", 
   recursive = TRUE,
   full.names = TRUE) %>% 
@@ -282,30 +273,30 @@ readTotals(fastqc_align) %>%
   mutate(align = "raw") %>% 
   bind_rows(readTotals(fastqc_align_dedup) %>% 
               mutate(align = "dedup")) %>% 
-  mutate(ULN = str_remove(Filename, "_S1_merged.+")) %>% 
+  mutate(ULN = str_remove(Filename, "_S.+_merged.+")) %>% 
   left_join(meta) %>% 
   ggplot(aes(x = ULN, y = Total_Sequences, fill = align)) + 
            geom_col(position = "dodge") +
   coord_flip() +
   scale_fill_viridis_d(end = 0.8) +
   scale_y_continuous(labels = comma) +
-  facet_wrap(~Genotype, scales = "free_y", ncol = 1, strip.position = "right")
+  facet_wrap(~genotype, scales = "free_y", ncol = 1, strip.position = "right")
 ```
 
 ## FeatureCounts summary
 
-The majority of reads are counted i
+The majority of reads are counted unqiely. 
 ```{r}
 FC_summary <- 
-  read.delim("data/larvae/featureCounts/counts.out.summary") %>% 
+  read.delim("data/adult_brain/05_featureCounts/counts.out.summary") %>% 
   set_colnames(colnames(.) %>% 
-                 str_remove(pattern = "_S1_merged.Aligned.sortedByCoord.dedup.out.bam") %>% 
+                 str_remove(pattern = "_S.+_merged.Aligned.sortedByCoord.dedup.out.bam") %>% 
                  str_remove(pattern = "X04_dedup.bam.") %>% 
                  str_replace(pattern = "\\.", replacement = "\\-")
   )
 
 FC_summary %>% 
- gather(key = "ULN", value = "NumReads", starts_with("21")) %>% 
+ gather(key = "ULN", value = "NumReads", starts_with("22")) %>% 
   left_join(meta) %>% 
   as_tibble() %>% 
   dplyr::filter(NumReads > 0) %>%   
@@ -313,7 +304,7 @@ FC_summary %>%
   geom_col() +
   scale_fill_viridis_d(end = 0.8) +
   scale_x_continuous(labels = comma) +
-  facet_wrap(~Genotype, scales = "free_y", ncol = 1, strip.position = "right")
+  facet_wrap(~genotype, scales = "free_y", ncol = 1, strip.position = "right")
 ```
 
 # Conclusion

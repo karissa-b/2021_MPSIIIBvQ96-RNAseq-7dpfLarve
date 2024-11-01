@@ -1,0 +1,2528 @@
+---
+title: "proteomics"
+author: "Karissa Barthelson"
+date: "2024-07-29"
+output: workflowr::wflow_html
+editor_options:
+  chunk_output_type: console
+---
+
+## Introduction
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(
+  autodep = TRUE,
+  echo = TRUE,
+  warning = FALSE,
+  message = FALSE,
+  fig.align = "center", 
+  out.width ="100%", 
+  out.height = "100%"
+)
+```
+
+```{r}
+library(tidyverse)
+library(magrittr)
+library(readxl)
+library(openxlsx) # for exporting sheets
+
+# vis
+library(ggpubr)
+library(scales)
+library(ggfortify)
+library(clusterProfiler)
+library(ComplexHeatmap)
+library(circlize)
+library(tidyHeatmap)
+library(RColorBrewer)
+library(pander)
+library(ggrepel)
+library(ggpol)
+library(UpSetR)
+
+# analysis
+library(limma)
+library(Biobase)
+library(goseq)
+library(fgsea)
+library(harmonicmeanp)
+library(STRINGdb)
+
+# annotation
+library(AnnotationDbi)
+library(UniProt.ws)
+library(AnnotationHub)
+library(biomaRt)
+library(msigdbr)
+
+theme_set(theme_bw() +
+            theme(
+              plot.title = element_text(hjust = 0.5), 
+              plot.subtitle = element_text(hjust = 0.5)
+              ))
+```
+
+```{r}
+files <- list.files("data/proteomics", full.names = T)
+
+# read in the data from Rachael and Marten 
+data <- read_tsv("data/proteomics/2024_FU_Kar_Bar_01_no_normalisation_Report.tsv") 
+
+# read in metadata and tidy up columns
+meta <- 
+  read_excel(
+    path = grep(files, pattern = "proteomics/Q96.+meta.xlsx", value = TRUE), 
+    sheet = "Proteomics") %>% 
+  mutate(
+    fish_id = as.character(fish_id), 
+    sex = toupper(sex) %>% as.factor(), 
+    genotype = factor(
+      genotype, 
+      levels = c("wt", "EOfAD-like", "MPS IIIB")
+    )
+  ) %>% 
+  dplyr::filter(fish_id != 8) %>% 
+  mutate(
+    geno_sex = paste0(genotype, "_", sex) %>% 
+      factor(
+        levels = c("wt_M", "MPS IIIB_M", "EOfAD-like_M", 
+                   "wt_F", "MPS IIIB_F", "EOfAD-like_F" )
+      )
+  )
+```
+
+# Annotations
+
+I've come to learn that protein annotations (IDs etc) are very messy. So I'm going to do my best here to join 
+
+This hasnt worked. About half the detected proteins are not annotated with an ensembl ID. But I have nice gene name symbols, so will now try ensembl biomart. 
+
+## biomart
+```{r}
+# connect to biomart
+mart <- useEnsembl(
+  biomart="ensembl",
+  dataset = "drerio_gene_ensembl")
+
+# list all the attributes (e.g. columns) available for DL from biomart
+# listAttributes(mart) %>% as_tibble() %>% view
+
+# define what I want from biomart. 
+# have to break it up as they only let you d/l 3 things at a time. 
+attb2get.part1 = c("external_gene_name", "ensembl_gene_id",  "chromosome_name")
+attb2get.part2 = c("ensembl_gene_id", "description",  "gene_biotype")
+attb2get.part3 = c("ensembl_gene_id", "uniprotsptrembl",  "uniprot_gn_id")
+attb2get.part4 = c("ensembl_gene_id", "uniprot_gn_symbol", "uniprotswissprot")
+attb2get.part5 = c("external_gene_name", "start_position", "end_position")
+attb2get.part6 = c("external_gene_name","hsapiens_homolog_associated_gene_name") # for converting for pathview since some KEGG pways dont have a zf map. 
+	
+
+
+ # filters
+# listFilters(mart) %>% as_tibble() %>% view
+
+bm.anno <- 
+  getBM(
+    attributes = attb2get.part1, 
+    filters = 'external_gene_name', 
+    values = data$PG.Genes %>% unique, 
+    mart = mart) %>% 
+  left_join(
+    getBM(
+      attributes = attb2get.part2, 
+      filters = 'external_gene_name', 
+      values = data$PG.Genes %>% unique, 
+      mart = mart)
+  ) %>% 
+  as_tibble()
+
+bm.anno.3 <- getBM(
+  attributes = attb2get.part3, 
+  filters = 'external_gene_name', 
+  values = data$PG.Genes %>% unique, 
+  mart = mart
+  ) %>% 
+  as_tibble()
+
+bm.anno.4 <- getBM(
+  attributes = attb2get.part4, 
+  filters = 'external_gene_name', 
+  values = data$PG.Genes %>% unique, 
+  mart = mart
+  ) %>% 
+  as_tibble()
+
+bm.anno.start.end <- getBM(
+  attributes = attb2get.part5, 
+  filters = 'external_gene_name', 
+  values = data$PG.Genes %>% unique, 
+  mart = mart
+  ) %>% 
+  as_tibble()
+
+bm.dr2hs<- getBM(
+  attributes = attb2get.part6, 
+  filters = 'external_gene_name', 
+  values = data$PG.Genes %>% unique, 
+  mart = mart
+  ) %>% 
+  as_tibble()
+```
+### all 
+```{r}
+t1 <- tibble(
+    gene_name = data$PG.Genes
+  )
+
+t2 <- bm.anno %>% 
+  dplyr::select(
+    gene_name = external_gene_name, 
+    gene_id = ensembl_gene_id)
+
+t3 <- bm.anno.4 %>% 
+  dplyr::select(
+    gene_name = uniprot_gn_symbol, 
+    gene_id = ensembl_gene_id
+  )
+
+# t4 <- ah %>% 
+#   dplyr::select(
+#     gene_name = SYMBOL, 
+#     gene_id = ENSEMBL
+#   )
+
+# use all availale annotations so far
+anno_all <- list(t1, t2, t3) %>% 
+  purrr::reduce(full_join,.init = t1, by = "gene_name") %>% 
+  # resolve duplicates 
+  pivot_longer(
+    names_to = "gene_id_temp", values_to = "gene_id", 
+    starts_with("gene_id")
+  ) %>% 
+  dplyr::select(-gene_id_temp) %>% 
+  na.omit() %>% 
+  unique
+
+```
+
+The proteome which was used to annotate the MS peaks were from Uniprot: https://www.uniprot.org/proteomes/UP000000437
+
+I found this table: https://www.uniprot.org/uniprotkb?query=(proteome:UP000000437), where I selected some relevant  columns and downloaded the table. This is read in below. 
+
+```{r}
+# read in uniprot proteome data file
+uniprot_proteome_annotation <- files %>% 
+  grep(pattern  = "uniprot", value = TRUE) %>% 
+  read_tsv() %>% 
+  dplyr::rename("PG.ProteinNames" = `Entry Name` )
+
+# tidy up the coumn names
+uniprot_proteome_annotation %<>% 
+  dplyr::select(
+    gene_name = "Gene Names (primary)", 
+    uniprot_id = Entry, 
+    length = Length, 
+    entrez = GeneID, 
+    chromosome = Proteomes, 
+    description = `Protein names`, 
+    other_gene_names = `Gene Names`,
+    ensembl_tx_id = Ensembl, 
+    up_organism = PG.ProteinNames 
+  
+  ) %>% 
+  mutate(
+    chromosome = str_remove(chromosome, pattern = "UP000000437: "), 
+    entrez = str_remove(entrez, pattern = ";"), 
+  )
+  
+anno <- 
+  data %>% 
+    dplyr::rename(
+      uniprot_id = PG.ProteinGroups
+    ) %>% 
+  left_join(uniprot_proteome_annotation, 
+            by = "uniprot_id" ) %>% 
+  dplyr::select(gene_name, uniprot_id, 
+                colnames(uniprot_proteome_annotation)
+  ) %>% 
+  column_to_rownames("uniprot_id")
+
+
+```
+
+
+# number of fish per genotype and sex 
+```{r}
+meta %>% 
+  ggplot(
+    aes(x = genotype, fill = genotype)
+  ) +
+  geom_bar() +
+  facet_wrap(~sex)
+```
+
+
+```{r}
+data.long <- data %>% 
+  pivot_longer(
+    names_to = "sample", 
+    values_to = "intensity", 
+    starts_with("[")
+  ) %>% 
+  # need to create a new column  "fish_id", which matches with the metadata sheet. 
+  mutate(
+    fish_id = str_extract(
+      sample, pattern = " [:digit:]{1,2}" 
+    ) %>% 
+      str_remove(pattern = " ") 
+    ) %>% 
+  dplyr::select(
+    fish_id, PG.Genes, intensity, everything()
+  ) %>% 
+  left_join(meta) %>% 
+  dplyr::filter(!is.na(genotype))
+
+
+data.long.withQC <- data %>% 
+  pivot_longer(
+    names_to = "sample", 
+    values_to = "intensity", 
+    starts_with("[")
+  ) %>% 
+  # need to create a new column  "fish_id", which matches with the metadata sheet. 
+  mutate(
+    fish_id = str_extract(
+      sample, pattern = " [:digit:]{1,2}" 
+    ) %>% 
+      str_remove(pattern = " ") 
+    ) %>% 
+  dplyr::select(
+    fish_id, PG.Genes, intensity, everything()
+  ) %>% 
+  left_join(meta)
+
+```
+
+# check missing values
+
+```{r}
+# see how many proteins have missing values
+proteins.with.missing.values <- data.long %>% 
+  .[is.na(.$intensity),] %>% 
+  .$PG.ProteinGroups %>% 
+  unique
+```
+
+There are `r length(proteins.with.missing.values)` proteins with missing values total in this dataset. 
+
+This is all of the proteins, I next looked at whether any proteins were only present in at least one genotype. These are the protens which show this below. None are convincing neough to really be able to set the value to 0 in any of the other samples. 
+
+```{r}
+proteins.missing.perGeno <- 
+  data.long %>% 
+  group_by(PG.ProteinGroups, genotype) %>% 
+  dplyr::filter(all(is.na(intensity))) %>% 
+  .$PG.Genes %>% unique
+  
+  
+data.long %>% 
+  dplyr::filter(PG.Genes %in% proteins.missing.perGeno) %>% 
+  ggplot(
+    aes(x = geno_sex, y = intensity)
+  ) +
+  geom_boxplot(
+    outlier.shape = NA
+  ) +
+  geom_point() +
+  facet_wrap(~PG.Genes, scales = "free_y")
+
+```
+
+Proteins which have missing values are omitted for this analysis. Out of the `r data$PG.ProteinGroups %>% unique %>% length() %>% comma` proteins detected, `length(proteins.with.missing.values) %>% comma` have missing values. I think this is OK. 
+
+```{r}
+data.wide <- 
+  data.long %>% 
+  dplyr::filter(fish_id %in% meta$fish_id) %>%
+   dplyr::filter(!(PG.ProteinGroups %in% proteins.with.missing.values)) %>% 
+  dplyr::select(fish_id, PG.ProteinGroups, intensity) %>% 
+  pivot_wider(
+    names_from = "fish_id", 
+    values_from = "intensity"
+  ) %>% 
+  column_to_rownames("PG.ProteinGroups")
+
+
+
+data.long %<>% 
+  dplyr::filter(fish_id %in% meta$fish_id) %>%
+  dplyr::filter(fish_id != 8) %>% 
+  dplyr::filter(!(PG.ProteinGroups %in% proteins.with.missing.values))
+  
+```
+
+# Normalisation and transformation
+
+I want to look at how I should normalise the data, a few ways I can do this. However, from the plots below, log-transformed and median normalised looks best. 
+
+## raw data
+```{r}
+data.long.withQC %>% 
+  ggplot(
+      aes(x = sample, y = intensity)
+    ) +
+    geom_boxplot(
+      aes(fill = genotype)
+    ) +
+  ggtitle("raw data") +
+  theme(
+    axis.text.x = element_text(
+      angle = -45, hjust = 0
+    )
+  )
+
+# raw data
+raw.boxplot <-   data.long %>% 
+    ggplot(
+      aes(x = fish_id, y = intensity)
+    ) +
+    geom_boxplot(
+      aes(fill = genotype)
+    ) +
+  ggtitle("raw data")
+
+raw.boxplot
+```
+
+## log transformed
+```{r}
+
+ggarrange(raw.boxplot, 
+# log-transformed data
+  data.long %>% 
+  mutate(intensity = log2(intensity)) %>% 
+    ggplot(
+      aes(x = fish_id, y = intensity)
+    ) +
+    geom_boxplot(
+      aes(fill = genotype)
+    ) +
+  labs(
+    title = "log2 transformed"
+  ), 
+common.legend = TRUE, 
+nrow = 2
+)
+```
+
+## log-transformed and quantile normalised
+```{r}
+# quantile normaised and log-transformed
+  data.long %>% 
+    # convert to wide format to be able to quantile normalise.
+    dplyr::select(fish_id, PG.ProteinGroups, intensity) %>% 
+    mutate(intensity = log2(intensity)) %>% 
+    pivot_wider(
+      names_from = "fish_id", values_from = "intensity"
+    ) %>% 
+    column_to_rownames("PG.ProteinGroups") %>% 
+    limma::normalizeBetweenArrays(method = "quantile") %>%
+    as.data.frame() %>% 
+    rownames_to_column("protein_id") %>% 
+    # convert back to long. 
+    pivot_longer(
+      names_to = "fish_id", values_to = "intensity", 
+      cols = data.long$fish_id %>% unique()
+    ) %>% 
+    left_join(meta) %>% 
+    ggplot( 
+      aes(x = fish_id, y = intensity)
+    ) +
+    geom_boxplot(
+      aes(fill = genotype)
+    ) +
+  labs(
+    title = "log2-transformed and quantile normalised"
+  )
+
+data.long.withQC %>% 
+  dplyr::select(sample, PG.ProteinGroups, intensity) %>% 
+  mutate(intensity = log2(intensity)) %>% 
+  pivot_wider(
+    names_from = "sample", values_from = "intensity"
+  ) %>% 
+  column_to_rownames("PG.ProteinGroups") %>% 
+  limma::normalizeBetweenArrays(method = "quantile") %>% 
+  as.data.frame() %>% 
+  rownames_to_column("protein_id") %>% 
+  # convert back to long. 
+  pivot_longer(
+    names_to = "sample", values_to = "intensity", 
+    cols = data.long.withQC$sample %>% unique()
+  ) %>% 
+  ggplot( 
+      aes(x = sample, y = intensity)
+    ) +
+    geom_boxplot(
+    ) +
+  labs(
+    title = "log2-transformed and quantile normalised"
+  ) +
+  theme(
+    axis.text.x = element_text(angle = -45, hjust = 0)
+  )
+  
+  
+```
+
+##   log transformed and median normalised
+
+```{r}
+# quantile normaised and log-transformed
+  data.long %>% 
+    # convert to wide format to be able to quantile normalise.
+    dplyr::select(fish_id, PG.ProteinGroups, intensity) %>% 
+    mutate(intensity = log2(intensity)) %>% 
+    pivot_wider(
+      names_from = "fish_id", values_from = "intensity"
+    ) %>% 
+    column_to_rownames("PG.ProteinGroups") %>% 
+    limma::normalizeBetweenArrays(method = "scale") %>%
+    as.data.frame() %>% 
+    rownames_to_column("protein_id") %>% 
+    # convert back to long. 
+    pivot_longer(
+      names_to = "fish_id", values_to = "intensity", 
+      cols = data.long$fish_id %>% unique()
+    ) %>% 
+    left_join(meta) %>% 
+    ggplot( 
+      aes(x = fish_id, y = intensity)
+    ) +
+    geom_boxplot(
+      aes(fill = genotype)
+    ) +
+  labs(
+    title = "log2-transformed and median normalised"
+  )
+
+data.long.withQC %>% 
+  dplyr::select(sample, PG.ProteinGroups, intensity) %>% 
+  mutate(intensity = log2(intensity)) %>% 
+  pivot_wider(
+    names_from = "sample", values_from = "intensity"
+  ) %>% 
+  column_to_rownames("PG.ProteinGroups") %>% 
+  limma::normalizeBetweenArrays(method = "scale") %>% 
+  as.data.frame() %>% 
+  rownames_to_column("protein_id") %>% 
+  # convert back to long. 
+  pivot_longer(
+    names_to = "sample", values_to = "intensity", 
+    cols = data.long.withQC$sample %>% unique()
+  ) %>% 
+  ggplot( 
+      aes(x = sample, y = intensity)
+    ) +
+    geom_boxplot(
+    ) +
+  labs(
+    title = "log2-transformed and median normalised"
+  ) +
+  theme(
+    axis.text.x = element_text(angle = -45, hjust = 0)
+  )
+```
+
+  
+  
+# PCAs 
+
+I first want to use PCA to first get a feel for the overall similarity between samples. I also want to see which normalisation technique I should use. 
+
+PCA cant handle missing values, so only the proteins detected in all samples are used here. 
+
+```{r}
+ggarrange(
+  # raw PCA
+  data.wide %>% 
+    t() %>% 
+    prcomp %>% 
+    autoplot(
+      data = tibble(fish_id = rownames(.$x)) %>%
+        left_join(meta),
+      colour = "genotype",
+      shape = "sex", 
+      size = 4
+    ) +
+    ggtitle("raw data"), 
+  
+  # log transformed PCA
+  data.long %>% 
+    # convert to wide format to be able to quantile normalise.
+    dplyr::select(fish_id, PG.ProteinGroups, intensity) %>% 
+    mutate(intensity = log2(intensity)) %>% 
+    pivot_wider(
+      names_from = "fish_id", values_from = "intensity"
+    ) %>% 
+    column_to_rownames("PG.ProteinGroups") %>% 
+    t() %>% 
+    prcomp %>% 
+    autoplot(
+      data = tibble(fish_id = rownames(.$x)) %>%
+        left_join(meta),
+      colour = "genotype",
+      shape = "sex", 
+      size = 4
+    ) +
+    ggtitle("log-transformed data"), 
+  
+  # log-transformed and quantile normalised
+  data.wide %>%
+    limma::normalizeBetweenArrays(method = "quantile") %>% 
+    t() %>% 
+    prcomp %>% 
+    autoplot(
+      data = tibble(fish_id = rownames(.$x)) %>%
+        left_join(meta),
+      colour = "genotype",
+      shape = "sex", 
+      size = 4
+    ) +
+    ggtitle("log2-transformed, quantile-normalised data"),
+  
+  # log-transformed and median normalised
+  data.wide %>%
+    limma::normalizeBetweenArrays(method = "scale") %>% 
+    t() %>% 
+    prcomp %>% 
+    autoplot(
+      data = tibble(fish_id = rownames(.$x)) %>%
+        left_join(meta),
+      colour = "genotype",
+      shape = "sex", 
+      size = 4
+    ) +
+    ggtitle("log2-transformed, median-normalised data"), 
+  
+  common.legend = TRUE
+)
+```
+
+Quantile normalization forces the entire empirical distribution of each column to be identical. Median normalisaiton forces the sample distributions to have the same median. From the PCA plots above, quantile normalisation appear to be the best as it gives the best seperation between groups. Median normalisation also looks okay. 
+
+## PCAs by sex
+Since there appears to be pretty clear sex effects, I will next look at the PCAs within each sex. 
+
+```{r}
+fem.fish.ids <- 
+  meta %>% 
+  dplyr::filter(sex == "F") %>% 
+  .$fish_id
+
+male.fish.ids <- 
+  meta %>% 
+  dplyr::filter(sex == "M") %>% 
+  .$fish_id
+```
+
+```{r}
+
+ggarrange(
+ 
+   data.wide %>%
+    limma::normalizeBetweenArrays(method = "quantile") %>% 
+    t() %>% 
+    prcomp %>% 
+    autoplot(
+      data = tibble(fish_id = rownames(.$x)) %>%
+        left_join(meta),
+      colour = "genotype",
+      shape = "sex",
+      size = 4
+    ) +
+    labs(title = "All samps", 
+   #      subtitle = "log2-transformed, median-normalised data"
+   ), 
+  
+   data.wide %>%
+    limma::normalizeBetweenArrays(method = "quantile") %>% 
+    .[,fem.fish.ids] %>% 
+    t() %>% 
+    prcomp %>% 
+    autoplot(
+      data = tibble(fish_id = rownames(.$x)) %>%
+        left_join(meta),
+      colour = "genotype",
+      size = 4
+    ) +
+    labs(title = "Females", 
+         #subtitle = "log2-transformed, median-normalised data"
+         ) , 
+  
+  data.wide %>%
+    limma::normalizeBetweenArrays(method = "quantile") %>% 
+    .[,male.fish.ids] %>% 
+    t() %>% 
+    prcomp %>% 
+    autoplot(
+      data = tibble(fish_id = rownames(.$x)) %>%
+        left_join(meta),
+      colour = "genotype",
+      size = 4
+    ) +
+    labs(title = "Males", 
+         #subtitle = "log2-transformed, median-normalised data"
+         ), 
+  common.legend = T, nrow = 1
+)
+```
+
+There appears to be an outlier in both groups. But will leave it in. 
+
+PC1 is explained by MPS IIIB genotype in both sexes. PC1 explains about 30% of the total variation in the dataset, so MPS IIIB genotype is pretty severe effect on the brain proteoms. 
+
+
+# DE protein analysis using limma
+
+First, I need to put the data in a format usable for `limma`. I will use an expresisonSet object which will map the metadata and annotations. 
+
+```{r}
+meta4eset <- meta %>% 
+  column_to_rownames("fish_id")
+
+meta4eset <- new("AnnotatedDataFrame",data=meta4eset)
+
+anno %<>% 
+  mutate(uniprot_id = rownames(.)) %>% 
+  dplyr::filter(!(uniprot_id %in% proteins.with.missing.values))
+  
+anno4eset <- new("AnnotatedDataFrame", data=anno)
+```
+
+```{r}
+eset <- ExpressionSet(
+  assayData = data.wide %>% 
+    log2() %>% 
+    limma::normalizeBetweenArrays(method = "quantile"), 
+  
+  phenoData = meta4eset, 
+  featureData = anno4eset
+)
+```
+
+## design and contrasts matrix
+
+An intercept free design matrix and contrasts matix were generated so that i can performed pair-wise constrats between each mutant and their wild type sibs within sexes. A really nice ref explaining the bg knowledge about these are found here: 
+
+https://bioconductor.org/packages/release/workflows/vignettes/RNAseq123/inst/doc/designmatrices.html
+
+```{r}
+# design matrix specifiying the groups
+design <- model.matrix(~0 + geno_sex, data = pData(eset)) %>% 
+  set_colnames(gsub(colnames(.), pattern = "geno_sex", replacement = "")) %>% 
+  set_colnames(gsub(colnames(.), pattern = " ", replacement = "")) %>% 
+  set_colnames(gsub(colnames(.), pattern = "-", replacement = ""))
+
+# contrats matrix specifying the comparisons
+contrasts <- makeContrasts( 
+ 
+  MPSIIIB_M - wt_M , # effect of MPS IIIB in males
+  MPSIIIB_F - wt_F, # effect of MPS IIIB in females
+  
+  EOfADlike_M - wt_M, # effect of EOfAD in males
+  EOfADlike_F - wt_F, # effect of EOfAD in females
+  
+  # wt_M - wt_F, # effect of gender
+  
+  levels = design
+  )
+```
+
+## linear model fit with emperical bayes moderation
+
+These functions are used to rank genes in order of evidence for differential expression. They use an empirical Bayes method to squeeze the protein-wise residual variances towards a common value (or towards a global trend) (Smyth, 2004; Phipson et al, 2016). The degrees of freedom for the individual variances are increased to reflect the extra information gained from the empirical Bayes moderation, resulting in increased statistical power to detect differential expression.
+
+Toptables are called for each contrast, as defined in the design matrix. 
+```{r}
+lm.fit <- 
+  lmFit(eset, design) %>% 
+  contrasts.fit(contrasts) %>% 
+  eBayes(robust = TRUE)
+
+toptables <- colnames(contrasts) %>% 
+  sapply(function(x) {
+    topTable(
+      lm.fit, 
+      coef = x,
+      adjust.method = "fdr" , 
+      sort.by = "p", 
+      Inf
+    ) %>% 
+      rownames_to_column("accession") %>% 
+      left_join(
+        anno %>% rownames_to_column("accession")
+      ) %>%
+      mutate(
+        DE = adj.P.Val < 0.05, 
+        coef = x
+      ) %>% 
+      dplyr::select(
+        # put columns in a nice order, renaming some on the fly
+        gene_name, logFC, AveExpr, t,
+        pval = P.Value, FDR =  adj.P.Val, DE, coef, B, everything()
+      ) %>%
+      as_tibble
+  }, simplify = F)
+```
+
+## Visualisation
+### num of DE genes
+```{r}
+toptables %>% 
+  lapply(
+    function(x) {
+      x %>% 
+        dplyr::filter(DE == T) %>% 
+        nrow
+    }
+  ) %>% 
+  bind_rows() %>% 
+  as.data.frame() %>% 
+  pivot_longer(
+    names_to = "coef", 
+    values_to = "nDE", 
+    cols = everything()
+  ) %>% 
+  ggplot(
+    aes(x = nDE, y = reorder(coef, nDE))
+  ) + 
+  geom_col()
+```
+
+### volcano plots
+```{r}
+toptables %>% 
+ bind_rows() %>%
+  ggplot(
+    aes(x = logFC, y = -log10(pval))
+    ) +
+  geom_point(
+    aes(colour = DE),
+    alpha = 0.5) +
+  facet_wrap(~coef) +
+  scale_color_manual(values = c("grey50", "red"))
+```
+
+### MD plots
+```{r}
+toptables %>% 
+  bind_rows() %>% 
+  ggplot(
+    aes(x = AveExpr, y = logFC)
+    ) +
+  geom_point(
+    aes(colour = DE),
+    alpha = 0.5) +
+  geom_hline(yintercept = 0) +
+  coord_cartesian(ylim = c(-2,2)) +
+  geom_smooth(se = F) +
+  facet_wrap(~coef) +
+  scale_color_manual(values = c("grey50", "red"))
+```
+
+### length check
+
+In RNA-seq data, there is a known bias for gene length with differential expression. Longer genes have more reads aligning to them, and so have slightly increased statistical power. 
+
+This could be also true for proteomics data, where longer proteins would have more peptides in the pool. So first, I want to check the the t-statistic vs the protein length. The blue line of best fit hangs around 0, and so not really a bias here. 
+
+```{r}
+toptables %>% 
+  bind_rows() %>% 
+  mutate(
+    length = as.numeric(length), 
+  ) %>% 
+  ggplot(aes(x = length, y = t)) +
+  geom_point(
+    aes(colour = DE),
+    alpha = 0.5) +
+  geom_hline(yintercept = 0) +
+  geom_smooth(se = F) +
+  coord_cartesian(xlim = c(0,5000)) +
+  facet_wrap(~coef) +
+  scale_color_manual(values = c("grey50", "red"))
+```
+
+Marten also says to look at the intensity of the proteins. This is reflected by the `averageexp` column calculated by `limma`. 
+
+Below are the plots of protein length by average expression. The line of best fit looks strange as there is a really long protein here. 
+```{r}
+toptables %>% 
+  bind_rows() %>% 
+  mutate(
+    length = as.numeric(length), 
+  ) %>% 
+  ggplot(aes(x = length, y = AveExpr)) +
+  geom_point(
+    aes(colour = DE),
+    alpha = 0.5) +
+  geom_label_repel(
+    aes(label = gene_name), 
+    data = . %>% 
+      dplyr::filter(length > 10000)
+  ) +
+  geom_hline(yintercept = 0) +
+  geom_smooth(se = F) +
+  #coord_cartesian(xlim = c(0,5000)) +
+  facet_wrap(~coef) +
+  scale_color_manual(values = c("grey50", "red"))
+```
+
+The same plots are geneated below, although this time only proteins less than 5000 AAs are kept. Short proteins appear to be more highly expressed. 
+
+```{r}
+toptables %>% 
+  bind_rows() %>% 
+  dplyr::filter(length < 5000) %>% 
+  mutate(
+    length = as.numeric(length), 
+  ) %>% 
+  ggplot(aes(x = length, y = AveExpr)) +
+  geom_point(
+    aes(colour = DE),
+    alpha = 0.5) +
+  geom_label_repel(
+    aes(label = gene_name), 
+    data = . %>% 
+      dplyr::filter(length > 10000)
+  ) +
+  geom_smooth(se = F) +
+  #coord_cartesian(xlim = c(0,1000)) +
+  facet_wrap(~coef) +
+  scale_color_manual(values = c("grey50", "red"))
+```
+
+Also looking at the raw intensity values in the QC samples (which is a pool of all my samples, run 3 different times throughout the MS run)
+```{r}
+data.long.withQC %>% 
+  dplyr::filter(
+    grepl(sample, pattern = "QC"), 
+    !is.na(intensity)
+  ) %>% 
+  left_join(anno %>% 
+              dplyr::rename(PG.ProteinGroups = uniprot_id) ) %>% 
+  ggplot(
+    aes(x = length, y = intensity)
+  ) +
+  geom_point() +
+  facet_wrap(~sample)
+```
+
+Within the QC sample,s the shorter proteins have higer intensity generally. But there are so many more shorter proteins. 
+
+```{r}
+data.long.withQC %>% 
+  dplyr::filter(
+    grepl(sample, pattern = "QC"), # only the QC samples
+    !is.na(intensity), # any proteins not detected
+    
+  ) %>% 
+  left_join(anno %>% 
+              dplyr::rename(PG.ProteinGroups = uniprot_id) ) %>% 
+  dplyr::filter(length < 5000) %>% # long proteins
+  ggplot(
+    aes(x = length, y = intensity)
+  ) +
+  geom_point() +
+  geom_smooth() +
+  facet_wrap(~sample)
+```
+
+Hmm.. talk with Marten about this. 
+
+## shared DEPs beween the sexes in MPS III
+```{r}
+toptables[grep(names(toptables), value = TRUE, pattern = "MPS")] %>% 
+  lapply(dplyr::filter, FDR < 0.05) %>% 
+  lapply(function(x){
+    x %>%
+      mutate(Direction = case_when(
+        sign(logFC) == "1" ~ "up",
+        sign(logFC) == "-1" ~ "down"
+      ))
+  }) %>% 
+  bind_rows() %>% 
+  mutate(
+    coef.dir = paste0(coef, Direction), .before = gene_name
+    ) %>% 
+  split(f = .$coef.dir) %>% 
+  lapply(function(x) {
+    x$accession %>% 
+      na.omit
+  }) %>% 
+  fromList() %>% 
+  upset(order.by = "freq")
+```
+
+# Enrichment analyses
+## protein sets
+### KEGG
+KEGG gene sets were obtaoned from `MsigDB` using `msigdbr.` Only proteins detected (without missing data) in this experiment were used as the background. KEGG gene sets were also filtered if they contained more than at least 4 proteins, as less than that is a bit hard to interpret biologically
+
+```{r}
+KEGG <- 
+  msigdbr("Danio rerio", category = "C2", subcategory = "CP:KEGG") %>% 
+  distinct(gs_name, gene_symbol, .keep_all = TRUE) %>%
+  dplyr::filter(gene_symbol %in% toptables$`MPSIIIB_M - wt_M`$gene_name) %>% 
+  split(f = .$gs_name) %>%
+  lapply(extract2, "gene_symbol")
+
+# calculate the number of genes per gene set
+sizes.KEGG <- KEGG %>% 
+  lapply(length) %>% 
+  unlist %>% 
+  as.data.frame() %>% 
+  set_colnames( "n_genes") %>% 
+  rownames_to_column("gs")
+
+# retain gene sets with at least 5 genes in it
+KEGG <- KEGG[sizes.KEGG %>% dplyr::filter(n_genes >= 4) %>% .$gs]
+```
+
+### Gene ontologies
+
+Gene ontologies were also obtained from `msigdbr.` The ontologies were filtered to only contain those more than 3 nodes away from the root to reduce redundancy. Like the KEGG gene sets, the GO terms were filtered to only contain proteins detected in the analysis. 
+
+```{r}
+# GO Terms
+goSummaries <- url("https://uofabioinformaticshub.github.io/summaries2GO/data/goSummaries.RDS") %>%
+  readRDS() %>%
+  mutate(
+    Term = Term(id),
+    gs_name = Term %>% str_to_upper() %>% str_replace_all("[ -]", "_"),
+    gs_name = paste0("GO_", gs_name)
+    )
+
+minPath <- 3
+
+GO <- 
+  msigdbr("Danio rerio", category = "C5") %>%
+  dplyr::filter(grepl(gs_name, pattern = "^GO")) %>%
+  mutate(
+    gs_fullname = gs_name,
+    gs_name = str_replace(gs_name, pattern = "GOBP_", replacement = "GO_"),
+    gs_name = str_replace(gs_name, pattern = "GOMF_", replacement = "GO_"), 
+    gs_name = str_replace(gs_name, pattern = "GOCC_", replacement = "GO_")
+  ) %>% 
+  left_join(goSummaries) %>%
+  dplyr::filter(shortest_path >= minPath) %>% 
+  distinct(gs_name, gene_symbol, .keep_all = TRUE) %>%
+  dplyr::select(gs_fullname, gene_symbol) %>% 
+  dplyr::filter(gene_symbol %in% toptables$`MPSIIIB_M - wt_M`$gene_name) %>% 
+  na.omit %>% 
+  split(f = .$gs_fullname) %>%
+  lapply(extract2, "gene_symbol")
+
+# calculate the number of genes per gene set
+sizes.GO <- GO %>% 
+  lapply(length) %>% 
+  unlist %>% 
+  as.data.frame() %>% 
+  set_colnames( "n_genes") %>% 
+  rownames_to_column("gs")
+
+# retain gene sets with at least 3 genes in it
+GO <- GO[sizes.GO %>% dplyr::filter(n_genes > 3) %>% .$gs]  
+
+```
+
+### cell type markers
+
+Cell type marker proteins were obtained from Jiang et at. 2021. 
+
+```{r}
+cell_type_markers <- 
+  read_xlsx("data/gene_sets/Suppdata2_jiangetal_2021_fcelldev.xlsx", sheet = "Brain") %>% 
+  dplyr::rename("gene_name" = gene) %>% 
+  dplyr::filter(gene_name %in% toptables$`MPSIIIB_M - wt_M`$gene_name) %>% 
+  split(f = .$`cell type`) %>% 
+  lapply(extract2, "gene_name")
+```
+
+
+### chromosome protein sets
+
+Also want to look at whether there are any chr-specific effects as we see in the RNAseq data. 
+
+```{r}
+chr <- anno %>% 
+  as_tibble() %>% 
+  mutate(
+    chr = str_extract(chromosome, pattern = "\\d{1,2}"), # the first 1 or 2 numbers. 
+  ) %>% 
+  dplyr::select(gene_name, chromosome, chr) %>% 
+  # only retain proteins detected in this exp.
+  dplyr::filter(gene_name %in% toptables$`MPSIIIB_M - wt_M`$gene_name) %>% 
+  split(f = .$chr) %>% 
+  lapply(extract2, "gene_name")
+```
+
+### IRE gene sets
+
+I downloaded the IRE gene csv for zerbrafish described in Hin et al. from here https://github.com/nhihin/ire/blob/master/data/ire/zebrafish/zebrafishIreGenes.rds
+
+This is a list of genes which contain IREs in their 5' or 3' UTR, and whether it is predicted as high quality or ot. The list is in ensembl gene ids, so need to convert to gene name. 
+
+```{r}
+ire_gene <- readRDS("data/gene_sets/zebrafishIreGenes.rds") %>% 
+  unlist() %>% 
+  as_tibble() %>% 
+  set_colnames("ensembl_gene_id")
+
+bm.ire <- 
+  getBM(
+    attributes = c("external_gene_name", "ensembl_gene_id"), 
+    filters = 'ensembl_gene_id', 
+    values = ire_gene$ensembl_gene_id %>% unique, 
+    mart = mart)   
+
+ire <- readRDS("data/gene_sets/zebrafishIreGenes.rds") %>% 
+  lapply( function(x) {
+    x %>% 
+      as_tibble  %>%
+      set_colnames("ensembl_gene_id") %>% 
+      left_join(bm.ire) %>% 
+      dplyr::filter(external_gene_name != "") %>% 
+      .$external_gene_name %>% 
+      unique()
+  })
+```
+
+
+
+## Over representation analysis using goseq
+
+To test for over-representation of GO terms within the significantly DE proteins, I used goseq. For the bias data, I chose protein length, as longer proteins would have more peptides associated with them. Despite no obvious relationship between protein length and logFC/DE status. 
+
+```{r}
+pwfs <- toptables %>% 
+  lapply(function(x) {
+    x %>% 
+      dplyr::filter(!is.na(gene_name)) %>% # omit proteins with no gene names
+      dplyr::distinct(gene_name, .keep_all = TRUE) %>% 
+      
+      with(
+        nullp(
+          DEgenes = structure(DE, names = gene_name),
+          bias.data = length,
+        )
+      )
+  })
+
+goseq <- pwfs %>% 
+  sapply(function(x){
+      goseq(x, gene2cat = GO) %>% 
+      as_tibble() %>%
+      dplyr::filter(numDEInCat > 0) %>%
+      mutate(
+        # a few protein sets show a pval of 0, which is not really right. 
+        # probs a really small value would be suffient.  
+        over_represented_pvalue = case_when(
+          over_represented_pvalue == 0 ~  1e-50, 
+          TRUE ~ over_represented_pvalue
+        ), 
+        FDR = p.adjust(over_represented_pvalue, method = "fdr")
+        ) %>%
+      dplyr::select(-under_represented_pvalue, 
+                    pvalue = over_represented_pvalue)
+    
+  }, simplify = FALSE)
+
+# add names to goseq tibbles
+goseq %<>% 
+  map2(names(.), ~.x %>% mutate(contrast = .y))
+
+
+# define the interesting gene sets
+goseq.sig.gs <- goseq %>% 
+  bind_rows() %>% 
+  dplyr::filter(grepl(contrast, pattern = "MPS")) %>% 
+  dplyr::filter(FDR < 0.01) %>% 
+  .$category %>% 
+  unique
+
+# plot the results
+# goseq$`MPSIIIB_M - wt_M` %>% 
+#   bind_rows(goseq$`MPSIIIB_F - wt_F`) %>% 
+#   arrange(pvalue) %>% 
+#   dplyr::filter(category %in% goseq.sig.gs) %>% 
+#    mutate(
+#     sig = FDR < 0.05, 
+#     GO_type = case_when(
+#       grepl(category, pattern = "^GOCC") ~ "CC", 
+#       grepl(category, pattern = "^GOBP") ~ "BP", 
+#       grepl(category, pattern = "^GOMF") ~ "MF"
+#     ), 
+#     category = str_remove(category, pattern = "GO\\w{2}_"), 
+#     category = str_replace_all(category, pattern = "_", replacement = " "),
+#     category = str_wrap(category, width = 46)
+#   ) %>% 
+#   ggplot(
+#     aes(x = contrast, y = reorder(category,
+#                                   X = -log10(pvalue)))
+#   ) +
+#   geom_tile(
+#     aes(fill = -log10(pvalue), 
+#         alpha = FDR < 0.05)
+#   ) +
+#   geom_label(
+#     aes(label = signif(FDR, 2))
+#   ) +
+#   facet_wrap(~GO_type, scales = "free") +
+#   scale_fill_viridis_c()
+```
+
+
+## harmonic mean p
+
+Consistency with the transctiptome will be applied here by calculating the HMP value of the KEGG gene sets. 
+
+
+```{r}
+# a function to run the HMP calculation. 
+runHMP = function(
+  geneset, 
+  eset, 
+  toptable, 
+  design, 
+  contrasts
+  
+) {
+  
+  # update the eset to have gene names as the rownames, 
+  #as this is what im mapping to the gene sets
+  fry.input <- exprs(eset) %>% 
+  as.data.frame() %>% 
+  rownames_to_column("uniprot_id") %>% 
+  left_join(anno %>% 
+              dplyr::select(gene_name, uniprot_id)) %>% 
+  dplyr::distinct(gene_name, .keep_all = TRUE) %>% 
+  dplyr::filter(!is.na(gene_name)) %>% 
+  column_to_rownames("gene_name") %>% 
+  dplyr::select(-uniprot_id)
+ 
+  # run fry
+  fry <- colnames(contrasts) %>% 
+  sapply(function(y) {
+    fry.input %>%
+      limma::fry(
+        index = geneset,
+        design = design,
+        contrast = contrasts[,y],
+        sort = "mixed"
+      ) %>%
+      rownames_to_column("pathway") %>%
+      as_tibble() %>% 
+      mutate(coef = y) 
+  }, simplify = FALSE)
+
+  # run camera
+  camera <- colnames(contrasts) %>% 
+  sapply(function(y) {
+    fry.input %>%
+      limma::camera(
+        index = geneset,
+        design = design,
+        contrast = contrasts[,y]
+      ) %>%
+      rownames_to_column("pathway") %>%
+      as_tibble() %>% 
+      mutate(coef = y) 
+  }, simplify = FALSE)
+  
+  # create ranks for fgsea
+  ranks <- toptables %>% 
+     sapply(function(y) {
+     y %>%
+       arrange(t) %>%
+       dplyr::select(gene_name, t) %>% #only want the Pvalue with sign
+       with(structure(t, names = gene_name)) %>%
+       rev() # reverse so the start of the list is upregulated genes
+   }, simplify = FALSE)
+  
+  # run fgsea
+  set.seed(1)
+  fgsea <- ranks %>% 
+  sapply(function(x){
+    fgseaMultilevel(stats = x, 
+                    pathways = geneset) %>%
+      as_tibble() %>%
+      dplyr::rename(FDR = padj) %>%
+      mutate(padj = p.adjust(pval, "bonferroni")) %>%
+      dplyr::select(pathway, pval, FDR, padj, everything()) %>%
+      arrange(pval) 
+  }, simplify = F)
+  
+  fgsea %<>% 
+    map2(names(.), ~.x %>% mutate(coef = .y))  
+  
+  # calculate HMP
+  hmp <- fry %>%
+  bind_rows() %>%
+  dplyr::select(pathway, PValue.Mixed, coef) %>%
+  dplyr::rename(fry_p = PValue.Mixed) %>%
+  left_join(camera %>%
+              bind_rows() %>%
+              dplyr::select(pathway, PValue, coef),
+            by = c("pathway", "coef")) %>%
+  dplyr::rename(camera_p = PValue) %>%
+  left_join(fgsea %>%
+              bind_rows() %>%
+              dplyr::select(pathway, pval, coef),
+            by = c("pathway", "coef")) %>%
+  dplyr::rename(fgsea_p = pval) %>%
+  bind_rows() %>%
+  nest(p = one_of(c("fry_p", "camera_p", "fgsea_p"))) %>%
+ mutate(harmonic_p = vapply(p, function(x){
+        x <- unlist(x)
+        x <- x[!is.na(x)]
+        p.hmp(x, L = 4)
+      }, numeric(1))
+ ) %>%
+  unnest() %>%
+  mutate(harmonic_p_FDR = p.adjust(harmonic_p, "fdr"),
+         sig = harmonic_p_FDR < 0.05) %>%
+  arrange(harmonic_p)
+
+return(list(hmp = hmp, 
+            fgsea = fgsea))    
+}
+```
+
+## KEGG gene sets
+```{r}
+hmp.kegg <- runHMP(
+  geneset = KEGG, 
+  eset = eset, 
+  toptable = toptables, 
+  design = design, 
+  contrasts = contrasts
+  )
+
+# define sig paths
+hmp.KEGG.sig.paths <- hmp.kegg$hmp %>% 
+  dplyr::filter(coef != "wt_M - wt_F") %>% 
+  dplyr::filter(harmonic_p_FDR < 0.03) %>% 
+  .$pathway %>% 
+  unique
+
+hmp.kegg$hmp %>% 
+  dplyr::filter(coef != "wt_M - wt_F") %>% 
+  dplyr::filter(pathway %in% hmp.KEGG.sig.paths) %>% 
+  mutate(
+    sex = case_when(
+      grepl(coef, pattern = "_F") ~ "female", 
+      grepl(coef, pattern = "_M") ~ "male"
+    )
+  ) %>% 
+  ggplot(
+    aes(x = coef, y = reorder(pathway,
+                                  X = -log10(harmonic_p)))
+  ) +
+  geom_tile(
+    aes(fill = -log10(harmonic_p), alpha = sig)
+  ) +
+  geom_label(
+    aes(label = signif(harmonic_p_FDR, 2))
+  ) +
+  scale_fill_viridis_c() +
+  facet_wrap(~sex, scales = "free_x")
+
+# define gs that are sig in at least 2 coefs
+n.kegg.sig.hmp <- hmp.kegg$hmp %>% 
+  dplyr::filter(coef != "wt_M - wt_F") %>% 
+  dplyr::filter(harmonic_p_FDR < 0.05) %>% 
+  group_by(pathway) %>% 
+  summarise(n = n()) %>% 
+  ungroup %>% 
+  dplyr::filter(n > 1)
+
+
+hmp.kegg$hmp %>% 
+  #dplyr::filter(coef != "wt_M - wt_F") %>% 
+  dplyr::filter(pathway %in% n.kegg.sig.hmp$pathway) %>% 
+  mutate(
+    sex = case_when(
+      grepl(coef, pattern = "_F") ~ "female", 
+      grepl(coef, pattern = "_M") ~ "male"
+    ), 
+    
+    pathway = str_replace_all(pathway, pattern = "_", replacement = " "), 
+    pathway = str_remove(pathway, pattern = "KEGG "), 
+    pathway = str_wrap(pathway, width = 30), 
+    coef = str_remove(coef, pattern = "- wt.+")
+  ) %>% 
+  ggplot(
+    aes(x = coef, y = reorder(pathway,
+                                  X = -log10(harmonic_p)))
+  ) +
+  geom_tile(
+    aes(fill = -log10(harmonic_p), 
+        #alpha = harmonic_p_FDR < 0.05
+        ),
+  ) +
+  geom_label(
+    aes(label = signif(harmonic_p_FDR, 2)), 
+    data = . %>% 
+      dplyr::filter(harmonic_p_FDR < 0.1)
+  ) +
+  scale_fill_viridis_c(
+    option = "viridis"
+  ) +
+  facet_share(~sex, scales = "free_x") +
+  labs(
+    x = NA, 
+    y = "KEGG pathway", 
+    fill = "-log10(pvalue)", 
+    alpha = "FDR < 0.05"
+  ) +
+  theme(
+    axis.text.y = element_text(face = "bold"),
+    axis.text.x = element_text(face = "bold"), 
+    strip.text = element_text(face = "bold")
+  )
+```
+
+
+```{r}
+hmp.kegg$hmp %>% 
+  dplyr::filter(pathway %in% c(
+    hmp.KEGG.sig.paths[1:10], 
+     "KEGG_RIBOSOME", 
+    "KEGG_COMPLEMENT_AND_COAGULATION_CASCADES"
+  )) %>% 
+  mutate(
+    sex = case_when(
+      grepl(coef, pattern = "_F") ~ "female", 
+      grepl(coef, pattern = "_M") ~ "male"
+    )
+  ) %>% 
+  ggplot(
+    aes(x = coef, y = reorder(pathway,
+                                  X = -log10(harmonic_p)))
+  ) +
+  geom_tile(
+    aes(fill = -log10(harmonic_p), alpha = sig)
+  ) +
+  geom_label(
+    aes(label = signif(harmonic_p_FDR, 2))
+  ) +
+  scale_fill_viridis_c() +
+  facet_wrap(~sex, scales = "free_x") 
+ # ggsave("output/plots4kim/proteomes6mo.png", 
+ #         width = 18, height = 10, units = "cm", dpi = 600, scale = 2)
+```
+
+
+#### ribosome
+
+```{r}
+ribo.adult <- 
+  toptables %>% 
+  bind_rows() %>% 
+  dplyr::filter(gene_name %in% KEGG$KEGG_RIBOSOME) %>% 
+  dplyr::filter(coef != "wt_M - wt_F") %>% 
+  dplyr::select(gene_name, logFC, coef) %>% 
+  dplyr::distinct(gene_name, coef, .keep_all = T) %>% 
+  spread(key = "coef", value = "logFC") %>% 
+  column_to_rownames("gene_name") %>% 
+  t
+
+ribo.hm <- draw(
+  ComplexHeatmap::Heatmap(
+    
+    # df for input 
+    ribo.adult,
+    
+    
+    show_column_names = TRUE, 
+    column_names_rot = 45, 
+    
+    column_title = "RIBOSOME",
+    col = colorRamp2(
+      breaks = seq(-0.3, 0.3, length.out = 100),
+      colors = colorRampPalette(rev(brewer.pal(n = 7, name = "RdBu")))(100)
+    ),
+    name = "logFC", # name the legend
+    
+    cluster_rows = TRUE,  
+    heatmap_legend_param = list(
+      direction = "horizontal", 
+      title_position = "topcenter"), 
+    
+    heatmap_width = unit(35, "cm"), 
+    heatmap_height = unit(10, "cm"), 
+  ),
+  
+  heatmap_legend_side = "top"
+
+)
+```
+
+#### oxphos
+```{r}
+oxphos.adult <- 
+  toptables %>% 
+  bind_rows() %>% 
+  dplyr::filter(gene_name %in% KEGG$KEGG_OXIDATIVE_PHOSPHORYLATION) %>% 
+  dplyr::filter(coef != "wt_M - wt_F") %>% 
+  dplyr::select(gene_name, logFC, coef) %>% 
+  dplyr::distinct(gene_name, coef, .keep_all = T) %>% 
+  spread(key = "coef", value = "logFC") %>% 
+  column_to_rownames("gene_name") %>% 
+  t
+
+oxphos.hm <- draw(
+  ComplexHeatmap::Heatmap(
+    
+    # df for input 
+    oxphos.adult,
+    
+    
+    show_column_names = TRUE, 
+    column_names_rot = 45, 
+    
+    column_title = "oxphos.adult",
+    col = colorRamp2(
+      breaks = seq(-0.3, 0.3, length.out = 100),
+      colors = colorRampPalette(rev(brewer.pal(n = 7, name = "RdBu")))(100)
+    ),
+    name = "logFC", # name the legend
+    
+    cluster_rows = TRUE,  
+    heatmap_legend_param = list(
+      direction = "horizontal", 
+      title_position = "topcenter"), 
+    
+    heatmap_width = unit(30, "cm"), 
+    heatmap_height = unit(10, "cm"), 
+  ),
+  
+  heatmap_legend_side = "top"
+
+)
+```
+
+
+#### lysosome
+
+```{r}
+lyso.adult <- 
+  toptables %>% 
+  bind_rows() %>% 
+  dplyr::filter(gene_name %in% KEGG$KEGG_LYSOSOME) %>% 
+  dplyr::filter(coef != "wt_M - wt_F") %>% 
+  dplyr::select(gene_name, logFC, coef) %>% 
+  dplyr::distinct(gene_name, coef, .keep_all = T) %>% 
+  spread(key = "coef", value = "logFC") %>% 
+  column_to_rownames("gene_name") 
+
+ribo.hm <- draw(
+  ComplexHeatmap::Heatmap(
+    
+    # df for input 
+    lyso.adult,
+    
+    
+    show_column_names = TRUE, 
+    column_names_rot = 45, 
+    
+    column_title = "LYSOSOME",
+    col = colorRamp2(
+      breaks = seq(-01, 01, length.out = 100),
+      colors = colorRampPalette(rev(brewer.pal(n = 7, name = "RdBu")))(100)
+    ),
+    name = "logFC", # name the legend
+    
+    cluster_rows = TRUE,  
+    
+    heatmap_legend_param = list(
+      direction = "vertical", 
+      title_position = "topleft", 
+       legend_height = unit(4, "cm")
+      ), 
+    
+    heatmap_width = unit(10, "cm"), 
+    heatmap_height = unit(20, "cm"), 
+  ),
+  
+  heatmap_legend_side = "right"
+
+)
+```
+
+
+#### KEGG_FC_GAMMA_R_MEDIATED_PHAGOCYTOSIS
+
+```{r}
+phago.adult <- 
+  toptables %>% 
+  bind_rows() %>% 
+  dplyr::filter(gene_name %in% KEGG$KEGG_FC_GAMMA_R_MEDIATED_PHAGOCYTOSIS) %>% 
+  dplyr::filter(coef != "wt_M - wt_F") %>% 
+  dplyr::select(gene_name, logFC, coef) %>% 
+  dplyr::distinct(gene_name, coef, .keep_all = T) %>% 
+  spread(key = "coef", value = "logFC") %>% 
+  column_to_rownames("gene_name") 
+
+phago.hm <- draw(
+  ComplexHeatmap::Heatmap(
+    
+    # df for input 
+    phago.adult,
+    
+    
+    show_column_names = TRUE, 
+    column_names_rot = 45, 
+    
+    column_title = "KEGG_FC_GAMMA_R_MEDIATED_PHAGOCYTOSIS",
+    col = colorRamp2(
+      breaks = seq(-0.5, 0.5, length.out = 100),
+      colors = colorRampPalette(rev(brewer.pal(n = 7, name = "RdBu")))(100)
+    ),
+    name = "logFC", # name the legend
+    
+    cluster_rows = TRUE,  
+    
+    heatmap_legend_param = list(
+      direction = "vertical", 
+      title_position = "topleft", 
+       legend_height = unit(4, "cm")
+      ), 
+    
+    heatmap_width = unit(10, "cm"), 
+    heatmap_height = unit(25, "cm"), 
+  ),
+  
+  heatmap_legend_side = "right"
+
+)
+```
+
+
+
+## cell type marker gene sets
+
+```{r}
+fry.input <- exprs(eset) %>% 
+  as.data.frame() %>% 
+  rownames_to_column("uniprot_id") %>% 
+  left_join(anno %>% 
+              dplyr::select(gene_name, uniprot_id)) %>% 
+  dplyr::distinct(gene_name, .keep_all = TRUE) %>% 
+  dplyr::filter(!is.na(gene_name)) %>% 
+  column_to_rownames("gene_name") %>% 
+  dplyr::select(-uniprot_id)
+
+fry.cell <- colnames(contrasts) %>%  
+  sapply(function(y) { 
+    fry.input %>% 
+      limma::fry( 
+        index = cell_type_markers, 
+        design = design, 
+        contrast = contrasts[,y], 
+        sort = "directional" 
+      ) %>% 
+      rownames_to_column("pathway") %>% 
+      as_tibble() %>%  
+      mutate(coef = y)  
+  }, simplify = FALSE) 
+
+# keep this to get theleadingEdege genes
+hmp.cell <- runHMP(
+  geneset = cell_type_markers,
+  eset = eset,
+  toptable = toptables,
+  design = design,
+  contrasts = contrasts
+  )
+
+fry.cell %>% 
+  bind_rows() %>% 
+  dplyr::filter(coef != "wt_M - wt_F") %>% 
+  ggplot(
+    aes(x = coef, y = reorder(pathway,
+                              X = -log10(PValue)))
+  ) +
+  geom_tile(
+    aes(fill = -log10(PValue), alpha = FDR < 0.05)
+  ) +
+  geom_label(
+    aes(label = signif(FDR, 2))
+  ) +
+  scale_fill_viridis_c()
+  facet_wrap(~sex, scales = "free_x")
+```
+
+#### leadingEdge gene overlaps.
+```{r}
+# svg("output/plots4pub3/celltype_protein_fems_LeadingEdgeUpSet.svg", 
+#     width = 5, height = 5)
+# females
+hmp.cell$fgsea %>%
+  bind_rows() %>% 
+  dplyr::filter(coef %in% grep(coef, pattern = "MPS", value = TRUE)) %>% 
+  dplyr::filter(pathway %in% 
+                  c("Oligodendrocyte", "Oligodendrocyte_sla high", 
+                    "Microglia_apoc1 high", "Neural stem cell")) %>% 
+  mutate(
+    coef = str_remove(coef, pattern = " - wt.+"),
+    coef_cell = paste0(coef, "_", pathway)
+  ) %>% 
+  dplyr::select(coef_cell, leadingEdge) %>% 
+  dplyr::filter(
+    coef_cell == grep(coef_cell, pattern = "_F_", value = TRUE)
+  ) %>% 
+  split(f = .$coef_cell) %>% 
+  lapply(function(x) {x$leadingEdge}[[1]]) %>% 
+  fromList() %>% 
+  upset(order.by = "freq",nsets = 4)
+# dev.off()
+```
+
+```{r}
+# svg("output/plots4pub3/celltype_protein_males_LeadingEdgeUpSet.svg", 
+#     width = 7, height = 5)
+# males
+hmp.cell$fgsea %>%
+  bind_rows() %>% 
+  dplyr::filter(coef %in% grep(coef, pattern = "MPS", value = TRUE)) %>% 
+  dplyr::filter(pathway %in% 
+                  c("Oligodendrocyte", "Oligodendrocyte_sla high", 
+                    "Microglia_apoc1 high", "Neural stem cell", 
+                    "Macrophage_grn1 high", "Neuroblast", 
+                    "Meningeal mural lymphatic endothelial cell"
+                    )) %>% 
+  mutate(
+    coef = str_remove(coef, pattern = " - wt.+"),
+    coef_cell = paste0(coef, "_", pathway)
+  ) %>% 
+  dplyr::select(coef_cell, leadingEdge) %>% 
+  dplyr::filter(
+    coef_cell == grep(coef_cell, pattern = "_M_", value = TRUE)
+  ) %>% 
+  split(f = .$coef_cell) %>% 
+  lapply(function(x) {x$leadingEdge}[[1]]) %>% 
+  fromList() %>% 
+  upset(order.by = "freq")
+# dev.off()
+```
+
+
+```{r}
+cell.leadingEdge.protein <- hmp.cell$fgsea %>% 
+  bind_rows() %>% 
+  dplyr::filter(
+    coef %in% grep(coef, pattern = "MPS", value = TRUE), 
+    pathway %in% c(
+      "Oligodendrocyte", "Oligodendrocyte_sla high", 
+      "Microglia_apoc1 high", "Neural stem cell", 
+      "Macrophage_grn1 high", "Meningeal mural lymphatic endothelial cell", 
+      "Neuroblast"
+    )) %>% 
+  mutate(
+    coef = str_remove(coef, pattern = " - wt.+"),
+    coef_cell = paste0(coef, "_", pathway)
+  ) %>% 
+  split(f = .$coef_cell) %>% 
+  lapply(function(x) {
+    x$leadingEdge[[1]]
+  })
+
+
+  
+leadingEdge.F.proteins <- intersect(
+  cell.leadingEdge.protein$`MPSIIIB_F_Microglia_apoc1 high`, 
+  cell.leadingEdge.protein$MPSIIIB_F_Oligodendrocyte) %>% 
+  intersect(
+  cell.leadingEdge.protein$`MPSIIIB_F_Neural stem cell`) %>% 
+  intersect(cell.leadingEdge.protein$`MPSIIIB_F_Oligodendrocyte_sla high`)
+
+leadingEdge.F.proteins <- c(
+  leadingEdge.F.proteins, 
+  
+  intersect(
+    cell.leadingEdge.protein$`MPSIIIB_F_Microglia_apoc1 high`, 
+    cell.leadingEdge.protein$MPSIIIB_F_Oligodendrocyte) %>% 
+    intersect(cell.leadingEdge.protein$`MPSIIIB_F_Oligodendrocyte_sla high`), 
+  
+    intersect(
+    cell.leadingEdge.protein$`MPSIIIB_F_Microglia_apoc1 high`, 
+    cell.leadingEdge.protein$MPSIIIB_F_Oligodendrocyte) %>% 
+    intersect(cell.leadingEdge.protein$`MPSIIIB_F_Neural stem cell`)
+  ) %>%  
+  unique()
+
+
+
+
+
+leadingEdge.M.proteins <- intersect(
+  cell.leadingEdge.protein$`MPSIIIB_M_Microglia_apoc1 high`, 
+  cell.leadingEdge.protein$MPSIIIB_M_Oligodendrocyte) %>% 
+  intersect(
+    cell.leadingEdge.protein$`MPSIIIB_M_Neural stem cell`) %>% 
+  intersect(
+    cell.leadingEdge.protein$`MPSIIIB_F_Oligodendrocyte_sla high`) 
+
+leadingEdge.M.proteins %<>% 
+  c(
+    intersect(
+      cell.leadingEdge.protein$`MPSIIIB_M_Oligodendrocyte_sla high`, 
+      cell.leadingEdge.protein$`MPSIIIB_M_Microglia_apoc1 high`) %>% 
+      intersect(
+      cell.leadingEdge.protein$MPSIIIB_M_Oligodendrocyte
+    )
+    
+    
+    
+  ) %>% unique()
+
+# svg("output/plots4pub3/sharedleadingEdge_F.svg")
+toptables %>% 
+  bind_rows() %>% 
+  dplyr::filter(gene_name %in% leadingEdge.F.proteins) %>% 
+  tidyHeatmap::heatmap(
+    .row = coef, 
+    .column = gene_name, 
+    .value = logFC, 
+    
+    # colours
+    palette_value = circlize::colorRamp2(
+      seq(-1, 1, length.out = 11),
+      rev(RColorBrewer::brewer.pal(11, "RdBu"))),
+    rect_gp = grid::gpar(col = "#161616", lwd = 0.5),
+    
+    # sizes
+    row_names_gp = gpar(fontsize = 14),
+    column_names_gp = gpar(fontsize = 14),
+    heatmap_width = unit(15, "cm"),
+    heatmap_height = unit(10, "cm"),
+  )
+# dev.off()  
+
+# svg("output/plots4pub3/sharedleadingEdge_M.svg")
+toptables %>% 
+  bind_rows() %>% 
+  dplyr::filter(gene_name %in% leadingEdge.M.proteins) %>% 
+  tidyHeatmap::heatmap(
+    .row = coef, 
+    .column = gene_name, 
+    .value = logFC, 
+    
+    # colours
+    palette_value = circlize::colorRamp2(
+      seq(-1, 1, length.out = 11),
+      rev(RColorBrewer::brewer.pal(11, "RdBu"))),
+    rect_gp = grid::gpar(col = "#161616", lwd = 0.5),
+    
+    # sizes
+    row_names_gp = gpar(fontsize = 14),
+    column_names_gp = gpar(fontsize = 14),
+    heatmap_width = unit(15, "cm"),
+    heatmap_height = unit(10, "cm"),
+  )
+# dev.off()  
+
+
+```
+
+
+
+
+## IRE gene sets
+```{r}
+ire.hmp <- runHMP(
+  geneset = ire, 
+  eset = eset, 
+  toptable = toptables, 
+  design = design, 
+  contrasts = contrasts)
+
+ire.hmp$hmp %>% 
+  bind_rows() %>% 
+  mutate(
+    sex = case_when(
+      grepl(coef, pattern = "_F") ~ "female",
+      grepl(coef, pattern = "_M") ~ "male"
+    )
+  ) %>%
+  ggplot(
+    aes(x = coef, y = reorder(pathway,
+                                  X = -log10(harmonic_p)))
+  ) +
+  geom_tile(
+    aes(fill = -log10(harmonic_p), alpha = sig)
+  ) +
+  geom_label(
+    aes(label = signif(harmonic_p_FDR, 2))
+  ) +
+  scale_fill_viridis_c() +
+  facet_wrap(~sex, scales = "free_x")
+```
+
+## chromosome gene sets. 
+```{r}
+fry.chr <- colnames(contrasts) %>%  
+  sapply(function(y) { 
+    fry.input %>% 
+      limma::fry( 
+        index = chr, 
+        design = design, 
+        contrast = contrasts[,y], 
+        sort = "directional" 
+      ) %>% 
+      rownames_to_column("pathway") %>% 
+      as_tibble() %>%  
+      mutate(coef = y)  
+  }, simplify = FALSE) 
+
+fry.chr %>% 
+  bind_rows() %>% 
+  mutate(
+   pathway = factor(pathway, levels = c(1:26, "mt")), 
+   chr = as.numeric(pathway)
+  ) %>%
+  ggplot(
+    aes(x = coef, y = reorder(pathway, -chr))
+  ) +
+  geom_tile(
+    aes(fill = -log10(PValue), alpha = FDR < 0.05)
+  ) +
+  geom_label(
+    aes(label = signif(FDR, 2))
+  ) +
+  scale_fill_viridis_c() +
+  labs(
+    title = "fry - directional"
+  )
+
+fry.chr %>% 
+  bind_rows() %>% 
+  mutate(
+   pathway = factor(pathway, levels = c(1:26, "mt")), 
+   chr = as.numeric(pathway)
+  ) %>%
+  ggplot(
+    aes(x = coef, y = reorder(pathway, -chr))
+  ) +
+  geom_tile(
+    aes(fill = -log10(PValue.Mixed), alpha = FDR.Mixed < 0.05)
+  ) +
+  geom_label(
+    aes(label = signif(FDR.Mixed, 2))
+  ) +
+  scale_fill_viridis_c() +
+  labs(
+    title = "fry - mixed"
+  )
+```
+
+Directional and mixed, significant changes to the expression of genes are observed
+
+Have a look at Manhattan plots to see if there are peaks along these chromosomes
+
+### manhattan plots
+#### MPS IIIB males
+```{r}
+
+manhat.input.naglu.males <- 
+  toptables$`MPSIIIB_M - wt_M` %>% 
+  mutate(
+    chr = str_extract(chromosome, pattern = "\\d{1,2}"), 
+    .after = chromosome
+  ) %>% 
+  left_join(
+    bm.anno.start.end %>% 
+      dplyr::rename(gene_name = external_gene_name) %>% 
+      dplyr::distinct(gene_name, .keep_all = TRUE)
+  ) %>% 
+  dplyr::filter(chr %in% 1:25) %>% 
+  mutate(
+    chr = factor(chr, levels = 1:25)
+  ) %>% 
+  # select rows of interest in order
+  dplyr::select(
+    gene_name, logFC, pval, DE, chr, start = start_position, end = end_position, 
+    everything()
+  ) %>% 
+  # calculate the midpoint of each gene 
+  group_by(gene_name) %>% 
+  mutate(
+    mid = mean(c(start, end)), .after = end
+    ) %>% 
+  ungroup %>% 
+  # get rid of any genes which do not have a mid point
+  dplyr::filter(
+    !is.na(mid)
+  ) %>% 
+  # calculate the cumulative sum per chromosomes
+  group_by(chr)  %>% 
+  arrange(chr, mid) %>% 
+  mutate(
+    chrLen = max(mid), 
+    chr.mid.cum = min(start) + mid,
+    .after = mid
+    ) %>% 
+  # calculate the cumulative length overall. 
+  dplyr::arrange(chr, mid) %>% 
+  ungroup() %>% 
+  mutate(
+    midCum = lag(cumsum(chr.mid.cum)), .after = chr.mid.cum
+    )
+  
+axis.nagmales <- 
+  manhat.input.naglu.males %>%
+  group_by(chr) %>%
+  dplyr::arrange(chr) %>% 
+  summarize(center = (max(midCum) + min(midCum)) / 2) %>% 
+  mutate(
+    seqnames = as.numeric(chr),
+    colour = rep(c("grey40", "black"), length.out = 25)
+  )
+
+sig.chrs.naglu.males <- fry.chr$`MPSIIIB_M - wt_M` %>% 
+  dplyr::filter(FDR < 0.05) %>% 
+  .$pathway
+
+ggplot(manhat.input.naglu.males, 
+       aes(x = midCum, y = -log10(pval))
+       ) +
+  
+  geom_point(
+    aes(color = chr, size = DE), 
+    alpha = 0.5, size = 1) +
+  
+  geom_point(
+    alpha = 0.5, size = 1, colour = "red", 
+    data = . %>% 
+      dplyr::filter(chr == 24)
+  ) +
+  
+  geom_point(
+    alpha = 0.5, size = 1, colour = "green", 
+    data = . %>% 
+      dplyr::filter(chr == sig.chrs.naglu.males[1])
+  ) +
+  
+  geom_point(
+    alpha = 0.5, size = 1, colour = "green2", 
+    data = . %>% 
+      dplyr::filter(chr == sig.chrs.naglu.males[2])
+  ) +
+  
+  scale_color_manual(values = axis.nagmales$colour) +
+  scale_x_continuous(label = axis.nagmales$chr, 
+                     breaks = axis.nagmales$center) +
+  # scale_y_continuous(limits =c(0, 10)) + # zoom in
+  facet_wrap(~coef, ncol = 1) +
+  labs(x = "Chromosome", y = expression(paste(-log[10], "(p)"))) +
+  theme( 
+    legend.position="none",
+    panel.border = element_blank(),
+    panel.grid.major.x = element_blank(),
+    panel.grid.minor.x = element_blank()
+  ) 
+```
+
+#### MPS IIIB females
+```{r}
+
+manhat.input.naglu.females <- 
+  toptables$`MPSIIIB_F - wt_F` %>% 
+  mutate(
+    chr = str_extract(chromosome, pattern = "\\d{1,2}"), 
+    .after = chromosome
+  ) %>% 
+  left_join(
+    bm.anno.start.end %>% 
+      dplyr::rename(gene_name = external_gene_name) %>% 
+      dplyr::distinct(gene_name, .keep_all = TRUE)
+  ) %>% 
+  dplyr::filter(chr %in% 1:25) %>% 
+  mutate(
+    chr = factor(chr, levels = 1:25)
+  ) %>% 
+  # select rows of interest in order
+  dplyr::select(
+    gene_name, logFC, pval, DE, chr, start = start_position, end = end_position, 
+    everything()
+  ) %>% 
+  # calculate the midpoint of each gene 
+  group_by(gene_name) %>% 
+  mutate(
+    mid = mean(c(start, end)), .after = end
+    ) %>% 
+  ungroup %>% 
+  # get rid of any genes which do not have a mid point
+  dplyr::filter(
+    !is.na(mid)
+  ) %>% 
+  # calculate the cumulative sum per chromosomes
+  group_by(chr)  %>% 
+  arrange(chr, mid) %>% 
+  mutate(
+    chrLen = max(mid), 
+    chr.mid.cum = min(start) + mid,
+    .after = mid
+    ) %>% 
+  # calculate the cumulative length overall. 
+  dplyr::arrange(chr, mid) %>% 
+  ungroup() %>% 
+  mutate(
+    midCum = lag(cumsum(chr.mid.cum)), .after = chr.mid.cum
+    )
+  
+axis.nafegmales <- 
+  manhat.input.naglu.females %>%
+  group_by(chr) %>%
+  dplyr::arrange(chr) %>% 
+  summarize(center = (max(midCum) + min(midCum)) / 2) %>% 
+  mutate(
+    seqnames = as.numeric(chr),
+    colour = rep(c("grey40", "black"), length.out = 25)
+  )
+
+fry.chr$`MPSIIIB_F - wt_F`
+
+ggplot(manhat.input.naglu.females, 
+       aes(x = midCum, y = -log10(pval))
+       ) +
+  geom_point(
+    aes(color=chr), 
+    alpha = 0.5, size = 1) +
+  
+  geom_point(
+    alpha = 0.5, size = 1, colour = "red", 
+    data = . %>% 
+      dplyr::filter(chr == 24)
+  ) +
+  
+  geom_point(
+    alpha = 0.5, size = 1, colour = "green2", 
+    data = . %>% 
+      dplyr::filter(chr == sig.chrs.naglu.males[2])
+  ) +
+  scale_color_manual(values = axis.nafegmales$colour) +
+  scale_x_continuous(label = axis.nafegmales$chr, 
+                     breaks = axis.nafegmales$center) +
+  facet_wrap(~coef, ncol = 1) +
+  labs(x = "Chromosome", y = expression(paste(-log[10], "(p)"))) +
+  theme( 
+    legend.position="none",
+    panel.border = element_blank(),
+    panel.grid.major.x = element_blank(),
+    panel.grid.minor.x = element_blank()
+  ) 
+```
+
+#### EOfAD-like males
+```{r}
+manhat.input.psen1.males <- 
+  toptables$`EOfADlike_M - wt_M` %>% 
+  mutate(
+    chr = str_extract(chromosome, pattern = "\\d{1,2}"), 
+    .after = chromosome
+  ) %>% 
+  left_join(
+    bm.anno.start.end %>% 
+      dplyr::rename(gene_name = external_gene_name) %>% 
+      dplyr::distinct(gene_name, .keep_all = TRUE)
+  ) %>% 
+  dplyr::filter(chr %in% 1:25) %>% 
+  mutate(
+    chr = factor(chr, levels = 1:25)
+  ) %>% 
+  # select rows of interest in order
+  dplyr::select(
+    gene_name, logFC, pval, DE, chr, start = start_position, end = end_position, 
+    everything()
+  ) %>% 
+  # calculate the midpoint of each gene 
+  group_by(gene_name) %>% 
+  mutate(
+    mid = mean(c(start, end)), .after = end
+    ) %>% 
+  ungroup %>% 
+  # get rid of any genes which do not have a mid point
+  dplyr::filter(
+    !is.na(mid)
+  ) %>% 
+  # calculate the cumulative sum per chromosomes
+  group_by(chr)  %>% 
+  arrange(chr, mid) %>% 
+  mutate(
+    chrLen = max(mid), 
+    chr.mid.cum = min(start) + mid,
+    .after = mid
+    ) %>% 
+  # calculate the cumulative length overall. 
+  dplyr::arrange(chr, mid) %>% 
+  ungroup() %>% 
+  mutate(
+    midCum = lag(cumsum(chr.mid.cum)), .after = chr.mid.cum
+    )
+  
+axis.psenmales <- 
+  manhat.input.psen1.males %>%
+  group_by(chr) %>%
+  dplyr::arrange(chr) %>% 
+  summarize(center = (max(midCum) + min(midCum)) / 2) %>% 
+  mutate(
+    seqnames = as.numeric(chr),
+    colour = rep(c("grey40", "black"), length.out = 25)
+  )
+
+ggplot(manhat.input.psen1.males, 
+       aes(x = midCum, y = -log10(pval))
+       ) +
+  geom_point(
+    aes(color=chr), 
+    alpha = 0.5, size = 1) +
+  geom_point(
+    alpha = 0.5, size = 1, colour = "red", 
+    data = . %>% 
+      dplyr::filter(chr == 17)
+  ) +
+  scale_color_manual(values = axis.psenmales$colour) +
+  scale_x_continuous(label = axis.psenmales$chr, 
+                     breaks = axis.psenmales$center) +
+  # scale_y_continuous(limits =c(0, 10)) + # zoom in
+  facet_wrap(~coef, ncol = 1) +
+  labs(x = "Chromosome", y = expression(paste(-log[10], "(p)"))) +
+  theme( 
+    legend.position="none",
+    panel.border = element_blank(),
+    panel.grid.major.x = element_blank(),
+    panel.grid.minor.x = element_blank()
+  ) 
+```
+
+#### EOfAD-like females
+```{r}
+manhat.input.psen1.females <- 
+  toptables$`EOfADlike_F - wt_F` %>% 
+  mutate(
+    chr = str_extract(chromosome, pattern = "\\d{1,2}"), 
+    .after = chromosome
+  ) %>% 
+  left_join(
+    bm.anno.start.end %>% 
+      dplyr::rename(gene_name = external_gene_name) %>% 
+      dplyr::distinct(gene_name, .keep_all = TRUE)
+  ) %>% 
+  dplyr::filter(chr %in% 1:25) %>% 
+  mutate(
+    chr = factor(chr, levels = 1:25)
+  ) %>% 
+  # select rows of interest in order
+  dplyr::select(
+    gene_name, logFC, pval, DE, chr, start = start_position, end = end_position, 
+    everything()
+  ) %>% 
+  # calculate the midpoint of each gene 
+  group_by(gene_name) %>% 
+  mutate(
+    mid = mean(c(start, end)), .after = end
+    ) %>% 
+  ungroup %>% 
+  # get rid of any genes which do not have a mid point
+  dplyr::filter(
+    !is.na(mid)
+  ) %>% 
+  # calculate the cumulative sum per chromosomes
+  group_by(chr)  %>% 
+  arrange(chr, mid) %>% 
+  mutate(
+    chrLen = max(mid), 
+    chr.mid.cum = min(start) + mid,
+    .after = mid
+    ) %>% 
+  # calculate the cumulative length overall. 
+  dplyr::arrange(chr, mid) %>% 
+  ungroup() %>% 
+  mutate(
+    midCum = lag(cumsum(chr.mid.cum)), .after = chr.mid.cum
+    )
+  
+axis.psenfemales <- 
+  manhat.input.psen1.females %>%
+  group_by(chr) %>%
+  dplyr::arrange(chr) %>% 
+  summarize(center = (max(midCum) + min(midCum)) / 2) %>% 
+  mutate(
+    seqnames = as.numeric(chr),
+    colour = rep(c("grey40", "black"), length.out = 25)
+  )
+
+ggplot(manhat.input.psen1.females, 
+       aes(x = midCum, y = -log10(pval))
+       ) +
+  geom_point(
+    aes(color=chr), 
+    alpha = 0.5, size = 1) +
+  geom_point(
+    alpha = 0.5, size = 1, colour = "red", 
+    data = . %>% 
+      dplyr::filter(chr == 17)
+  ) +
+  scale_color_manual(values = axis.psenfemales$colour) +
+  scale_x_continuous(label = axis.psenfemales$chr, 
+                     breaks = axis.psenfemales$center) +
+  # scale_y_continuous(limits =c(0, 10)) + # zoom in
+  facet_wrap(~coef, ncol = 1) +
+  labs(x = "Chromosome", y = expression(paste(-log[10], "(p)"))) +
+  theme( 
+    legend.position="none",
+    panel.border = element_blank(),
+    panel.grid.major.x = element_blank(),
+    panel.grid.minor.x = element_blank()
+  ) 
+```
+
+# compare protein and mRNA
+## read in the gene expr and toptables
+```{r}
+dge <- readRDS("data/R_objects/adult_brain/dge.rds")
+
+toptables.mRNA.adult <- readRDS("data/R_objects/adult_brain/toptablescqn.rds")
+```
+
+## Compare fold changle values for same comparison
+
+```{r}
+plotmRNAvProtein = function(toptable.protein, toptable.mRNA) {
+  
+  toptable.protein %>% 
+  dplyr::select(
+    gene_name, logFC.protein = logFC
+  ) %>% 
+    left_join(toptable.mRNA %>% 
+                dplyr::select(gene_name, logFC.mRNA = logFC)
+              ) %>% 
+    na.omit() %>% 
+  ggplot(
+    aes(x = logFC.mRNA, y = logFC.protein)
+  ) +
+  geom_point(
+    alpha = 0.5
+  ) +
+  geom_abline(
+    slope = 1, 
+    lty = 2, 
+    colour = "red", 
+    alpha = 0.5
+    ) +
+  coord_cartesian(
+    xlim = c(-1,1), 
+    ylim = c(-1,1)
+  )
+}
+```
+
+```{r}
+plotmRNAvProtein(
+  toptable.protein = toptables$`MPSIIIB_M - wt_M`, 
+  toptable.mRNA = toptables.mRNA.adult$`MPS-III`
+  ) +
+  labs(
+    title = "MPS IIIB Males"
+  )
+
+plotmRNAvProtein(
+  toptable.protein = toptables$`MPSIIIB_F - wt_F`, 
+  toptable.mRNA = toptables.mRNA.adult$`MPS-III`
+  ) +
+  labs(
+    title = "MPS IIIB females"
+  )
+
+plotmRNAvProtein(
+  toptable.protein = toptables$`EOfADlike_M - wt_M`, 
+  toptable.mRNA = toptables.mRNA.adult$EOfAD
+  ) +
+  labs(
+    title = "EOfAD-like Males"
+  )
+
+plotmRNAvProtein(
+  toptable.protein = toptables$`EOfADlike_M - wt_M`, 
+  toptable.mRNA = toptables.mRNA.adult$EOfAD
+  ) +
+  labs(
+    title = "EOfAD-like females"
+  )
+```
+
+
+<!-- # String analysis of MPS IIIB DE proteins -->
+
+<!-- ```{r} -->
+<!-- # set up string analysis -->
+<!-- string_db <- STRINGdb$new( -->
+<!--   version="12.0", # default -->
+<!--   species=7955, # zebrafish -->
+<!--   score_threshold=200,  -->
+<!--   network_type="full" # full network vs physical interaction -->
+<!-- ) -->
+<!-- ``` -->
+
+<!-- ```{r} -->
+<!-- # setup MPS III toptables for just the DEGs -->
+<!-- string_toptables <- toptables[grep(names(toptables), pattern = "MPS", value = TRUE)] %>%  -->
+<!--   lapply(function(x) { -->
+<!--     x %>%  -->
+<!--       dplyr::select(gene = gene_name, logFC, FDR) %>%  -->
+<!--       as.data.frame() # string cant handle tibbles -->
+<!--   }) -->
+
+<!-- # As a first step, we map the gene names to the STRING database identiiers using the "map" method. -->
+<!-- string_mapped_males <- string_db$map( -->
+<!--   string_toptables$`MPSIIIB_M - wt_M`,  -->
+<!--   "gene",  -->
+<!--   takeFirst = TRUE, -->
+<!--   removeUnmappedRows = TRUE  -->
+<!--   ) -->
+<!-- string_mapped_females <- string_db$map( -->
+<!--   string_toptables$`MPSIIIB_F - wt_F`,  -->
+<!--   "gene",  -->
+<!--   takeFirst = TRUE, -->
+<!--   removeUnmappedRows = TRUE  -->
+<!--   ) -->
+<!-- ``` -->
+
+<!-- ```{r} -->
+<!-- # define the DEGs.  -->
+<!-- string.num.DEGs <- string_toptables %>%  -->
+<!--   lapply(function(x) { -->
+<!--     x %>%  -->
+<!--       dplyr::filter(FDR < 0.05) %>%  -->
+<!--       .$gene %>%  -->
+<!--       length -->
+<!--   }) -->
+
+<!-- hits.males <- string_mapped_males$STRING_id[1:string.num.DEGs$`MPSIIIB_M - wt_M`] -->
+<!-- hits.fems <- string_mapped_females$STRING_id[1:string.num.DEGs$`MPSIIIB_F - wt_F`] -->
+
+<!-- # the plot network function is shit. export to the web server for better visualsaition  -->
+<!-- string_db$get_link( hits.fems ) -->
+<!-- string_db$get_link( hits.males ) -->
+<!-- ``` -->
+
+<!-- ```{r} -->
+<!-- # add logFC info -->
+<!-- string_mapped_males.logFC <-  -->
+<!--   string_db$add_diff_exp_color( -->
+<!--     subset(string_mapped_males, FDR < 0.05),  -->
+<!--     logFcColStr="logFC"  -->
+<!--     ) -->
+
+<!-- # add logFC info -->
+<!-- string_mapped_females.logFC <-  -->
+<!--   string_db$add_diff_exp_color( -->
+<!--     subset(string_mapped_females, FDR < 0.05),  -->
+<!--     logFcColStr="logFC"  -->
+<!--     ) -->
+
+<!-- # change the colours to be con -->
+<!-- string_mapped_males.logFC$color <- col_numeric( -->
+<!--   palette = "RdBu", # Customize the palette as needed -->
+<!--   reverse = TRUE, -->
+<!--   domain = range(string_mapped_males.logFC$logFC) -->
+<!-- )(string_mapped_males.logFC$logFC) -->
+
+<!-- string_mapped_females.logFC$color <- col_numeric( -->
+<!--   palette = "RdBu", # Customize the palette as needed -->
+<!--   reverse = TRUE, -->
+<!--   domain = range(string_mapped_females.logFC$logFC) -->
+<!-- )(string_mapped_females.logFC$logFC) -->
+
+
+<!-- # post payload (logFC) information to the STRING server -->
+<!-- payload.males <-  -->
+<!--   string_db$post_payload( -->
+<!--     string_mapped_males.logFC$STRING_id, -->
+<!--     colors=string_mapped_males.logFC$color) -->
+
+<!-- payload.females <-  -->
+<!--   string_db$post_payload( -->
+<!--     string_mapped_females.logFC$STRING_id, -->
+<!--     colors=string_mapped_females.logFC$color) -->
+<!-- ``` -->
+
+
+<!-- ```{r} -->
+<!-- # display a STRING network png with the "halo" -->
+<!-- string_db$get_link(string_mapped_females.logFC, payload_id=payload.females ) -->
+<!-- string_db$plot_network(string_mapped_males.logFC, payload_id=payload.males ) -->
+
+<!-- # perform the enrichment analysis -->
+<!-- enrichment.males <- string_db$get_enrichment( string_mapped_males ) -->
+
+<!-- background.males <- toptables$`MPSIIIB_M - wt_M`$gene_name # as an example, we use the first 2000 genes -->
+<!-- string_db$set_background(background.males) -->
+<!-- ``` -->
+
+# export data
+```{r}
+
+toptables %>% 
+  set_names(names(.) %>% str_remove_all(" - wt.+")) %>% 
+  set_names(names(.) %>% paste0("protein_6mbrain_", .)) %>% 
+  write.xlsx("output/spreadsheets/limma_proteomics_6mbrain.xlsx")
+
+hmp.proteomics.kegg.output <- hmp.kegg$hmp %>% 
+  left_join(hmp.kegg$fgsea %>% 
+              bind_rows() %>% 
+              dplyr::select(pathway, coef, leadingEdge),
+              by = c('pathway', 'coef')
+            ) %>% 
+  split(f = .$coef) %>% 
+  lapply(dplyr::select, -coef)
+
+names(hmp.proteomics.kegg.output) %<>% 
+  str_remove(" - wt.+") %>% 
+  paste0("protein_KEGG_6mbr_", .)
+
+hmp.proteomics.celltype.output <- hmp.cell$hmp %>% 
+  left_join(hmp.cell$fgsea %>% 
+              bind_rows() %>% 
+              dplyr::select(pathway, coef, leadingEdge),
+              by = c('pathway', 'coef')
+            ) %>% 
+  split(f = .$coef) %>% 
+  lapply(dplyr::select, -coef)
+
+names(hmp.proteomics.celltype.output) %<>% 
+  str_remove(" - wt.+") %>% 
+  paste0("protein_cell_6mbr_", .)
+
+hmp.proteomics.ire.output <- ire.hmp$hmp %>% 
+  left_join(ire.hmp$fgsea %>% 
+              bind_rows() %>% 
+              dplyr::select(pathway, coef, leadingEdge),
+              by = c('pathway', 'coef')
+            ) %>% 
+  split(f = .$coef) %>% 
+  lapply(dplyr::select, -coef)
+
+names(hmp.proteomics.ire.output) %<>% 
+  str_remove(" - wt.+") %>% 
+  paste0("protein_ire_6mbrain_", .)
+
+c(hmp.proteomics.celltype.output, hmp.proteomics.kegg.output, hmp.proteomics.ire.output) %>% 
+  write.xlsx("output/spreadsheets/proteomics_6mbrain_hmpoutputs.xlsx")
+```
+
+
