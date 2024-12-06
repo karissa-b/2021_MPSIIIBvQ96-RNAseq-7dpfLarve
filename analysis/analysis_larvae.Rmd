@@ -21,12 +21,27 @@ knitr::opts_chunk$set(
 ```
 
 ```{r loadLibs}
+# data manipulation
 library(tidyverse)
 library(magrittr)
 library(readxl)
-library(ngsReports)
+
+# annotations & gene sets
 library(AnnotationHub)
 library(msigdbr)
+
+# analysis
+library(ngsReports)
+library(edgeR)
+library(goseq)
+library(fgsea)
+library(tidyHeatmap)
+library(cqn)
+library(harmonicmeanp)
+library(ssizeRNA)
+library(variancePartition)
+
+# visualisation tools 
 library(pander)
 library(scales)
 library(pheatmap)
@@ -37,29 +52,27 @@ library(ggforce)
 library(RColorBrewer)
 library(colorspace)
 library(UpSetR)
-library(edgeR)
-library(goseq)
-library(fgsea)
 
-library(cqn)
-library(harmonicmeanp)
-library(ssizeRNA)
-library(variancePartition)
-
+# set the theme as i hate the default theme
 theme_set(theme_bw())
 ```
 
 ```{r anno}
+# download annotations for the ensembl genome using annotation hub
 ah <- AnnotationHub() %>%
 	subset(species == "Danio rerio") %>%
 	subset(rdataclass == "EnsDb")
 
-ensDb <- ah[["AH83189"]] # for release 101, latest version in Ah
+ensDb <- ah[["AH83189"]] # for release 101, the genome I aligned the reads to
 grTrans <- transcripts(ensDb)
+
+# calculate transcript lengths
 trLengths <- exonsBy(ensDb, "tx") %>%
 	width() %>%
 	vapply(sum, integer(1))
 mcols(grTrans)$length <- trLengths[names(grTrans)]
+
+# alculate gc content and length per transcript per gene 
 gcGene <- grTrans %>%
   mcols() %>%
   as.data.frame() %>%
@@ -67,9 +80,11 @@ gcGene <- grTrans %>%
   as_tibble() %>%
   group_by(gene_id) %>%
   summarise(
-    gc_content = sum(gc_content*length) / sum(length),
-    length = ceiling(median(length))
+    gc_content = sum(gc_content*length) / sum(length), # weighted average
+    length = ceiling(median(length)) # median length
   )
+
+# convert this info to a df. 
 grGenes <- genes(ensDb)
 mcols(grGenes) %<>%
   as.data.frame() %>%
@@ -115,11 +130,17 @@ meta <- read_excel("data/larvae/meta/naglu_v_Q96_larvae_metadata.xlsx", sheet = 
 featureCounts <- 
   read_delim("data/larvae/featureCounts/counts.out", delim = "\t", skip = 1) %>%
   set_names(basename(names(.))) %>% 
-  set_names(names(.) %>% str_remove(pattern = "_S1_merged.Aligned.sortedByCoord.dedup.out.bam")) %>% 
+  set_names(
+    names(.) %>% 
+      # cleanaup the colnames
+      str_remove(pattern = "_S1_merged.Aligned.sortedByCoord.dedup.out.bam")
+    ) %>% 
   as_tibble() %>% 
+  # remove uncessary columns 
   dplyr::select(-c(Chr, Start, End, Length, Strand)) %>% 
+  # i want to convert the ULN to fish_id, so need to convert to long format
   gather(key = "ULN", value = "counts", starts_with("21")) %>% 
-  left_join(meta) %>% 
+  left_join(meta) %>% # has the fishID
   dplyr::select(Geneid, counts, sample) %>% 
   spread(key = "sample", value = "counts") %>% 
   column_to_rownames("Geneid")
@@ -128,10 +149,11 @@ featureCounts <-
 #write_csv(rownames_to_column(featureCounts, "gene_id"), "output/GEOcounts.out")
 ```
 
-## filter lowly expressed genes
-Genes which are lowly expressed are considered uninformative for de analysis. Here, we set the threshold to be a min CPM of 0.5 (following the 10/min lib size rule proposed by gordon smyth). The effect of filtering is found below
+# filter lowly expressed genes
+Genes which are lowly expressed are considered uninformative for DE gene analysis. Here, we set the threshold to be a min CPM of 0.5 (following the 10/min lib size rule proposed by gordon smyth: see [here](https://f1000research.com/articles/5-1438)). The effect of filtering is found below:
 
 ```{r filt}
+# prepare density plots before and after filtering
 a <- featureCounts %>% 
     cpm(log = TRUE) %>%
     as.data.frame() %>% 
@@ -195,9 +217,10 @@ ggarrange(a, b, common.legend = TRUE)
 ```
 
 ```{r dge}
+# make the DGE object, which contains information of genes, samples and metadata. 
 x <- featureCounts %>% 
   as.matrix() %>% 
-  .[rowSums(cpm(.) >= 0.5) >= 8,] %>%
+  .[rowSums(cpm(.) >= 0.5) >= 8,] %>% # filter out genes lowly expressed. 
   DGEList(
     samples = tibble(sample = colnames(.)) %>%
       left_join(meta),
@@ -210,30 +233,33 @@ x <- featureCounts %>%
       left_join(gcGene) %>% 
       as_tibble()
   ) %>%
-  calcNormFactors()
+  calcNormFactors() # TMM normalisation - a standard method of normalisation in RNAseq data. 
 ```
 
-## PCA
+# PCA
 
-I fors want to explore the overall similarity between samples by PCA. No distinct clusters of samples are observed by genotype
+I first want to explore the overall similarity between samples by principal component analysis (PCA). PCA is a dimensionality reduction technique used to simplify complex datasets while retaining most of the important information. It works by transforming the original data into a new set of uncorrelated variables called principal components, which are linear combinations of the original variables. These components are ordered by the amount of variance they explain in the data, with the first principal component capturing the most variance. PCA is commonly used for visualization and to identify patterns or relationships in high-dimensional data. In the PCAs below, no distinct clusters of samples are observed by genotype. 
 
 ```{r}
 x$counts %>% 
-  cpm(log=TRUE) %>% 
-  t() %>% 
-  prcomp() %>% 
-  autoplot(data = tibble(sample = rownames(.$x)) %>%
+  cpm(log=TRUE) %>%  # convert counts to logCPM - standard measure of RNAseq data
+  t() %>% # data meeds to be transposed for PCA (i.e. samples as rows, genes as columns)
+  prcomp() %>% # perform PCA
+  autoplot( # ggfortify package allows automatic plotting of prcomp outout 
+    data = tibble(
+      sample = rownames(.$x)
+    ) %>% 
       left_join(x$samples),
     colour = "Genotype", 
     size = 6
   ) +
-  theme_bw() + 
   theme(aspect.ratio = 1) +
-  scale_color_discrete_qualitative(palette = "Dark 3")
+  scale_color_discrete_qualitative(palette = "Dark 3") # change the colours. 
 
 #  ggsave("output/plots/PCAblue.png", width = 10, height = 10, units = "cm", dpi = 300, scale = 1.25)
 ```
 
+Also wanted to see if the RNA quality (i.e. the RIN) shows any patterns in the data, ubt 
 
 ```{r}
 x$counts %>% 
@@ -253,26 +279,33 @@ x$counts %>%
 
 # Check genotypes
 
-This is in the `checkGenotypes.rmd` file. All fish carry the genotypes indicated from the PCR genotyping. 
+The alignments (.bam files) were manually inspected using `GViz` to look at the sequence of the reads aligning to each of the mutation sites. Since this requires the HPC to be mounted to my computer, I have performed this seperately in the `checkGenotypes.rmd` file. All fish carry the genotypes indicated from the PCR genotyping. 
 
-## %GC and Length check
+# %GC and Length check
+
+GC bias and length bias are common technical artifacts in RNA-seq data. GC bias occurs when sequences with higher or lower GC content are preferentially captured or sequenced, leading to inaccuracies in transcript quantification. Similarly, length bias arises because longer transcripts are more likely to generate more reads, making their expression levels appear higher. These biases can distort downstream analyses. Here, I will perform an initial DE gene analysis using `edgeR` and see if there are any trends for differential expression of genes due to their %GC or transcript length. 
 
 ```{r}
+# create a design matrix, with an intercept as rhe WT genotype and each mut as the coefs. 
+# a nice explanation of design matrices from the amazing bioinformaticians at WEHI can be found here: 
+# https://bioconductor.org/packages/release/workflows/vignettes/RNAseq123/inst/doc/designmatrices.html
 design <- model.matrix(~Genotype, data = x$samples) %>% 
   set_colnames(gsub(colnames(.), pattern = "Genotype", replacement = ""))
 
+# fit generalised linear modes (negative binomial districbution) 
 fit_1 <- x %>% 
-  estimateDisp(design) %>% 
-  glmFit(design)
+  estimateDisp(design) %>% # estimate dispersions. 
+  glmFit(design) # fit model
 ```
 
 
 ```{r}
-# Call the toptable
+# Call the toptable (i.e. DE genes spreadsheet)
+# this recursively performs the DE gene testing for each coefficient
 toptable_1 <- design %>% colnames() %>% .[2:3] %>% 
   sapply(function(x){
-    glmLRT(fit_1, coef = x) %>%
-      topTags(n = Inf) %>%
+    glmLRT(fit_1, coef = x) %>% # perform liklihood ratio tests
+      topTags(n = Inf) %>% # create the spreadsheet 
       .[["table"]] %>%
       as_tibble() %>%
       arrange(PValue) %>%
@@ -281,14 +314,15 @@ toptable_1 <- design %>% colnames() %>% .[2:3] %>%
         DE = FDR < 0.05
       ) %>% 
       dplyr::select(
+        # setup how i like it. 
         gene_name, logFC, logCPM, PValue, FDR, DE, everything()  
       )
       
   }, simplify = FALSE)
 ```
 
-# Vis
-These plots are zoomed in between -10 and 10 on the y-axisfor vis purposes. the blue lines of best fit are a bit wonky, meaning there are some biases here for %GC and Length. Therefore, conditional quantile normailsation is required. 
+These plots are zoomed in between -10 and 10 on the y-axisfor vis purposes. the blue lines of best fit are a bit wonky, meaning there are some biases here for %GC and Length. Therefore, [conditional quantile normailsation](https://pubmed.ncbi.nlm.nih.gov/22285995/) is required. 
+
 ```{r}
 ggarrange(
 toptable_1 %>% 
@@ -331,9 +365,10 @@ common.legend = TRUE,
 labels = "AUTO"
 ) 
 ```
+
 # CQN
 
-A little bit of bias is obsevred for %GC content and gene length, so will apply the `cqn` correction to adjust for this. 
+Here, I will apply the `cqn` correction to adjust for the observed bias for %GC and length.
 
 ```{r}
 cqn <-   
@@ -349,7 +384,6 @@ x %>%
 logCPM <- cqn$y + cqn$offset
 ```
 
-### plot out the model fits
 ```{r, fig.cap ="*Model fits for GC content and gene length under the CQN model. Variability is clearly visible at either end*"}
 par(mfrow = c(1, 2))
 cqnplot(cqn, n = 1, xlab = "GC Content")
@@ -358,7 +392,7 @@ par(mfrow = c(1, 1))
 ```
 
 # PCA after cqn
-PCA analysis was repeated. No significant improvement of cliustering of samples by genotype is observed 
+PCA analysis was repeated. No significant improvement of clustering of samples by genotype is observed 
 
 ```{r}
 ggarrange(
@@ -392,8 +426,8 @@ ggarrange(
 ```
 
 ## DE with cqn
+CQN generates an "offset" which is included in the generalised linear models fitted in edgeR. Here, I repeat the edgeR model fitting & DE analysis including this offset. 
 
-The DE analysis was then repeated, this time including the offset generated by `cqn` in the model. 
 ```{r}
 # Add the offset to the dge object 
 x$offset <- cqn$glm.offset
@@ -403,6 +437,7 @@ fit_cqn <- x %>%
   estimateDisp(design) %>% 
   glmFit(design)
 
+# call the toptables. 
 toptables_cqn <- design %>% colnames() %>% .[2:3] %>% 
   sapply(function(x){
     glmLRT(fit_cqn, coef = x) %>%
@@ -420,9 +455,31 @@ toptables_cqn <- design %>% colnames() %>% .[2:3] %>%
       
   }, simplify = FALSE)
 ```
-### Vis
+## Visualisation of DE genes
 
-#### rech-check the rank-stat
+### Volcano plot
+```{r}
+toptables_cqn %>%
+  bind_rows() %>% 
+  ggplot(aes(y = -log10(PValue), x = logFC, colour = DE)) +
+  geom_point(
+    alpha = 0.5, size = 1.25
+  ) +
+  facet_wrap(~coef) +
+  # geom_label_repel(
+  #   aes(label = gene_name),
+  #   data = .  %>% dplyr::filter(FDR < 0.05),
+  #   show.legend = FALSE
+  #   ) +
+  coord_cartesian(xlim = c(-2.5,2.5), 
+                  ylim = c(0, 20) )+
+  theme(legend.position = "none") +
+  scale_color_manual(values = c("grey50", "red")) 
+```
+
+#### rech-check the %GC & length bias
+
+Doesnt look like CQN did a whole lot here. But will still include it. 
 ```{r}
 ggarrange(
 toptables_cqn %>% 
@@ -466,24 +523,35 @@ labels = "AUTO"
 ) 
 ```
 
+# Gene set enrichment analysis
+I now will perform some gene set enrichment analyses to assess the bioloigcal meaning of the DE genes. I will use gene sets obtained from [MSigDB](https://www.gsea-msigdb.org/gsea/msigdb) (Molecular Signatures Database). This is a curated collection of gene sets used for functional enrichment and pathway analysis. It is widely utilized in genomics research to interpret high-throughput expression data by linking genes or transcripts to known biological pathways, cellular processes, or molecular functions.
 
+## Gene sets
 
-## Gene set enrichment analysis
-I now will perform some gene set enrichment analyses on MSIGDB gene sets.
+The gene sets I will test will be the following:
 
-### Gene sets
+- KEGG: Canonical Pathways gene sets derived from the KEGG pathway database. Note that I should use the KEGG medicus gene sets in the future. 
 
 ```{r}
-KEGG <- msigdbr("Danio rerio", category = "C2", subcategory = "CP:KEGG") %>% 
-  left_join(x$genes, by = c("gene_symbol" = "gene_name")) %>% 
-  dplyr::filter(gene_id %in% rownames(x)) %>% 
-  distinct(gs_name, gene_id, .keep_all = TRUE) %>% 
+# d/l the KEGG gene sets and setup in list format by gene ids. 
+KEGG <- msigdbr(
+  species = "Danio rerio",
+  category = "C2", subcategory = "CP:KEGG"
+) %>% 
+  left_join(x$genes, by = c("gene_symbol" = "gene_name")) %>% # add the ens gene ids
+  dplyr::filter(gene_id %in% rownames(x)) %>% # only retain genes detected in this RNAseq exp. 
+  distinct(gs_name, gene_id, .keep_all = TRUE) %>% # keep unique 
   split(f = .$gs_name) %>%
   lapply(extract2, "gene_id")
+```
 
+- Gene ontologies: 
+GO is a collaborative effort to develop and use ontologies to support biologically meaningful annotation of genes and their products. A GO annotation consists of a GO term associated with a specific reference that describes the work or analysis upon which the association between a specific GO term and gene product is based. Each annotation also includes an evidence code to indicate how the annotation to a particular term is supported (http://geneontology.org/page/guide-go-evidence-codes). Gene sets in this subcollection are prefixed with "GOBP" (Biological Process), "GOMF" (Molecular Function), or "GOCC" (Cellular Component) to indicate their source ontology.
 
-
+```{r}
 # GO Terms
+# get the GO summaries that Stevie generated way back
+# this is to help reduce redundant GO terms. 
 goSummaries <- url("https://uofabioinformaticshub.github.io/summaries2GO/data/goSummaries.RDS") %>%
   readRDS() %>%
   mutate(
@@ -492,6 +560,7 @@ goSummaries <- url("https://uofabioinformaticshub.github.io/summaries2GO/data/go
     gs_name = paste0("GO_", gs_name)
     )
 
+# define this as the min path
 minPath <- 3
 
 GO <-
@@ -499,7 +568,8 @@ GO <-
   dplyr::filter(grepl(gs_name, pattern = "^GO")) %>%
   left_join(x$genes, by = c("gene_symbol" = "gene_name")) %>%
   dplyr::filter(gene_id %in% rownames(x)) %>%
-  mutate(gs_name = str_replace(gs_name, pattern = "GOBP_", replacement = "GO_")) %>%
+  # omit these prefixes - im not interested in them for this analysis. 
+  mutate(gs_name = str_replace(gs_name, pattern = "GOBP_", replacement = "GO_")) %>% 
   mutate(gs_name = str_replace(gs_name, pattern = "GOMF_", replacement = "GO_")) %>%
   mutate(gs_name = str_replace(gs_name, pattern = "GOCC_", replacement = "GO_")) %>%
   left_join(goSummaries) %>%
@@ -507,7 +577,8 @@ GO <-
   distinct(gs_name, gene_id, .keep_all = TRUE) %>%
   split(f = .$gs_name) %>%
   lapply(extract2, "gene_id")
- 
+
+# calculate the sizes of the GO terms.  
 sizes_GO <- GO %>%
   lapply(length) %>%
   unlist %>%
@@ -515,10 +586,16 @@ sizes_GO <- GO %>%
   set_colnames( "n_genes") %>%
   rownames_to_column("gs")
 
-
 # retain gene sets with at least 3 genes in it
 GO <- GO[sizes_GO %>% dplyr::filter(n_genes > 3) %>% .$gs]
+```
 
+- Iron-responsive element gene sets
+Dr. Nhi Hin developed gene sets which are responsive to intracellular iron levels. Changes to the expression of these genes can represent changes to intracellular iron levels. For more details - see her amazing [paper](https://pubmed.ncbi.nlm.nih.gov/34719489/. 
+
+I went to her [GitHub repo](https://github.com/nhihin/ire) and downloaded the rds file for the zebrafish IRE genes. 
+
+```{r}
 ireGenes <- readRDS("data/gene_sets/zebrafishireGenes.rds") %>% 
   unlist() %>% 
   as.data.frame() %>% 
@@ -528,14 +605,28 @@ ireGenes <- readRDS("data/gene_sets/zebrafishireGenes.rds") %>%
   set_colnames(c("ire", "gene_id")) %>% 
   dplyr::filter(gene_id %in% rownames(x)) %>% 
   split(f = .$ire) %>% 
-  lapply(magrittr::extract2,"gene_id") 
+  lapply(magrittr::extract2,"gene_id")
+```
 
+- Chromosome location gene sets
+
+We often see DE genes arising from the same chromosome of the mutation when comparing mutant genotypes. This can indicate DE genes not related to the true biology of the mutation we are studying, rather it can represent other variants on the mutant chromosome which result in different gene expression values. See [Baer et al. 2024](https://pubmed.ncbi.nlm.nih.gov/38346074/) for a nice explanation of this. 
+
+```{r}
 chr <- x$genes %>% 
   dplyr::select(gene_id, chromosome) %>% 
   split(f = .$chromosome) %>%
   lapply(extract2, "gene_id") %>% 
   .[c("MT", seq(1:25))] # omit the ALT chromosmes and scaffolds
+```
 
+- Cell type markers
+
+Cell type marker gene sets are collections of genes that are specifically or highly expressed in particular cell types, serving as molecular signatures to identify those cells. We are analysiing bulk larval tissue, and so if there is a cell type missing (e.g. neurons) we would see downregulation of neuronal genes. This is an important interpretation of changes to gene expression - is it functional? or is it a cell type proportion change? 
+
+These gene sets come from [Farnsworth et al.](https://pmc.ncbi.nlm.nih.gov/articles/PMC7080588/). Its a 5dpf scRNAseq dataset as I couldnt find a 7 dpf gene set in the literature. 
+
+```{r}
 # Cell type markers for zerbafish 
 cell_type_markers <- read_excel("data/gene_sets/1-s2.0-S0012160619304919-mmc7.xlsx") %>% 
   dplyr::filter(grepl(`Day of Origin`, pattern = 5 )) %>%  # restrict to only 5dpf
@@ -560,13 +651,13 @@ sizes <- cell_type_markers %>%
   set_colnames( "n_genes") %>% 
   rownames_to_column("gs")
 
-# retain gene sets with at least 10 genes in it
+# retain gene sets with at least 5 genes in it
 cell_type_markers <- cell_type_markers[sizes %>% dplyr::filter(n_genes > 5) %>% .$gs]
 ```
 
-## GOSEQ 
+## Testing for over-representation of GO terms in the DE genes using GOSEQ 
 
-First, I will test for over-representation of GO terms within the DE genes. I will do this using  goseq as it allows you to include a co-variate which is nice. Since there seems to still be a little bit of bias remaining for %GC content even after cqn, this is what I will speify as the covariate.
+First, I will test for over-representation of GO terms within the DE genes. I will do this using  goseq as it allows you to include a co-variate which is nice. Since there seems to still be a little bit of bias remaining for %GC content even after cqn, this is what I will specify as the covariate.
 
 There were no DEGs in the EOfAD like mutatns, so no GO testing will be performed for this comparison. 
 
@@ -598,12 +689,12 @@ goseq_mpsiiib %>%
 ```
 
 
-## Ranked list with fry
+## Ranked-list approach to gene set testing with fry
 Overrepresenation analysis using goseq relies on a hard threshold for gene to be called DE. This can lose information as there are genes which are almost DE (i.e. FDRp = 0.06), but are not interpreted in this way. 
 
 Another method to test for enrichment of gene sets is to use ROAST. Roast uses a rotation-based approach to generate a null distribution of gene set enrichment scores by randomly permuting the samples or the gene labels in the data. Roast then calculates a gene set enrichment score for each gene set in the data, based on the correlation between the gene expression values and the sample labels. The gene set enrichment scores are compared to the null distribution to calculate the statistical significance of the enrichment. In this way, it does not requre a list of DEGs as input. 
 
-Here, I will perform the fast approx of ROAST: fry, frmo the limma package on the KEGG gene sets. The top 10 gene sets in each mutant zebrafish are shown below. 
+Here, I will perform the fast approx of ROAST: fry, from the limma package on the KEGG gene sets. The top 10 gene sets in each mutant zebrafish are shown below. 
 
 ### KEGG 
 ```{r}
@@ -651,66 +742,6 @@ fryKEGG$EOfADlike %>%
        title = "EOfAD")
   
 ```
-
-
-### GO
-Gene ontologies. 
-
-```{r}
-fry_GO <-  design %>% colnames() %>% .[2:3] %>% 
-  sapply(function(y) {
-    logCPM %>% 
-      fry(
-        index = GO,
-        design = design, 
-        contrast = y, 
-        sort = "mixed"
-      ) %>% 
-      rownames_to_column("pathway") %>% 
-      as_tibble() %>% 
-      mutate(coef = y, 
-             sig = FDR.Mixed < 0.05)
-  }, simplify = FALSE)
-
-sigGOs <- fry_GO %>% 
-  bind_rows() %>% 
-  dplyr::filter(sig == TRUE) %>% 
-  .$pathway
-
-fry_GO %>% 
-  bind_rows() %>% 
-  dplyr::filter(pathway %in% sigGOs) %>% 
-  arrange(desc(coef), PValue.Mixed) %>% 
-  mutate(order = rownames(.)) %>% 
-  ggplot(aes(x = coef, y = pathway)) +
-  geom_tile(
-    aes(fill = -log10(PValue.Mixed))
-    ) +
-  theme_pubr() +
-  scale_fill_viridis_c(option = "magma") +
-  labs(fill = "-log10(PValue)", 
-       x = "", 
-       y = "", 
-       title = "MPS-IIIB")
-  theme(text = element_text(size = 25)) 
-  # ggsave("output/plots/gotermsMPS-IIIB.png", width = 10, height = 7, 
-  #        units = "cm", dpi = 300, scale= 5)
-  
-
-fry_GO$EOfADlike %>% 
-  dplyr::slice(1:32) %>% 
-  ggplot(aes(x = -log10(PValue.Mixed), y = reorder(pathway, -PValue.Mixed))) +
-  geom_col(aes(fill = -log10(PValue.Mixed))) +
-  scale_fill_viridis_c() +
-  theme_pubr() +
-  labs(fill = "FDR < 0.05", 
-       x = "-log10(PValue)", 
-       y = "", 
-       title = "MPS IIIB") 
-  ggsave("output/plots/gotermsMPS-IIIB.png", width = 10, height = 5, 
-         units = "cm", dpi = 300, scale= 4)
-```
-
 
 
 ### IRE
@@ -912,6 +943,89 @@ HMP_kegg$hmp %>%
 
 ```
 
+#### ECM
+
+Plot the ECM logFC values t look at directionality 
+```{r}
+toptables_cqn %>% 
+  bind_rows() %>% 
+  dplyr::filter(
+    gene_id %in% KEGG$KEGG_ECM_RECEPTOR_INTERACTION
+    ) %>% 
+  dplyr::filter(
+    grepl(description, pattern = "collag")
+  ) %>% 
+  dplyr::distinct(
+    gene_name, coef, .keep_all = TRUE
+  ) %>% 
+  heatmap(
+    .row = coef,
+    .col = gene_name, 
+    .value = logFC, 
+    
+    palette_value = circlize::colorRamp2(
+            seq(-0.5, 0.5, length.out = 11), 
+            rev(RColorBrewer::brewer.pal(11, "RdBu"))
+    )
+  )
+
+# save as an svg for the paper
+
+# svg("output/plots4pub3/ECM_collagen_larvae_hm.svg", 
+#    width = 10, height = 3)
+
+# look at the collagen genes specifically
+
+toptables_cqn %>% 
+  bind_rows() %>% 
+  dplyr::filter(
+    gene_id %in% KEGG$KEGG_ECM_RECEPTOR_INTERACTION
+    ) %>% 
+  dplyr::filter(
+    grepl(description, pattern = "collag")
+  ) %>% 
+  dplyr::distinct(
+    gene_name, coef, .keep_all = TRUE
+  ) %>% 
+  heatmap(
+    .row = coef,
+    .col = gene_name, 
+    .value = logFC, 
+    
+    palette_value = circlize::colorRamp2(
+            seq(-0.9, 0.9, length.out = 11), 
+            rev(RColorBrewer::brewer.pal(11, "RdBu"))), 
+  )
+#  dev.off()
+
+
+```
+
+## vibrio cholarae infection gene set
+
+Kim was interested in this gene set - so want to see what genes are driving its statistical significnace .
+
+```{r}
+toptables_cqn %>% 
+  bind_rows() %>% 
+  dplyr::filter(
+    gene_id %in% KEGG$KEGG_VIBRIO_CHOLERAE_INFECTION
+    ) %>% 
+  dplyr::distinct(
+    gene_name, coef, .keep_all = TRUE
+  ) %>% 
+  heatmap(
+    .row = coef,
+    .col = gene_name, 
+    .value = logFC, 
+      
+    
+    palette_value = circlize::colorRamp2(
+            seq(-0.5, 0.5, length.out = 11), 
+            rev(RColorBrewer::brewer.pal(11, "RdBu"))
+    )
+  )
+```
 
 ### IRE
 No staistical significance in the IRE genes
@@ -933,10 +1047,16 @@ HMP_ire$hmp %>%
 ```
 
 
-# Post-hoc power calc
+# Post-hoc power calculation 
+
+Since we were detetcting much DE genes in the EOfAD-like mutants, i wanted to check what level of statistcial power we achived here. This can be done using the package ssizeRNA
+
+
 ```{r}
+# set a seed for a reroducilble result. 
 set.seed(2016)
 
+# this was largely followed from the vigentte of the package. 
 mu <- x$counts %>%
   as.data.frame() %>%
   .[grepl(colnames(x$counts), pattern = "wt")] %>%
@@ -957,7 +1077,7 @@ power <- ssizeRNA_vary(nGenes = dim(x)[1], # Num detectable genes
               maxN = 40,
               replace = T
                 )
-
+# plot the power myself/ 
 power$power %>% 
   set_colnames(c("n", "power")) %>% 
   ggplot(aes(x = n, y = power)) +
@@ -971,7 +1091,11 @@ power$power %>%
 
 ```
 
+Note for Anqi - you can stop here. the rest of this doc is quite specific to my paper. 
+
+
 # Compare with Dong et al. data
+
 Yang had previously analysed the EOfADlike mutation in pools of larvae. Here, I want to see how similar my results are. 
 
 Obtained his github repo from here, which has the data https://github.com/yangdongau/20190717_Lardelli_RNASeq_Larvae 
@@ -1292,6 +1416,175 @@ fry.cell %>% saveRDS("data/R_objects/larvae/celltype_larvae.rds")
 #   write.xlsx("output/spreadsheets/RNAseqlarvae_celltypeFry.xlsx")
 ```
 
+
+<!-- ```{r} -->
+<!-- # GO plot -->
+<!-- sigGOs <- goseq_mpsiiib %>%  -->
+<!--   dplyr::filter(FDR < 0.05) %>%  -->
+<!--   .$category -->
+
+<!-- DEGs <- toptables_cqn$MPSIIIB %>%  -->
+<!--   dplyr::filter(FDR < 0.05) %>%  -->
+<!--   .$gene_id -->
+
+<!-- ## Get significant GO terms -->
+<!-- sigGo <- goseq_mpsiiib %>% -->
+<!--     dplyr::filter(FDR < 0.05) %>% -->
+<!--     .$category -->
+
+<!-- ## Convert list of GO terms by gene to list of genes by GO term -->
+<!-- geneByGo <- GO -->
+
+<!-- ## Get DE genes that belong to sigificant GO terms -->
+<!-- goGenes <- lapply( -->
+<!--   sigGo,  -->
+<!--   function(x){ -->
+<!--     geneByGo[[x]][geneByGo[[x]] %in% DEGs] -->
+<!--   } -->
+<!-- )  -->
+<!-- names(goGenes) <- sigGo -->
+
+<!-- ## Make tibble of GO terms -->
+<!-- goTerms <- names(goGenes) %>% -->
+<!--     tibble::enframe(name = NULL, value = "label") -->
+<!-- ## Make tibble of genes -->
+<!-- genes <- unlist(goGenes) %>%  -->
+<!--     unique() %>% -->
+<!--     tibble::enframe(name = NULL, value = "label") %>% -->
+<!--     mutate -->
+
+<!-- ## Join to create node list -->
+<!-- nodes <-   rbind(goTerms, genes) %>% -->
+<!--   rowid_to_column("id") %>%  -->
+<!--   left_join(toptables_cqn$MPSIIIB %>%  -->
+<!--               dplyr::select(label = gene_id, gene_name)) %>%  -->
+<!--   mutate(name = label,  -->
+<!--          name = case_when( -->
+<!--            grepl(name, pattern = "^ENS") ~ gene_name,  -->
+<!--            TRUE ~ name),  -->
+<!--          colour = case_when( -->
+<!--             grepl(name, pattern = "^GO") ~ 1, -->
+<!--             TRUE ~ 2 -->
+<!--          )) -->
+
+<!-- ## Create edge list -->
+<!-- edges <- goGenes %>% -->
+<!--     stack() %>% -->
+<!--     as_tibble() %>% -->
+<!--     dplyr::select(goTerm = ind, geneId = values) %>% -->
+<!--     dplyr::arrange(goTerm) %>% -->
+<!--     mutate(goTerm = as.character(goTerm)) %>% -->
+<!--     left_join(nodes, by = c("goTerm" = "label")) %>% -->
+<!--     dplyr::rename(from = id) %>% -->
+<!--     left_join(nodes, by = c("geneId" = "label")) %>% -->
+<!--     dplyr::rename(to = id) %>% -->
+<!--     dplyr::select(from, to) -->
+
+<!-- ## Setup colours -->
+<!-- colours <- length(sigGo) %>% -->
+<!--     rainbow() -->
+
+<!-- ## Create tidygraph object -->
+<!-- tidy <- tbl_graph( -->
+<!--     nodes = nodes,  -->
+<!--     edges = edges,  -->
+<!--     directed = FALSE -->
+<!-- ) %>% -->
+<!--     activate(nodes) %>% -->
+<!--     mutate( -->
+<!--         goTerms = case_when( -->
+<!--             id <= length(sigGo) ~ label -->
+<!--         ), -->
+<!--         term = Term(label), -->
+<!--         gene_id = case_when( -->
+<!--             !label %in% sigGo ~ label -->
+<!--         ), -->
+<!--         size = ifelse(id <= length(sigGo), 4, 1) -->
+<!--     ) %>%   -->
+<!--     activate(edges) %>% -->
+<!--     mutate( -->
+<!--         colour = case_when( -->
+<!--             from <= length(sigGo) ~ colours[from] -->
+<!--         ) -->
+<!--     ) -->
+
+<!-- ## Set seed to allow same graph to be produced each time function is executed -->
+<!-- set.seed(1234) -->
+
+<!-- ## Plot network graph -->
+<!-- p3 <- ggraph(tidy, layout = "fr") + -->
+<!--     # scale_fill_manual( -->
+<!--     #     values = "white",  -->
+<!--     #     na.value = "black" -->
+<!--     # ) + -->
+<!--     scale_edge_color_manual( -->
+<!--         values = "black",  -->
+<!--         na.value = "gray80" -->
+<!--     ) + -->
+<!--     geom_edge_bundle_path( -->
+<!--         aes(color = "black"),  -->
+<!--         alpha = 0.5,  -->
+<!--         show.legend = FALSE, -->
+<!--     ) + -->
+<!--     geom_node_point( -->
+<!--         aes(fill = colour, -->
+<!--             colour = colour,  -->
+<!--             size = size), -->
+<!--         shape = 21, -->
+<!--         stroke = 0.5,  -->
+<!--         show.legend = FALSE -->
+<!--     ) + -->
+<!--     geom_node_label( -->
+<!--         aes(label = name), -->
+<!--         repel = TRUE, -->
+<!--         size = 7, -->
+<!--         alpha = 0.7, -->
+<!--         label.padding = 0.2 -->
+<!--     ) + -->
+<!--     theme_graph() + -->
+<!--     theme(legend.position = "none")  -->
+
+<!-- library(patchwork) -->
+
+<!-- a <- logCPM %>%  -->
+<!--     t() %>%  -->
+<!--     prcomp() %>% -->
+<!--     autoplot(data = tibble(sample = rownames(.$x)) %>% -->
+<!--                left_join(x$samples), -->
+<!--              colour = "Genotype",  -->
+<!--              size = 4 -->
+<!--     ) + -->
+<!--   scale_color_discrete_qualitative(palette = "Dark 3") + -->
+<!--   theme(aspect.ratio = 1) + -->
+<!--   scale_color_manual(values =  c("#000000", "#DBDB2F", "#377EB8")) -->
+
+
+<!-- b <- toptables_cqn %>% -->
+<!--   bind_rows() %>%  -->
+<!--   ggplot(aes(y = -log10(PValue), x = logFC, colour = DE)) + -->
+<!--   geom_point( -->
+<!--     alpha = 0.5, size = 1.25 -->
+<!--   ) + -->
+<!--   facet_wrap(~coef) + -->
+<!--   # geom_label_repel( -->
+<!--   #   aes(label = gene_name), -->
+<!--   #   data = .  %>% dplyr::filter(FDR < 0.05), -->
+<!--   #   show.legend = FALSE -->
+<!--   #   ) + -->
+<!--   coord_cartesian(xlim = c(-2.5,2.5),  -->
+<!--                   ylim = c(0, 20) )+ -->
+<!--   theme(legend.position = "none") + -->
+<!--   scale_color_manual(values = c("grey50", "red")) -->
+
+<!-- a + b + -->
+<!--   ggsave("output/plots/fig2.svg", width = 16, height = 5, units = "cm", scale = 1.5) -->
+
+<!-- c + -->
+<!--   ggsave("output/plots/fig2C.svg", width = 13, height = 7, units = "cm", scale = 1.5) -->
+
+<!-- p3 + -->
+<!--   ggsave("output/plots/fig2D.svg", width = 13, height = 7, units = "cm", scale = 2.5) -->
+<!-- ``` -->
 
 
 <!-- # a few extra plots -->

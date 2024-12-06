@@ -3,6 +3,8 @@ title: "plots4pub"
 author: "Karissa"
 date: "03/03/2023"
 output: html_document
+editor_options: 
+  chunk_output_type: console
 ---
 
 ```{r setup, include=FALSE}
@@ -264,7 +266,7 @@ c <- goseq_mpsiiib %>%
   mutate(propDE = numDEInCat/numInCat, 
          category = str_replace_all(category, pattern = "_", replacement = " "), 
          category = str_remove(category, pattern = "GO"),
-         category = str_wrap(category, width = 20, indent = 1), 
+         category = str_wrap(category, width = 29, indent = 1), 
          coef = "MPS-IIIB") %>% 
   ggplot(aes(x = -log10(over_represented_pvalue), 
              y = reorder(category, -over_represented_pvalue))) +
@@ -280,10 +282,9 @@ c <- goseq_mpsiiib %>%
 ```
 
 ```{r}
-a / (b + c) +
-plot_layout(heights = c(1,2), 
-            widths = c(1,2)) +
-ggsave("output/plots/fig2.png", width = 10, height = 8, 
+
+ggarrange(a,b) +
+ggsave("output/plots/fig2.svg", width = 10, height = 8, 
          units = "cm", dpi = 100, scale = 3)
 ```
 
@@ -570,6 +571,14 @@ b <- toptables_cqn.adult %>%
 a + b +
   ggsave("output/plots4poster/PCAadult.png", width = 22, height = 10, units = "cm", dpi = 400, 
          scale = 1.3)
+```
+
+```{r}
+toptablescqn[1:2] %>%  
+  lapply(dplyr::filter, DE== TRUE) %>% 
+  lapply(magrittr::extract2, "gene_id") %>% 
+  fromList() %>% 
+  upset()
 ```
 
 
