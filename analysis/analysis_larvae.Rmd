@@ -128,7 +128,7 @@ meta <- read_excel("data/larvae/meta/naglu_v_Q96_larvae_metadata.xlsx", sheet = 
 
 # read in the output of featurecounts. 
 featureCounts <- 
-  read_delim("data/larvae/featureCounts/counts.out", delim = "\t", skip = 1) %>%
+  read_delim("data/larvae/featureCounts/counts.out", delim = "\t", skip = 1) %>% view
   set_names(basename(names(.))) %>% 
   set_names(
     names(.) %>% 
